@@ -1,0 +1,279 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       Int       @id @default(autoincrement())
+  username String    @unique
+  password String
+  role     String    @default("admin")
+  notes    Note[]
+  dayNotes DayNote[]
+}
+
+model Note {
+  id        Int      @id @default(autoincrement())
+  text      String
+  createdAt DateTime @default(now())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Task {
+  id        Int      @id @default(autoincrement())
+  title     String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model ClienteTask {
+  id          Int      @id @default(autoincrement())
+  tipo        String
+  descripcion String
+  completada  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  clienteId   Int
+  cliente     Client   @relation(fields: [clienteId], references: [id])
+}
+
+model Person {
+  id               Int        @id @default(autoincrement())
+  name             String
+  email            String?
+  articlesAuthored Article[]  @relation("ArticleAuthors")
+  magazinesDir     Magazine[] @relation("MagazineDirector")
+  books            Book[]     @relation("BookAuthor")
+}
+
+model Magazine {
+  id         Int       @id @default(autoincrement())
+  title      String
+  directorId Int
+  notas      String?
+  archivoUrl String?
+  clienteId  Int?
+  createdAt  DateTime  @default(now())
+  director   Person    @relation("MagazineDirector", fields: [directorId], references: [id])
+  cliente    Client?   @relation(fields: [clienteId], references: [id])
+  articles   Article[]
+  entregas   Entrega[]
+  ediciones  Edicion[]
+}
+
+model Article {
+  id         Int      @id @default(autoincrement())
+  title      String
+  magazineId Int
+  magazine   Magazine @relation(fields: [magazineId], references: [id])
+  authors    Person[] @relation("ArticleAuthors")
+}
+
+model Book {
+  id         Int       @id @default(autoincrement())
+  title      String
+  authorId   Int
+  notas      String?
+  archivoUrl String?
+  clienteId  Int?
+  createdAt  DateTime  @default(now())
+  author     Person    @relation("BookAuthor", fields: [authorId], references: [id])
+  cliente    Client?   @relation(fields: [clienteId], references: [id])
+  entregas   Entrega[]
+}
+
+model Project {
+  id          Int    @id @default(autoincrement())
+  title       String
+  description String
+  imageUrl    String
+}
+
+model Client {
+  id                Int           @id @default(autoincrement())
+  token             String        @unique
+  expiresAt         DateTime
+  status            String        @default("pendiente")
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @default(now()) @updatedAt
+
+  nombres           String?
+  apellidoPaterno   String?
+  apellidoMaterno   String?
+  sexo              String?
+  ciudad            String?
+
+  ci                String?
+  nombreCompleto    String?
+  direccion         String?
+  fechaNacimiento   String?
+  extension         String?
+  profesion         String?
+  celular           String?
+  email             String?
+  fotografia        String?
+  fotoCarnet        String?
+  fotoCarnet2       String?
+
+  pideLibros        Boolean       @default(false)
+  cantLibros        Int           @default(0)
+  librosHechos      Int           @default(0)
+  pideArticulos     Boolean       @default(false)
+  cantArticulos     Int           @default(0)
+  articulosHechos   Int           @default(0)
+  pideDirector      Boolean       @default(false)
+  edicionesHechas   Int           @default(0)
+  pideFundador      Boolean       @default(false)
+  notasServicio     String?
+
+  clientUsername         String?   @unique
+  clientPassword         String?
+  credencialesGeneradaAt DateTime?
+
+  entregas          Entrega[]
+  magazines         Magazine[]
+  books             Book[]
+  clienteTasks      ClienteTask[]
+  libroDetalles     LibroDetalle[]
+  mensajes          Mensaje[]
+  archivos          ClienteArchivo[]
+  pagos             Pago[]
+  pedidos           Pedido[]
+}
+
+model Entrega {
+  id           Int       @id @default(autoincrement())
+  estado       String    @default("pendiente")
+  fechaEntrega DateTime?
+  createdAt    DateTime  @default(now())
+  clienteId    Int?
+  cliente      Client?   @relation(fields: [clienteId], references: [id])
+  magazineId   Int?
+  magazine     Magazine? @relation(fields: [magazineId], references: [id])
+  bookId       Int?
+  book         Book?     @relation(fields: [bookId], references: [id])
+}
+
+model DayNote {
+  id        Int      @id @default(autoincrement())
+  text      String
+  fecha     String
+  createdAt DateTime @default(now())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model LibroDetalle {
+  id          Int    @id @default(autoincrement())
+  clienteId   Int
+  numeroLibro Int
+  categoria   String
+  isbn        Boolean @default(false)
+  senapi      Boolean @default(false)
+  prioridad   String
+  cliente     Client  @relation(fields: [clienteId], references: [id])
+}
+
+model Mensaje {
+  id        Int      @id @default(autoincrement())
+  clienteId Int
+  emisor    String
+  texto     String
+  leido     Boolean  @default(false)
+  createdAt DateTime @default(now())
+  cliente   Client   @relation(fields: [clienteId], references: [id])
+}
+
+model ClienteArchivo {
+  id           Int      @id @default(autoincrement())
+  clienteId    Int
+  tipo         String
+  referenciaId Int?
+  titulo       String?
+  notas        String?
+  archivoUrl   String?
+  createdAt    DateTime @default(now())
+  cliente      Client   @relation(fields: [clienteId], references: [id])
+}
+
+model Producto {
+  id          Int      @id @default(autoincrement())
+  nombre      String
+  descripcion String
+  precio      Float
+  descuento   Float    @default(0)
+  activo      Boolean  @default(true)
+  imagenUrl   String?
+  creadoEn    DateTime @default(now())
+}
+
+model Pago {
+  id              Int      @id @default(autoincrement())
+  nombreDeclarado String
+  monto           Float
+  tipo            String
+  descripcion     String?
+  imagenUrl       String?
+  estado          String   @default("pendiente")
+  motivoRechazo   String?
+  productos       String?
+  celular         String?
+  creadoEn        DateTime @default(now())
+  clienteId       Int?
+  cliente         Client?  @relation(fields: [clienteId], references: [id])
+}
+
+model Pedido {
+  id            Int          @id @default(autoincrement())
+  clienteId     Int
+  estado        String       @default("en proceso")
+  motivoRechazo String?
+  montoTotal    Float        @default(0)
+  montoPagado   Float        @default(0)
+  creadoEn      DateTime     @default(now())
+  cliente       Client       @relation(fields: [clienteId], references: [id])
+  items         ItemPedido[]
+}
+
+model Edicion {
+  id         Int          @id @default(autoincrement())
+  numero     Int
+  magazineId Int
+  magazine   Magazine     @relation(fields: [magazineId], references: [id])
+  items      ItemPedido[]
+}
+
+model ItemPedido {
+  id                      Int            @id @default(autoincrement())
+  pedidoId                Int
+  tipo                    String
+  titulo                  String?
+  conSenapi               Boolean        @default(false)
+  conIsbn                 Boolean        @default(false)
+  periodicidad            String?
+  tipoAutor               String?
+  asociacionEncargaTitulo Boolean        @default(false)
+  notas                   String?
+  archivoWord             String?
+  archivoPdf              String?
+  estado                  String         @default("pendiente")
+  edicionId               Int?
+  edicion                 Edicion?       @relation(fields: [edicionId], references: [id])
+  pedido                  Pedido         @relation(fields: [pedidoId], references: [id])
+  revisiones              RevisionItem[]
+}
+
+model RevisionItem {
+  id           Int        @id @default(autoincrement())
+  itemPedidoId Int
+  ronda        Int
+  autorTipo    String
+  nota         String?
+  archivos     String[]
+  creadoEn     DateTime   @default(now())
+  item         ItemPedido @relation(fields: [itemPedidoId], references: [id])
+}

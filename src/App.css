@@ -1,0 +1,110 @@
+/* Estilos globales para resetear y establecer una base consistente */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #0f172a; /* Color de fondo base de tu aplicación */
+  color: white; /* Color de texto base */
+  box-sizing: border-box; /* Global box-sizing */
+}
+
+*, *::before, *::after {
+  box-sizing: inherit; /* Hereda box-sizing */
+}
+
+/* Estilos para el scrollbar (personalizado y más estético) */
+/* Webkit (Chrome, Safari) */
+::-webkit-scrollbar {
+  width: 8px; /* Ancho del scrollbar vertical */
+  height: 8px; /* Altura del scrollbar horizontal */
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b; /* Color de la pista del scrollbar */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3b82f6; /* Color del "pulgar" del scrollbar */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #60a5fa; /* Color del "pulgar" al pasar el ratón */
+}
+
+/* Firefox */
+html {
+  scrollbar-width: thin; /* "auto" o "none" */
+  scrollbar-color: #3b82f6 #1e293b; /* thumb color track color */
+}
+
+/* -------------------------------------- */
+/* ESTILOS ESPECÍFICOS PARA ADMIN.TSX */
+/* -------------------------------------- */
+
+/* Sidebar (escritorio por defecto) */
+.sidebar {
+  transform: translateX(0); /* Visible por defecto en escritorio */
+}
+
+/* Menú hamburguesa (oculto por defecto en escritorio) */
+.menu-button {
+  display: none;
+}
+
+/* Overlay (oculto por defecto en escritorio) */
+.sidebar-overlay {
+  display: none;
+}
+
+/* Media query para tabletas y móviles (pantallas de hasta 768px de ancho) */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed; /* Ahora es fijo, no sticky */
+    left: 0;
+    top: 0;
+    height: 100vh;
+    width: 240px; /* Mantiene el ancho */
+    transform: translateX(-100%); /* Oculto por defecto en móviles */
+    box-shadow: 2px 0 10px rgba(0,0,0,0.5); /* Sombra para diferenciarlo */
+  }
+
+  .sidebar-open {
+    transform: translateX(0); /* Visible cuando la clase sidebar-open está presente */
+  }
+
+  .menu-button {
+    display: block; /* Muestra el botón hamburguesa */
+  }
+
+  .sidebar-overlay {
+    display: block; /* Muestra el overlay */
+  }
+
+  .main-content {
+    /* Ajusta el padding del contenido principal en pantallas pequeñas */
+    padding: 20px;
+  }
+
+  /* Grid del panel: 2 columnas en tabletas */
+  .panel-grid {
+    grid-template-columns: repeat(2, 1fr) !important; /* Forzar 2 columnas */
+  }
+}
+
+/* Media query para móviles pequeños (pantallas de hasta 480px de ancho) */
+@media (max-width: 480px) {
+  .main-content {
+    padding: 15px; /* Reduce un poco más el padding en móviles muy pequeños */
+  }
+
+  /* Grid del panel: 1 columna en móviles pequeños */
+  .panel-grid {
+    grid-template-columns: repeat(1, 1fr) !important; /* Forzar 1 columna */
+  }
+}
