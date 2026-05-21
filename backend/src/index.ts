@@ -477,7 +477,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     data: { estado: "verificado" },
   });
 
-  // Crear cliente si no existe y generar link de formulario
+  // Crear cliente si no existe
   if (!pago.clienteId) {
     const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
     const expiresAt = new Date();
@@ -497,7 +497,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
             director: 2000, fundador: 800, autor: 500,
           };
           const items = itemsCarrito.map((prod: any) => ({
-            tipo: prod.tipo || "autor", // si no tiene tipo, por defecto "autor"
+            tipo: prod.tipo || "autor",
             titulo: prod.titulo || prod.nombre || null,
           }));
           const montoTotal = items.reduce((sum, item) => sum + (precios[item.tipo] || 0), 0);
@@ -506,7 +506,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
             data: {
               clienteId: cliente.id,
               montoTotal,
-              montoPagado: pago.monto, // el pago actual es el primer abono
+              montoPagado: pago.monto,
               items: {
                 create: items.map((item: any) => ({
                   tipo: item.tipo,
@@ -521,7 +521,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
       }
     }
 
-    // Enviar link al cliente
+    // Enviar link del formulario al admin (WhatsApp)
     const LINK_PORTAL = process.env.CLIENT_PORTAL_URL || "https://tudominio.com";
     const linkFormulario = `${LINK_PORTAL}/formulario/${token}`;
     try {
@@ -533,14 +533,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
   }
 
   res.json(pago);
-});
-app.put("/pagos/:id/rechazar", auth, async (req, res) => {
-  const id = Number(req.params.id);
-  const { motivoRechazo } = req.body;
-  res.json(await prisma.pago.update({
-    where: { id },
-    data: { estado: "rechazado", motivoRechazo },
-  }));
 });
 
 // ─── CLIENTS ──────────────────────────────────────────────────────────────────
