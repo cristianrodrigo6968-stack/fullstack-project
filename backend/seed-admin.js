@@ -3,7 +3,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: "postgresql://taskmanager_db_4xrr_user:yYdDApoUdvKT0bWrQvdZvrN3kK4C9Lkh@dpg-d86eu0dckfvc73cluv90-a.ohio-postgres.render.com/taskmanager_db_4xrr"
+      url: "postgresql://taskmanager_db_c9f7_user:Jl4sOg7MzLWQ29dLofsAMfJ6hakHQldu@dpg-d873brh9rddc73836lmg-a.oregon-postgres.render.com/taskmanager_db_c9f7"
     }
   }
 });

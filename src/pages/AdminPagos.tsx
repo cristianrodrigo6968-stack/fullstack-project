@@ -39,6 +39,14 @@ function AdminPagos() {
   const [manualPedidoId, setManualPedidoId] = useState("");
   const [agregandoManual, setAgregandoManual] = useState(false);
 
+  // Editar pago
+  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [editNombre, setEditNombre] = useState("");
+  const [editMonto, setEditMonto] = useState("");
+
+  // Eliminar pago
+  const [eliminandoId, setEliminandoId] = useState<number | null>(null);
+
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
@@ -98,14 +106,35 @@ function AdminPagos() {
     await load();
   };
 
+  const editarPago = async (id: number) => {
+    if (!editNombre || !editMonto) return;
+    const res = await fetch(`${API_URL}/pagos/${id}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ nombreDeclarado: editNombre, monto: Number(editMonto) }),
+    });
+    if (res.ok) {
+      setEditandoId(null);
+      await load();
+    }
+  };
+
+  const eliminarPago = async (id: number) => {
+    if (!confirm("¿Eliminar este pago permanentemente?")) return;
+    setEliminandoId(id);
+    await fetch(`${API_URL}/pagos/${id}`, { method: "DELETE", headers });
+    setEliminandoId(null);
+    await load();
+  };
+
   const getEstadoColor = (estado: string) => {
     if (estado === "verificado") return { bg: "#14532d", color: "#22c55e" };
     if (estado === "rechazado") return { bg: "#7f1d1d", color: "#ef4444" };
     return { bg: "#422006", color: "#f59e0b" };
   };
 
-  
-const pagosFiltrados = pagos.filter(p => filtro === "todos" || p.estado === filtro);
+  const pagosFiltrados = filtrarPorMes(pagos).filter(p => filtro === "todos" || p.estado === filtro);
+
   return (
     <div>
       <h1 style={{ marginBottom: 8, fontSize: isMobile ? 22 : 28 }}>💰 Pagos</h1>
@@ -258,6 +287,23 @@ const pagosFiltrados = pagos.filter(p => filtro === "todos" || p.estado === filt
                 )}
               </div>
             )}
+
+            {/* Editar y Eliminar */}
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              {editandoId === selected.id ? (
+                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  <input value={editNombre} onChange={e => setEditNombre(e.target.value)} style={inputStyle} placeholder="Nombre" />
+                  <input value={editMonto} onChange={e => setEditMonto(e.target.value)} style={{ ...inputStyle, width: 100 }} placeholder="Monto" type="number" />
+                  <button onClick={() => editarPago(selected.id)} style={btnGreen}>Guardar</button>
+                  <button onClick={() => setEditandoId(null)} style={btnGray}>Cancelar</button>
+                </div>
+              ) : (
+                <button onClick={() => { setEditandoId(selected.id); setEditNombre(selected.nombreDeclarado); setEditMonto(String(selected.monto)); }} style={btnYellow}>✏️ Editar</button>
+              )}
+              <button onClick={() => eliminarPago(selected.id)} disabled={eliminandoId === selected.id} style={btnRed}>
+                {eliminandoId === selected.id ? "..." : "🗑 Eliminar"}
+              </button>
+            </div>
           </div>
         </div>
       ) : (
@@ -312,6 +358,7 @@ const pagosFiltrados = pagos.filter(p => filtro === "todos" || p.estado === filt
 const btnGreen: React.CSSProperties = { background: "#22c55e", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
 const btnRed: React.CSSProperties = { background: "#ef4444", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
 const btnGray: React.CSSProperties = { background: "#334155", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
+const btnYellow: React.CSSProperties = { background: "#f59e0b", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
 const inputStyle: React.CSSProperties = { padding: 8, borderRadius: 6, border: "none", background: "#0f172a", color: "white", fontSize: 13, boxSizing: "border-box" };
 
 export default AdminPagos;

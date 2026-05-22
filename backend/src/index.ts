@@ -470,6 +470,20 @@ app.get("/pagos", auth, async (req, res) => {
   res.json(await prisma.pago.findMany({ orderBy: { creadoEn: "desc" } }));
 });
 
+app.put("/pagos/:id", auth, async (req, res) => {
+  const id = Number(req.params.id);
+  const { nombreDeclarado, monto } = req.body;
+  const data: any = {};
+  if (nombreDeclarado !== undefined) data.nombreDeclarado = nombreDeclarado;
+  if (monto !== undefined) data.monto = Number(monto);
+  res.json(await prisma.pago.update({ where: { id }, data }));
+});
+
+app.delete("/pagos/:id", auth, async (req, res) => {
+  await prisma.pago.delete({ where: { id: Number(req.params.id) } });
+  res.json({ ok: true });
+});
+
 app.put("/pagos/:id/verificar", auth, async (req, res) => {
   const id = Number(req.params.id);
   const pago = await prisma.pago.update({
@@ -533,6 +547,15 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
   }
 
   res.json(pago);
+});
+
+app.put("/pagos/:id/rechazar", auth, async (req, res) => {
+  const id = Number(req.params.id);
+  const { motivoRechazo } = req.body;
+  res.json(await prisma.pago.update({
+    where: { id },
+    data: { estado: "rechazado", motivoRechazo },
+  }));
 });
 
 // ─── CLIENTS ──────────────────────────────────────────────────────────────────
@@ -698,7 +721,7 @@ app.put("/clients/form/:token", async (req, res) => {
     )
       .then(() => console.log("✅ WhatsApp enviado correctamente"))
       .catch((err) => console.error("❌ Error al enviar WhatsApp:", err));
-  }, 5000); // 5 segundos para prueba (después cambiar a 10 * 60 * 1000)
+  }, 5000); // 5 segundos para prueba
 
   // ── Recrear tareas y entrega ──────────────────────────────
   await prisma.clienteTask.deleteMany({ where: { clienteId: updated.id } });
@@ -786,7 +809,6 @@ app.put("/clients/:id/regenerar", auth, async (req, res) => {
   );
 });
 
-// ✅ RUTA DE ELIMINACIÓN CORREGIDA
 app.delete("/clients/:id", auth, async (req, res) => {
   const id = Number(req.params.id);
 
@@ -897,7 +919,7 @@ app.post("/clients/:id/regenerar-credenciales", auth, async (req, res) => {
     )
       .then(() => console.log("✅ WhatsApp enviado correctamente"))
       .catch((err) => console.error("❌ Error al enviar WhatsApp:", err));
-  }, 5000); // 5 segundos para prueba (después cambiar a 10 * 60 * 1000)
+  }, 5000);
 
   res.json({ clientUsername: username, clientPassword: password });
 });
@@ -957,7 +979,6 @@ app.post("/items/:id/revision", auth, upload.array("archivos", 5), async (req: a
       archivos.push(url);
     }
   }
-  // Determinar última ronda
   const ultimaRevision = await prisma.revisionItem.findFirst({
     where: { itemPedidoId: itemId },
     orderBy: { ronda: "desc" },
@@ -1015,7 +1036,6 @@ app.put("/items/:id/asignar-revista", auth, async (req, res) => {
   });
   if (!item) return res.status(404).json({ error: "Ítem no encontrado" });
 
-  // Validar que no exista otro artículo del mismo cliente en la misma edición
   const clienteId = item.pedido.clienteId;
   const existente = await prisma.itemPedido.findFirst({
     where: {
@@ -1199,7 +1219,6 @@ app.post("/cliente/mensajes", authCliente, async (req: any, res) => {
     },
   });
 
-  // Notificar al admin SOLO si no hay mensajes sin leer del cliente
   try {
     const noLeidos = await prisma.mensaje.count({
       where: { 
@@ -1209,7 +1228,6 @@ app.post("/cliente/mensajes", authCliente, async (req: any, res) => {
       },
     });
 
-    // Si solo hay 1 mensaje no leído (el que se acaba de crear), notificar
     if (noLeidos === 1) {
       const { notificarAdminMensaje } = await import("./whatsapp");
       const cliente = await prisma.client.findUnique({
@@ -1387,7 +1405,6 @@ app.get("/cliente/archivos", authCliente, async (req: any, res) => {
 app.post("/cliente/pedidos", authCliente, async (req: any, res) => {
   const { items } = req.body;
   
-  // Calcular monto total (precio fijo por tipo, ajusta según tu catálogo)
   const precios: Record<string, number> = {
     libroA: 800,
     libroB: 1100,
@@ -1421,7 +1438,6 @@ app.post("/cliente/pedidos", authCliente, async (req: any, res) => {
     include: { items: true },
   });
 
-  // Notificar al admin
   try {
     const { notificarAdminMensaje } = await import("./whatsapp");
     const cliente = await prisma.client.findUnique({ where: { id: req.clienteId } });
@@ -1483,7 +1499,6 @@ app.post("/cliente/items/:id/revision", authCliente, upload.array("archivos", 5)
 
   await prisma.itemPedido.update({ where: { id: itemId }, data: { estado: "en revision" } });
 
-  // Notificar al admin
   try {
     const { notificarAdminMensaje } = await import("./whatsapp");
     const item = await prisma.itemPedido.findUnique({
@@ -1507,17 +1522,19 @@ app.get("/entregas", auth, async (req, res) => {
   );
 });
 app.put("/entregas/:id", auth, async (req, res) => {
-  const { estado } = req.body;
-  res.json(
-    await prisma.entrega.update({
-      where: { id: Number(req.params.id) },
-      data: {
-        estado,
-        fechaEntrega: estado === "entregado" ? new Date() : null,
-      },
-      include: { cliente: { include: { clienteTasks: true } } },
-    })
-  );
+  const id = Number(req.params.id);
+  const { estado, fechaEntrega } = req.body;
+  const data: any = {};
+  if (estado !== undefined) {
+    data.estado = estado;
+    data.fechaEntrega = estado === "entregado" ? new Date() : null;
+  }
+  if (fechaEntrega !== undefined) data.fechaEntrega = new Date(fechaEntrega);
+  res.json(await prisma.entrega.update({
+    where: { id },
+    data,
+    include: { cliente: { include: { clienteTasks: true } } },
+  }));
 });
 app.delete("/entregas/:id", auth, async (req, res) => {
   await prisma.entrega.delete({ where: { id: Number(req.params.id) } });

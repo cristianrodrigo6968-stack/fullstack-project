@@ -4,8 +4,8 @@ import { useWindowSize } from "../hooks/useWindowSize";
 import { useMesActual } from "../hooks/useMesActual";
 import NavegadorMes from "../components/NavegadorMes";
 
-
 const API_URL = import.meta.env.VITE_API_URL;
+
 interface ClienteTask {
   id: number;
   tipo: string;
@@ -56,11 +56,11 @@ function ConfirmModal({ message, onConfirm, onCancel }: {
         textAlign: "center", border: "1px solid #334155",
       }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>📦</div>
-        <h3 style={{ marginBottom: 10 }}>¿Confirmar entrega?</h3>
+        <h3 style={{ marginBottom: 10 }}>¿Confirmar?</h3>
         <p style={{ color: "#94a3b8", marginBottom: 28, fontSize: 14 }}>{message}</p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
           <button onClick={onCancel} style={btnGray}>Cancelar</button>
-          <button onClick={onConfirm} style={btnGreen}>✅ Sí, entregado</button>
+          <button onClick={onConfirm} style={btnGreen}>Sí, confirmar</button>
         </div>
       </div>
     </div>
@@ -79,12 +79,21 @@ function Entregas() {
   const { token } = useAuth();
   const { isMobile } = useWindowSize();
   const { mes, anio, mesLabel, anterior, siguiente, esActual, filtrarPorMes } = useMesActual();
+
   const [entregas, setEntregas] = useState<Entrega[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
+
+  // Editar
+  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [editEstado, setEditEstado] = useState("");
+  const [editFecha, setEditFecha] = useState("");
+
+  // Eliminar
+  const [eliminandoId, setEliminandoId] = useState<number | null>(null);
 
   const headers = {
     "Content-Type": "application/json",
@@ -94,7 +103,7 @@ function Entregas() {
   const load = async () => {
     setLoading(true);
     const res = await fetch(`${API_URL}/entregas`, { headers });
-    setEntregas(await res.json());
+    if (res.ok) setEntregas(await res.json());
     setLoading(false);
   };
 
@@ -126,6 +135,25 @@ function Entregas() {
       body: JSON.stringify({ estado: "pendiente" }),
     });
     await load();
+  };
+
+  const editarEntrega = async (id: number) => {
+    const body: any = {};
+    if (editEstado) body.estado = editEstado;
+    if (editFecha) body.fechaEntrega = editFecha;
+    await fetch(`${API_URL}/entregas/${id}`, { method: "PUT", headers, body: JSON.stringify(body) });
+    setEditandoId(null);
+    await load();
+  };
+
+  const eliminarEntrega = async (id: number) => {
+    showConfirm("¿Eliminar esta entrega permanentemente?", async () => {
+      setConfirmOpen(false);
+      setEliminandoId(id);
+      await fetch(`${API_URL}/entregas/${id}`, { method: "DELETE", headers });
+      setEliminandoId(null);
+      await load();
+    });
   };
 
   const entregasMes = filtrarPorMes(entregas);
@@ -173,25 +201,18 @@ function Entregas() {
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               {e.estado === "pendiente" && listo && (
-                <button
-                  onClick={(ev) => { ev.stopPropagation(); marcarEntregado(e); }}
-                  style={{ ...btnGreen, fontSize: 13 }}
-                >
+                <button onClick={(ev) => { ev.stopPropagation(); marcarEntregado(e); }} style={{ ...btnGreen, fontSize: 13 }}>
                   📦 Entregar
                 </button>
               )}
               {e.estado === "entregado" && (
-                <button
-                  onClick={(ev) => { ev.stopPropagation(); marcarPendiente(e.id); }}
-                  style={{ ...btnGray, fontSize: 13 }}
-                >
+                <button onClick={(ev) => { ev.stopPropagation(); marcarPendiente(e.id); }} style={{ ...btnGray, fontSize: 13 }}>
                   ↩️ Revertir
                 </button>
               )}
               <span style={{ color: "#64748b", fontSize: 18 }}>{isSelected ? "▲" : "▼"}</span>
             </div>
           </div>
-
           {tareas.length > 0 && e.estado === "pendiente" && (
             <div style={{ marginTop: 12 }}>
               <div style={{ background: "#334155", borderRadius: 99, height: 6, overflow: "hidden" }}>
@@ -222,6 +243,27 @@ function Entregas() {
                 </div>
               ))
             )}
+
+            {/* Editar y Eliminar */}
+            <div style={{ marginTop: 12, borderTop: "1px solid #334155", paddingTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {editandoId === e.id ? (
+                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  <select value={editEstado} onChange={ev => setEditEstado(ev.target.value)} style={{ ...inputStyle, width: 140 }}>
+                    <option value="">Estado</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="entregado">Entregado</option>
+                  </select>
+                  <input type="date" value={editFecha} onChange={ev => setEditFecha(ev.target.value)} style={{ ...inputStyle, width: 140 }} />
+                  <button onClick={() => editarEntrega(e.id)} style={btnGreen}>Guardar</button>
+                  <button onClick={() => setEditandoId(null)} style={btnGray}>Cancelar</button>
+                </div>
+              ) : (
+                <button onClick={() => { setEditandoId(e.id); setEditEstado(e.estado); setEditFecha(e.fechaEntrega?.split("T")[0] || ""); }} style={btnYellow}>✏️ Editar</button>
+              )}
+              <button onClick={() => eliminarEntrega(e.id)} disabled={eliminandoId === e.id} style={btnRed}>
+                {eliminandoId === e.id ? "..." : "🗑 Eliminar"}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -231,11 +273,7 @@ function Entregas() {
   return (
     <div>
       {confirmOpen && (
-        <ConfirmModal
-          message={confirmMessage}
-          onConfirm={confirmAction}
-          onCancel={() => setConfirmOpen(false)}
-        />
+        <ConfirmModal message={confirmMessage} onConfirm={confirmAction} onCancel={() => setConfirmOpen(false)} />
       )}
 
       <h1 style={{ marginBottom: 8, fontSize: isMobile ? 22 : 28 }}>📦 Entregas</h1>
@@ -243,14 +281,12 @@ function Entregas() {
         Confirma las entregas a los clientes cuando el trabajo esté listo.
       </p>
 
-      {/* NAVEGADOR MES */}
       <NavegadorMes
         mesLabel={mesLabel} anio={anio}
         onAnterior={anterior} onSiguiente={siguiente}
         esActual={esActual()}
       />
 
-      {/* STATS */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 28 }}>
         {[
           { label: "Total", value: entregasMes.length, color: "#3b82f6" },
@@ -296,5 +332,8 @@ function Entregas() {
 
 const btnGreen: React.CSSProperties = { background: "#22c55e", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
 const btnGray: React.CSSProperties = { background: "#334155", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
+const btnRed: React.CSSProperties = { background: "#ef4444", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
+const btnYellow: React.CSSProperties = { background: "#f59e0b", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
+const inputStyle: React.CSSProperties = { padding: 6, borderRadius: 4, border: "none", background: "#0f172a", color: "white", fontSize: 12, boxSizing: "border-box" };
 
 export default Entregas;
