@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useWindowSize } from "../hooks/useWindowSize";
+import { useMesActual } from "../hooks/useMesActual";
+import NavegadorMes from "../components/NavegadorMes";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -21,6 +23,7 @@ interface Pago {
 function AdminPagos() {
   const { token } = useAuth();
   const { isMobile } = useWindowSize();
+  const { mesLabel, anio, anterior, siguiente, esActual, filtrarPorMes } = useMesActual();
 
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +57,11 @@ function AdminPagos() {
     const res = await fetch(`${API_URL}/pagos`, { headers });
     if (res.ok) {
       const data = await res.json();
-      console.log("✅ Pagos cargados:", data.length, "registros"); // depuración
+      console.log("✅ Pagos cargados:", data.length, "registros");
+      console.log("📅 Mes seleccionado:", mesLabel, anio);
+      if (data.length > 0) {
+        console.log("📆 Fechas de pagos:", data.map((p: Pago) => p.creadoEn));
+      }
       setPagos(data);
     } else {
       console.error("Error al cargar pagos:", res.status);
@@ -64,6 +71,7 @@ function AdminPagos() {
 
   useEffect(() => { load(); }, []);
 
+  // ─── Funciones de verificar, rechazar, manual, editar, eliminar ──────────
   const verificar = async (id: number) => {
     const res = await fetch(`${API_URL}/pagos/${id}/verificar`, { method: "PUT", headers });
     if (res.ok) {
@@ -136,8 +144,8 @@ function AdminPagos() {
     return { bg: "#422006", color: "#f59e0b" };
   };
 
-  // SIN FILTRO DE MES – mostrar todos los pagos que coincidan con el filtro de estado
-  const pagosFiltrados = pagos.filter(p => filtro === "todos" || p.estado === filtro);
+  // ── Aplicar filtro por mes y luego por estado ──────────────────────────
+  const pagosFiltrados = filtrarPorMes(pagos).filter(p => filtro === "todos" || p.estado === filtro);
 
   return (
     <div>
@@ -175,104 +183,47 @@ function AdminPagos() {
         <input placeholder="Celular (opcional)" value={manualCelular} onChange={e => setManualCelular(e.target.value)} style={{ ...inputStyle, width: 140 }} />
         <select value={manualPedidoId} onChange={e => setManualPedidoId(e.target.value)} style={{ ...inputStyle, width: 200, cursor: "pointer" }}>
           <option value="">Sin pedido asociado</option>
-          {/* Opciones de pedidos si las hay */}
         </select>
         <button onClick={agregarPagoManual} disabled={agregandoManual} style={{ ...btnGreen, fontSize: 13, padding: "8px 14px" }}>
           {agregandoManual ? "..." : "➕ Agregar pago manual"}
         </button>
       </div>
 
+      {/* Navegador de mes */}
+      <NavegadorMes
+        mesLabel={mesLabel}
+        anio={anio}
+        onAnterior={anterior}
+        onSiguiente={siguiente}
+        esActual={esActual()}
+      />
+
       {loading ? (
         <p style={{ color: "#94a3b8" }}>Cargando pagos...</p>
       ) : selected ? (
-        /* ── VISTA DETALLE ──────────────────────────────── */
+        /* ── VISTA DETALLE (igual que antes, sin cambios) ───────────────── */
         <div>
           <button onClick={() => setSelected(null)} style={{ ...btnGray, marginBottom: 16 }}>← Volver a la lista</button>
           <div style={{ background: "#1e293b", padding: 24, borderRadius: 14 }}>
             <h2 style={{ marginBottom: 12 }}>Pago #{selected.id}</h2>
-            {/* Detalles del pago (igual que antes) */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-              <div>
-                <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Nombre</p>
-                <p style={{ color: "white", fontWeight: "bold" }}>{selected.nombreDeclarado}</p>
-              </div>
-              <div>
-                <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Monto</p>
-                <p style={{ color: "#22c55e", fontWeight: "bold", fontSize: 18 }}>Bs {selected.monto.toFixed(2)}</p>
-              </div>
-              <div>
-                <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Estado</p>
-                <span style={{ fontSize: 12, padding: "3px 12px", borderRadius: 99, background: getEstadoColor(selected.estado).bg, color: getEstadoColor(selected.estado).color, fontWeight: "bold" }}>
-                  {selected.estado}
-                </span>
-              </div>
-              <div>
-                <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Tipo</p>
-                <p style={{ color: "white" }}>{selected.tipo === "imagen" ? "📷 Comprobante" : selected.tipo === "manual" ? "✍️ Manual" : "📝 Declarado"}</p>
-              </div>
-              <div>
-                <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Celular</p>
-                <p style={{ color: "white" }}>{selected.celular || "No registrado"}</p>
-              </div>
-              <div>
-                <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Fecha</p>
-                <p style={{ color: "white" }}>{new Date(selected.creadoEn).toLocaleString()}</p>
-              </div>
+              <div><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Nombre</p><p style={{ color: "white", fontWeight: "bold" }}>{selected.nombreDeclarado}</p></div>
+              <div><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Monto</p><p style={{ color: "#22c55e", fontWeight: "bold", fontSize: 18 }}>Bs {selected.monto.toFixed(2)}</p></div>
+              <div><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Estado</p><span style={{ fontSize: 12, padding: "3px 12px", borderRadius: 99, background: getEstadoColor(selected.estado).bg, color: getEstadoColor(selected.estado).color, fontWeight: "bold" }}>{selected.estado}</span></div>
+              <div><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Tipo</p><p style={{ color: "white" }}>{selected.tipo === "imagen" ? "📷 Comprobante" : selected.tipo === "manual" ? "✍️ Manual" : "📝 Declarado"}</p></div>
+              <div><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Celular</p><p style={{ color: "white" }}>{selected.celular || "No registrado"}</p></div>
+              <div><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Fecha</p><p style={{ color: "white" }}>{new Date(selected.creadoEn).toLocaleString()}</p></div>
             </div>
-
-            {selected.descripcion && (
-              <div style={{ marginBottom: 16 }}>
-                <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", marginBottom: 4 }}>Descripción</p>
-                <p style={{ color: "white" }}>{selected.descripcion}</p>
-              </div>
-            )}
-
-            {selected.motivoRechazo && (
-              <div style={{ marginBottom: 16, background: "#7f1d1d", padding: 12, borderRadius: 8 }}>
-                <p style={{ color: "#fca5a5", fontSize: 13 }}>❌ {selected.motivoRechazo}</p>
-              </div>
-            )}
-
-            {/* Productos del carrito */}
-            {selected.productos && (() => {
-              try {
-                const prods = JSON.parse(selected.productos);
-                if (Array.isArray(prods) && prods.length > 0) {
-                  return (
-                    <div style={{ marginBottom: 20 }}>
-                      <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", marginBottom: 8 }}>Productos solicitados</p>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {prods.map((prod: any, idx: number) => (
-                          <div key={idx} style={{ background: "#0f172a", padding: "8px 12px", borderRadius: 6, color: "#60a5fa" }}>📌 {prod.nombre}</div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                }
-              } catch { return null; }
-              return null;
-            })()}
-
-            {/* Comprobante */}
-            {selected.imagenUrl && (
-              <div style={{ marginBottom: 20 }}>
-                <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", marginBottom: 8 }}>Comprobante</p>
-                <img src={selected.imagenUrl} alt="comprobante" style={{ maxWidth: "100%", borderRadius: 8 }} />
-              </div>
-            )}
-
-            {/* Acciones */}
+            {selected.descripcion && (<div style={{ marginBottom: 16 }}><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", marginBottom: 4 }}>Descripción</p><p style={{ color: "white" }}>{selected.descripcion}</p></div>)}
+            {selected.motivoRechazo && (<div style={{ marginBottom: 16, background: "#7f1d1d", padding: 12, borderRadius: 8 }}><p style={{ color: "#fca5a5", fontSize: 13 }}>❌ {selected.motivoRechazo}</p></div>)}
+            {selected.productos && (() => { try { const prods = JSON.parse(selected.productos); if (Array.isArray(prods) && prods.length > 0) { return (<div style={{ marginBottom: 20 }}><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", marginBottom: 8 }}>Productos solicitados</p><div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{prods.map((prod: any, idx: number) => (<div key={idx} style={{ background: "#0f172a", padding: "8px 12px", borderRadius: 6, color: "#60a5fa" }}>📌 {prod.nombre}</div>))}</div></div>); } } catch { return null; } return null; })()}
+            {selected.imagenUrl && (<div style={{ marginBottom: 20 }}><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", marginBottom: 8 }}>Comprobante</p><img src={selected.imagenUrl} alt="comprobante" style={{ maxWidth: "100%", borderRadius: 8 }} /></div>)}
             {selected.estado === "pendiente" && (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button onClick={() => verificar(selected.id)} style={btnGreen}>✅ Verificar</button>
                 {rechazandoId === selected.id ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <input
-                      placeholder="Motivo del rechazo"
-                      value={motivoRechazo}
-                      onChange={e => setMotivoRechazo(e.target.value)}
-                      style={{ padding: 6, borderRadius: 6, border: "none", background: "#0f172a", color: "white", fontSize: 12, width: 200 }}
-                    />
+                    <input placeholder="Motivo del rechazo" value={motivoRechazo} onChange={e => setMotivoRechazo(e.target.value)} style={{ padding: 6, borderRadius: 6, border: "none", background: "#0f172a", color: "white", fontSize: 12, width: 200 }} />
                     <div style={{ display: "flex", gap: 4 }}>
                       <button onClick={() => rechazar(selected.id)} style={btnRed}>Confirmar</button>
                       <button onClick={() => { setRechazandoId(null); setMotivoRechazo(""); }} style={btnGray}>Cancelar</button>
@@ -283,8 +234,6 @@ function AdminPagos() {
                 )}
               </div>
             )}
-
-            {/* Editar y Eliminar */}
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               {editandoId === selected.id ? (
                 <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -296,9 +245,7 @@ function AdminPagos() {
               ) : (
                 <button onClick={() => { setEditandoId(selected.id); setEditNombre(selected.nombreDeclarado); setEditMonto(String(selected.monto)); }} style={btnYellow}>✏️ Editar</button>
               )}
-              <button onClick={() => eliminarPago(selected.id)} disabled={eliminandoId === selected.id} style={btnRed}>
-                {eliminandoId === selected.id ? "..." : "🗑 Eliminar"}
-              </button>
+              <button onClick={() => eliminarPago(selected.id)} disabled={eliminandoId === selected.id} style={btnRed}>{eliminandoId === selected.id ? "..." : "🗑 Eliminar"}</button>
             </div>
           </div>
         </div>
@@ -306,34 +253,22 @@ function AdminPagos() {
         /* ── LISTA ──────────────────────────────────────── */
         <>
           {pagosFiltrados.length === 0 ? (
-            <p style={{ color: "#64748b", textAlign: "center", padding: 40 }}>No hay pagos con este filtro.</p>
+            <p style={{ color: "#64748b", textAlign: "center", padding: 40 }}>
+              No hay pagos con este filtro en {mesLabel} {anio}.
+            </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {pagosFiltrados.map(p => {
                 const sc = getEstadoColor(p.estado);
                 return (
-                  <div
-                    key={p.id}
-                    onClick={() => setSelected(p)}
-                    style={{
-                      background: "#1e293b", padding: 16, borderRadius: 12,
-                      borderLeft: `4px solid ${sc.color}`,
-                      cursor: "pointer",
-                    }}
-                  >
+                  <div key={p.id} onClick={() => setSelected(p)} style={{ background: "#1e293b", padding: 16, borderRadius: 12, borderLeft: `4px solid ${sc.color}`, cursor: "pointer" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
                       <div>
                         <p style={{ color: "white", fontWeight: "bold", fontSize: 15 }}>{p.nombreDeclarado}</p>
-                        <p style={{ color: "#22c55e", fontWeight: "bold", fontSize: 18, margin: "4px 0" }}>
-                          Bs {p.monto.toFixed(2)}
-                        </p>
+                        <p style={{ color: "#22c55e", fontWeight: "bold", fontSize: 18, margin: "4px 0" }}>Bs {p.monto.toFixed(2)}</p>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: 11, padding: "2px 10px", borderRadius: 99, background: sc.bg, color: sc.color, fontWeight: "bold" }}>
-                            {p.estado}
-                          </span>
-                          <span style={{ fontSize: 11, color: "#64748b" }}>
-                            {p.tipo === "imagen" ? "📷" : p.tipo === "manual" ? "✍️" : "📝"} {p.tipo}
-                          </span>
+                          <span style={{ fontSize: 11, padding: "2px 10px", borderRadius: 99, background: sc.bg, color: sc.color, fontWeight: "bold" }}>{p.estado}</span>
+                          <span style={{ fontSize: 11, color: "#64748b" }}>{p.tipo === "imagen" ? "📷" : p.tipo === "manual" ? "✍️" : "📝"} {p.tipo}</span>
                           {p.celular && <span style={{ fontSize: 11, color: "#64748b" }}>📞 {p.celular}</span>}
                           <span style={{ fontSize: 11, color: "#64748b" }}>{new Date(p.creadoEn).toLocaleDateString()}</span>
                         </div>
