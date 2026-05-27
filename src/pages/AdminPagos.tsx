@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useWindowSize } from "../hooks/useWindowSize";
-import { useMesActual } from "../hooks/useMesActual";
-import NavegadorMes from "../components/NavegadorMes";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -23,7 +21,6 @@ interface Pago {
 function AdminPagos() {
   const { token } = useAuth();
   const { isMobile } = useWindowSize();
-  const { mesLabel, anio, anterior, siguiente, esActual, filtrarPorMes } = useMesActual();
 
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +52,13 @@ function AdminPagos() {
   const load = async () => {
     setLoading(true);
     const res = await fetch(`${API_URL}/pagos`, { headers });
-    if (res.ok) setPagos(await res.json());
+    if (res.ok) {
+      const data = await res.json();
+      console.log("✅ Pagos cargados:", data.length, "registros"); // depuración
+      setPagos(data);
+    } else {
+      console.error("Error al cargar pagos:", res.status);
+    }
     setLoading(false);
   };
 
@@ -133,7 +136,8 @@ function AdminPagos() {
     return { bg: "#422006", color: "#f59e0b" };
   };
 
-  const pagosFiltrados = filtrarPorMes(pagos).filter(p => filtro === "todos" || p.estado === filtro);
+  // SIN FILTRO DE MES – mostrar todos los pagos que coincidan con el filtro de estado
+  const pagosFiltrados = pagos.filter(p => filtro === "todos" || p.estado === filtro);
 
   return (
     <div>
@@ -142,7 +146,7 @@ function AdminPagos() {
         Gestiona los pagos de los clientes.
       </p>
 
-      {/* Filtros */}
+      {/* Filtros de estado */}
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         {["todos", "pendiente", "verificado", "rechazado"].map(f => (
           <button
@@ -171,21 +175,12 @@ function AdminPagos() {
         <input placeholder="Celular (opcional)" value={manualCelular} onChange={e => setManualCelular(e.target.value)} style={{ ...inputStyle, width: 140 }} />
         <select value={manualPedidoId} onChange={e => setManualPedidoId(e.target.value)} style={{ ...inputStyle, width: 200, cursor: "pointer" }}>
           <option value="">Sin pedido asociado</option>
-          {pagos.map(p => {
-            if (!p.nombreDeclarado) return null;
-            return <option key={p.id} value={p.id}>{p.nombreDeclarado}</option>;
-          })}
+          {/* Opciones de pedidos si las hay */}
         </select>
         <button onClick={agregarPagoManual} disabled={agregandoManual} style={{ ...btnGreen, fontSize: 13, padding: "8px 14px" }}>
           {agregandoManual ? "..." : "➕ Agregar pago manual"}
         </button>
       </div>
-
-      <NavegadorMes
-        mesLabel={mesLabel} anio={anio}
-        onAnterior={anterior} onSiguiente={siguiente}
-        esActual={esActual()}
-      />
 
       {loading ? (
         <p style={{ color: "#94a3b8" }}>Cargando pagos...</p>
@@ -195,6 +190,7 @@ function AdminPagos() {
           <button onClick={() => setSelected(null)} style={{ ...btnGray, marginBottom: 16 }}>← Volver a la lista</button>
           <div style={{ background: "#1e293b", padding: 24, borderRadius: 14 }}>
             <h2 style={{ marginBottom: 12 }}>Pago #{selected.id}</h2>
+            {/* Detalles del pago (igual que antes) */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
               <div>
                 <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Nombre</p>
