@@ -48,7 +48,7 @@ interface Client {
   notasServicio: string | null;
   fotografia: string | null;
   fotoCarnet: string | null;
-  fotoCarnet2?: string | null;
+  fotoCarnet2?: string | null; // campo extra para el reverso
 }
 
 interface SenapiPayload {
@@ -65,12 +65,17 @@ interface SenapiPayload {
   ciudad: string;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Helpers menores ──────────────────────────────────────────────────────────
 function Spinner() {
   return (
     <>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ display: "inline-block", width: 16, height: 16, border: "2px solid rgba(255,255,255,0.3)", borderTop: "2px solid white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+      <div style={{
+        display: "inline-block", width: 16, height: 16,
+        border: "2px solid rgba(255,255,255,0.3)",
+        borderTop: "2px solid white", borderRadius: "50%",
+        animation: "spin 0.8s linear infinite",
+      }} />
     </>
   );
 }
@@ -99,11 +104,7 @@ function getNombreDisplay(c: Client): string {
 }
 
 function ConfirmModal({ message, onConfirm, onCancel, confirmLabel = "Sí, confirmar", icon = "🗑️" }: {
-  message: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  confirmLabel?: string;
-  icon?: string;
+  message: string; onConfirm: () => void; onCancel: () => void; confirmLabel?: string; icon?: string;
 }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "0 20px" }}>
@@ -156,7 +157,7 @@ function exportPDF(clients: Client[], monthLabel: string) {
   if (win) { win.document.write(html); win.document.close(); }
 }
 
-// ─── Componente principal ──────────────────────────────────────────────────
+// ─── Componente principal ─────────────────────────────────────────────────────
 function Clients() {
   const { token } = useAuth();
   const { isMobile } = useWindowSize();
@@ -213,9 +214,7 @@ function Clients() {
       await fetch(`${API_URL}/clients`, { method: "POST", headers, body: JSON.stringify({ nombreCompleto: newName }) });
       setNewName("");
       await load();
-    } finally {
-      setCreating(false);
-    }
+    } finally { setCreating(false); }
   };
 
   const copyLink = (c: Client) => {
@@ -248,9 +247,7 @@ function Clients() {
     try {
       await fetch(`${API_URL}/clients/${id}/regenerar`, { method: "PUT", headers });
       await load();
-    } finally {
-      setRegeneratingId(null);
-    }
+    } finally { setRegeneratingId(null); }
   };
 
   const updateStatus = async (id: number, status: string) => {
@@ -259,9 +256,7 @@ function Clients() {
       await fetch(`${API_URL}/clients/${id}`, { method: "PUT", headers, body: JSON.stringify({ status }) });
       await load();
       if (selected?.id === id) setSelected(prev => prev ? { ...prev, status } : null);
-    } finally {
-      setUpdatingId(null);
-    }
+    } finally { setUpdatingId(null); }
   };
 
   const updateProgreso = async (id: number, campo: string, valor: number) => {
@@ -299,9 +294,7 @@ function Clients() {
           await fetch(`${API_URL}/clients/${c.id}`, { method: "DELETE", headers });
           if (selected?.id === c.id) setSelected(null);
           await load();
-        } finally {
-          setDeletingId(null);
-        }
+        } finally { setDeletingId(null); }
       },
       "Sí, eliminar", "🗑️",
     );
@@ -318,9 +311,7 @@ function Clients() {
         const data = await res.json();
         setCredenciales(data);
       }
-    } catch (err) {
-      console.error("Error al cargar credenciales", err);
-    }
+    } catch (err) { console.error("Error al cargar credenciales", err); }
   };
 
   const regenerarCredenciales = async (clienteId: number) => {
@@ -334,9 +325,7 @@ function Clients() {
         setCredenciales({ clientUsername: data.clientUsername, clientPassword: data.clientPassword });
         setMostrarPassword(true);
       }
-    } catch (err) {
-      console.error("Error al regenerar credenciales", err);
-    }
+    } catch (err) { console.error("Error al regenerar credenciales", err); }
   };
 
   useEffect(() => {
@@ -349,9 +338,7 @@ function Clients() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div>
-      {confirmOpen && (
-        <ConfirmModal message={confirmMessage} onConfirm={confirmAction} onCancel={() => setConfirmOpen(false)} confirmLabel={confirmLabel} icon={confirmIcon} />
-      )}
+      {confirmOpen && <ConfirmModal message={confirmMessage} onConfirm={confirmAction} onCancel={() => setConfirmOpen(false)} confirmLabel={confirmLabel} icon={confirmIcon} />}
 
       <h1 style={{ marginBottom: 8, fontSize: isMobile ? 22 : 28 }}>👥 Clientes</h1>
       <p style={{ color: "#94a3b8", marginBottom: 24, fontSize: isMobile ? 13 : 15 }}>
@@ -366,9 +353,7 @@ function Clients() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
               <div>
                 <h2 style={{ marginBottom: 6, fontSize: isMobile ? 18 : 22 }}>{getNombreDisplay(selected)}</h2>
-                <span style={{ fontSize: 12, padding: "3px 12px", borderRadius: 99, background: getStatusColor(selected.status).bg, color: getStatusColor(selected.status).color, fontWeight: "bold" }}>
-                  {selected.status}
-                </span>
+                <span style={{ fontSize: 12, padding: "3px 12px", borderRadius: 99, background: getStatusColor(selected.status).bg, color: getStatusColor(selected.status).color, fontWeight: "bold" }}>{selected.status}</span>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button onClick={() => updateStatus(selected.id, "pendiente")} disabled={updatingId === selected.id} style={{ ...btnGray, fontSize: 12 }}>⏳</button>
@@ -417,9 +402,7 @@ function Clients() {
                           label={`Edición ${selected.edicionesHechas}`}
                         />
                       </div>
-                      <p style={{ color: "#64748b", fontSize: 12 }}>
-                        Edición actual: {selected.edicionesHechas === 0 ? "Sin iniciar" : `Edición ${selected.edicionesHechas}`}
-                      </p>
+                      <p style={{ color: "#64748b", fontSize: 12 }}>Edición actual: {selected.edicionesHechas === 0 ? "Sin iniciar" : `Edición ${selected.edicionesHechas}`}</p>
                     </div>
                   )}
                 </div>
@@ -429,13 +412,9 @@ function Clients() {
             {/* Link formulario */}
             <div style={{ background: "#0f172a", padding: 16, borderRadius: 10, marginBottom: 24 }}>
               <p style={{ color: "#64748b", fontSize: 12, marginBottom: 8 }}>LINK DEL FORMULARIO</p>
-              <code style={{ color: "#60a5fa", fontSize: isMobile ? 11 : 13, wordBreak: "break-all" }}>
-                {window.location.origin}/formulario/{selected.token}
-              </code>
+              <code style={{ color: "#60a5fa", fontSize: isMobile ? 11 : 13, wordBreak: "break-all" }}>{window.location.origin}/formulario/{selected.token}</code>
               <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                <button onClick={() => copyLink(selected)} style={{ ...btnBlue, fontSize: 12 }}>
-                  {copiedId === selected.id ? "✅ Copiado" : "📋 Copiar"}
-                </button>
+                <button onClick={() => copyLink(selected)} style={{ ...btnBlue, fontSize: 12 }}>{copiedId === selected.id ? "✅ Copiado" : "📋 Copiar"}</button>
                 <button onClick={() => regenerar(selected.id)} disabled={regeneratingId === selected.id} style={{ ...btnGray, fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
                   {regeneratingId === selected.id ? <Spinner /> : "🔄 Regenerar"}
                 </button>
@@ -482,12 +461,8 @@ function Clients() {
                     <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>🔑 Contraseña</p>
                     {credenciales.clientPassword ? (
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <p style={{ color: "white", fontSize: 14, fontWeight: "bold", margin: 0 }}>
-                          {mostrarPassword ? credenciales.clientPassword : "••••••••"}
-                        </p>
-                        <button onClick={() => setMostrarPassword(!mostrarPassword)} style={{ background: "none", border: "none", color: "#60a5fa", cursor: "pointer", fontSize: 14 }}>
-                          {mostrarPassword ? "🙈" : "👁️"}
-                        </button>
+                        <p style={{ color: "white", fontSize: 14, fontWeight: "bold", margin: 0 }}>{mostrarPassword ? credenciales.clientPassword : "••••••••"}</p>
+                        <button onClick={() => setMostrarPassword(!mostrarPassword)} style={{ background: "none", border: "none", color: "#60a5fa", cursor: "pointer", fontSize: 14 }}>{mostrarPassword ? "🙈" : "👁️"}</button>
                       </div>
                     ) : (
                       <p style={{ color: "#64748b", fontSize: 13 }}>Usa el botón "Regenerar credenciales" para obtener una nueva.</p>
@@ -495,18 +470,10 @@ function Clients() {
                   </div>
                 </div>
               ) : (
-                <p style={{ color: "#64748b", fontSize: 13, marginBottom: 16 }}>
-                  Este cliente aún no tiene credenciales de acceso. Haz clic en el botón para generarlas.
-                </p>
+                <p style={{ color: "#64748b", fontSize: 13, marginBottom: 16 }}>Este cliente aún no tiene credenciales de acceso. Haz clic en el botón para generarlas.</p>
               )}
-              <button onClick={() => regenerarCredenciales(selected.id)} style={{ marginTop: 16, background: "#7c3aed", border: "none", padding: "10px 20px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
-                🔄 Regenerar credenciales
-              </button>
-              {credenciales?.clientPassword && (
-                <div style={{ background: "#1e3a5f", color: "#60a5fa", padding: 10, borderRadius: 8, marginTop: 12, fontSize: 13 }}>
-                  ⚠️ Comparte esta contraseña con el cliente por un canal seguro. Al recargar la página no volverá a verse.
-                </div>
-              )}
+              <button onClick={() => regenerarCredenciales(selected.id)} style={{ marginTop: 16, background: "#7c3aed", border: "none", padding: "10px 20px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>🔄 Regenerar credenciales</button>
+              {credenciales?.clientPassword && <div style={{ background: "#1e3a5f", color: "#60a5fa", padding: 10, borderRadius: 8, marginTop: 12, fontSize: 13 }}>⚠️ Comparte esta contraseña con el cliente por un canal seguro. Al recargar la página no volverá a verse.</div>}
             </div>
 
             {/* Datos personales */}
@@ -540,9 +507,7 @@ function Clients() {
               {selected.pideArticulos && <span style={tagStyle}>📝 Artículos ({selected.cantArticulos})</span>}
               {selected.pideDirector && <span style={tagStyle}>📘 Director</span>}
               {selected.pideFundador && <span style={tagStyle}>🏆 Fundador</span>}
-              {!selected.pideLibros && !selected.pideArticulos && !selected.pideDirector && !selected.pideFundador && (
-                <p style={{ color: "#64748b", fontSize: 14 }}>Sin servicios aún.</p>
-              )}
+              {!selected.pideLibros && !selected.pideArticulos && !selected.pideDirector && !selected.pideFundador && <p style={{ color: "#64748b", fontSize: 14 }}>Sin servicios aún.</p>}
             </div>
 
             {selected.notasServicio && (
@@ -554,12 +519,8 @@ function Clients() {
 
             {/* Acciones */}
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
-              <button onClick={() => copiarSenapi(selected)} style={{ ...btnGreen, display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                📋 Copiar SENAPI
-              </button>
-              <button onClick={() => remove(selected)} disabled={deletingId === selected.id} style={{ ...btnRed, display: "flex", alignItems: "center", gap: 8 }}>
-                {deletingId === selected.id ? <Spinner /> : "🗑 Eliminar cliente"}
-              </button>
+              <button onClick={() => copiarSenapi(selected)} style={{ ...btnGreen, display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>📋 Copiar SENAPI</button>
+              <button onClick={() => remove(selected)} disabled={deletingId === selected.id} style={{ ...btnRed, display: "flex", alignItems: "center", gap: 8 }}>{deletingId === selected.id ? <Spinner /> : "🗑 Eliminar cliente"}</button>
             </div>
           </div>
         </div>
@@ -568,9 +529,7 @@ function Clients() {
           {/* Crear cliente */}
           <div style={{ background: "#1e293b", padding: 20, borderRadius: 12, marginBottom: 24, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10, alignItems: isMobile ? "stretch" : "center" }}>
             <input placeholder="Nombre del cliente (opcional)" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === "Enter" && create()} style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "#334155", color: "white", fontSize: 14 }} />
-            <button onClick={create} disabled={creating} style={{ ...btnBlue, display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-              {creating ? <Spinner /> : "➕ Nuevo cliente"}
-            </button>
+            <button onClick={create} disabled={creating} style={{ ...btnBlue, display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>{creating ? <Spinner /> : "➕ Nuevo cliente"}</button>
           </div>
 
           <NavegadorMes mesLabel={mesLabel} anio={anio} onAnterior={anterior} onSiguiente={siguiente} esActual={esActual()} />
@@ -583,9 +542,7 @@ function Clients() {
           {loading ? (
             <div style={{ display: "flex", justifyContent: "center", marginTop: 60 }}><Spinner /></div>
           ) : clientesMes.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 40 }}>
-              <p style={{ color: "#64748b", fontSize: 16 }}>No hay clientes en {mesLabel} {anio}</p>
-            </div>
+            <div style={{ textAlign: "center", padding: 40 }}><p style={{ color: "#64748b", fontSize: 16 }}>No hay clientes en {mesLabel} {anio}</p></div>
           ) : view === "lista" ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {clientesMes.map(c => {
@@ -610,9 +567,7 @@ function Clients() {
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button onClick={() => copyLink(c)} style={{ ...btnGray, fontSize: 12 }}>{copiedId === c.id ? "✅" : "📋"}</button>
                       <button onClick={() => setSelected(c)} style={{ ...btnBlue, fontSize: 12 }}>Ver</button>
-                      <button onClick={() => remove(c)} disabled={deletingId === c.id} style={{ ...btnRed, fontSize: 12, display: "flex", alignItems: "center", gap: 6, minWidth: 44, justifyContent: "center" }}>
-                        {deletingId === c.id ? <Spinner /> : "🗑"}
-                      </button>
+                      <button onClick={() => remove(c)} disabled={deletingId === c.id} style={{ ...btnRed, fontSize: 12, display: "flex", alignItems: "center", gap: 6, minWidth: 44, justifyContent: "center" }}>{deletingId === c.id ? <Spinner /> : "🗑"}</button>
                     </div>
                   </div>
                 );
@@ -672,22 +627,12 @@ function Clients() {
 }
 
 // ─── Controles de progreso ────────────────────────────────────────────────
-function ProgresoControles({ actual, total, onMas, onMenos, label }: {
-  actual: number; total: number;
-  onMas: () => void; onMenos: () => void;
-  label?: string;
-}) {
+function ProgresoControles({ actual, total, onMas, onMenos, label }: { actual: number; total: number; onMas: () => void; onMenos: () => void; label?: string; }) {
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <button onClick={onMenos} disabled={actual <= 0} style={{ background: "#334155", border: "none", borderRadius: 6, color: "white", cursor: actual <= 0 ? "not-allowed" : "pointer", width: 28, height: 28, fontSize: 16, opacity: actual <= 0 ? 0.4 : 1 }}>
-        −
-      </button>
-      <span style={{ color: "white", fontWeight: "bold", minWidth: 52, textAlign: "center" }}>
-        {label ?? `${actual}/${total}`}
-      </span>
-      <button onClick={onMas} disabled={actual >= total} style={{ background: "#22c55e", border: "none", borderRadius: 6, color: "white", cursor: actual >= total ? "not-allowed" : "pointer", width: 28, height: 28, fontSize: 16, opacity: actual >= total ? 0.4 : 1 }}>
-        +
-      </button>
+      <button onClick={onMenos} disabled={actual <= 0} style={{ background: "#334155", border: "none", borderRadius: 6, color: "white", cursor: actual <= 0 ? "not-allowed" : "pointer", width: 28, height: 28, fontSize: 16, opacity: actual <= 0 ? 0.4 : 1 }}>−</button>
+      <span style={{ color: "white", fontWeight: "bold", minWidth: 52, textAlign: "center" }}>{label ?? `${actual}/${total}`}</span>
+      <button onClick={onMas} disabled={actual >= total} style={{ background: "#22c55e", border: "none", borderRadius: 6, color: "white", cursor: actual >= total ? "not-allowed" : "pointer", width: 28, height: 28, fontSize: 16, opacity: actual >= total ? 0.4 : 1 }}>+</button>
     </div>
   );
 }
