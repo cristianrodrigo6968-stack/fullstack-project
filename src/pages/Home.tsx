@@ -272,3 +272,4 @@ function CatalogoProductos() {
     </>
   );
 }
+export default Home;
