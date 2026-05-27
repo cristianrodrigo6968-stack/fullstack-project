@@ -240,7 +240,7 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
             overflow: "hidden", cursor: "pointer",
             display: "flex", flexDirection: "column",
           }}>
-            <div onClick={() => setSelected(p)} style={{ position: "relative", width: "100%", paddingTop: "150%", overflow: "hidden" }}>
+            <div onClick={() => navigate(`/producto/${p.id}`)} style={{ position: "relative", width: "100%", paddingTop: "150%", overflow: "hidden" }}>
               {p.imagenUrl ? (
                 <img src={p.imagenUrl} alt={p.nombre} style={{
                   position: "absolute", top: 0, left: 0,

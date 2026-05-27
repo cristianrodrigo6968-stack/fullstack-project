@@ -11,6 +11,7 @@ import Publicaciones from "./pages/Publicaciones";
 import ClientProtectedRoute from "./components/ClientProtectedRoute";
 import ClientePanel from "./pages/ClientePanel";
 import CarritoPage from "./pages/CarritoPage";
+import ProductoDetalle from "./pages/ProductoDetalle";
 function App() {
   return (
     <div>
@@ -24,7 +25,7 @@ function App() {
         <Route path="/publicaciones" element={<Publicaciones />} />
         <Route path="/formulario/:token" element={<ClientForm />} />
         <Route path="/carrito" element={<CarritoPage />} />
-
+<Route path="/producto/:id" element={<ProductoDetalle />} />
         {/* PRIVADAS */}
         <Route path="/admin" element={
           <ProtectedRoute><Admin /></ProtectedRoute>
