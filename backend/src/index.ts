@@ -72,7 +72,6 @@ const authCliente = (req: any, res: any, next: any) => {
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
-  // 1. Intentar como admin (tabla User)
   const user = await prisma.user.findUnique({ where: { username } });
   if (user && user.password === password) {
     const token = jwt.sign(
@@ -83,7 +82,6 @@ app.post("/login", async (req, res) => {
     return res.json({ token, username: user.username, role: "admin" });
   }
 
-  // 2. Intentar como cliente (tabla Client)
   const client = await prisma.client.findFirst({
     where: { clientUsername: username },
   });
@@ -110,7 +108,6 @@ app.post("/login", async (req, res) => {
     });
   }
 
-  // 3. Ninguno coincide
   return res.status(401).json({ error: "Credenciales incorrectas" });
 });
 
@@ -218,7 +215,6 @@ app.post("/magazines", auth, async (req, res) => {
     },
     include: { director: true, cliente: true },
   });
-  // Crear 3 ediciones automáticamente
   for (let i = 1; i <= 3; i++) {
     await prisma.edicion.create({ data: { numero: i, magazineId: magazine.id } });
   }
@@ -415,30 +411,74 @@ app.delete("/productos/:id", auth, async (req, res) => {
 
 // ─── PAGOS ────────────────────────────────────────────────────────────────────
 app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
-  const { nombreDeclarado, monto, tipo, descripcion, productos, celular } = req.body;
-  let imagenUrl: string | undefined;
-  if (req.file) {
-    imagenUrl = await subirImagen(req.file.buffer, "pagos/comprobantes");
-  }
-  const pago = await prisma.pago.create({
-    data: {
-      nombreDeclarado,
-      monto: Number(monto),
-      tipo: tipo || (imagenUrl ? "imagen" : "declarado"),
-      descripcion: descripcion || undefined,
-      imagenUrl,
-      productos: productos || null,
-      celular: celular || null,
-    },
-  });
-  // Notificar al admin por WhatsApp
   try {
-    const { notificarAdminMensaje } = await import("./whatsapp");
-    await notificarAdminMensaje(`Nuevo pago pendiente de ${nombreDeclarado} por Bs ${monto}`);
-  } catch (err) {
-    console.warn("No se pudo notificar al admin:", err);
+    // ── LOGS DE DIAGNÓSTICO ──────────────────────────────────
+    console.log("═══════════════════════════════════════");
+    console.log("📥 POST /pagos recibido");
+    console.log("📋 Content-Type:", req.headers["content-type"]);
+    console.log("📦 req.body:", req.body);
+    console.log("📎 req.file:", req.file ? `archivo: ${req.file.originalname}` : "sin archivo");
+    console.log("═══════════════════════════════════════");
+    // ────────────────────────────────────────────────────────
+
+    const { nombreDeclarado, monto, tipo, descripcion, productos, celular } = req.body;
+
+    console.log("🔍 Campos extraídos:");
+    console.log("   nombreDeclarado:", nombreDeclarado);
+    console.log("   monto:", monto);
+    console.log("   tipo:", tipo);
+    console.log("   celular:", celular);
+    console.log("   productos:", productos);
+
+    if (!nombreDeclarado || !monto) {
+      console.log("❌ Faltan campos obligatorios");
+      return res.status(400).json({ error: "Faltan datos obligatorios: nombreDeclarado y monto" });
+    }
+
+    let imagenUrl: string | undefined;
+    if (req.file) {
+      console.log("☁️  Subiendo imagen a Cloudinary...");
+      try {
+        imagenUrl = await subirImagen(req.file.buffer, "pagos/comprobantes");
+        console.log("✅ Imagen subida:", imagenUrl);
+      } catch (cloudErr) {
+        console.error("❌ Error subiendo imagen a Cloudinary:", cloudErr);
+        return res.status(500).json({ error: "Error al subir el comprobante" });
+      }
+    }
+
+    console.log("💾 Creando pago en base de datos...");
+    const pago = await prisma.pago.create({
+      data: {
+        nombreDeclarado,
+        monto: Number(monto),
+        tipo: tipo || (imagenUrl ? "imagen" : "declarado"),
+        descripcion: descripcion || undefined,
+        imagenUrl,
+        productos: productos || null,
+        celular: celular || null,
+      },
+    });
+    console.log("✅ Pago creado con ID:", pago.id);
+
+    try {
+      const { notificarAdminMensaje } = await import("./whatsapp");
+      await notificarAdminMensaje(
+        `Nuevo pago pendiente de ${nombreDeclarado} por Bs ${monto}`
+      );
+      console.log("📱 Admin notificado por WhatsApp");
+    } catch (err) {
+      console.warn("⚠️  No se pudo notificar al admin:", err);
+    }
+
+    res.json(pago);
+
+  } catch (error: any) {
+    console.error("💥 Error general en POST /pagos:");
+    console.error("   mensaje:", error?.message);
+    console.error("   stack:", error?.stack);
+    res.status(500).json({ error: "Error interno del servidor" });
   }
-  res.json(pago);
 });
 
 app.post("/pagos/manual", auth, async (req, res) => {
@@ -491,7 +531,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     data: { estado: "verificado" },
   });
 
-  // Crear cliente si no existe
   if (!pago.clienteId) {
     const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
     const expiresAt = new Date();
@@ -501,7 +540,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     });
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
 
-    // ── CREAR PEDIDO AUTOMÁTICAMENTE SI HAY PRODUCTOS ──
     if (pago.productos) {
       try {
         const itemsCarrito = JSON.parse(pago.productos);
@@ -535,7 +573,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
       }
     }
 
-    // Enviar link del formulario al admin (WhatsApp)
     const LINK_PORTAL = process.env.CLIENT_PORTAL_URL || "https://tudominio.com";
     const linkFormulario = `${LINK_PORTAL}/formulario/${token}`;
     try {
@@ -584,13 +621,12 @@ app.post("/clients", auth, async (req, res) => {
   );
 });
 
-// Subida de fotos (sin autenticación)
 app.post(
   "/clients/form/:token/fotos",
   upload.fields([
     { name: "fotografia", maxCount: 1 },
     { name: "fotoCarnet", maxCount: 1 },
-     { name: "fotoCarnet2", maxCount: 1 },
+    { name: "fotoCarnet2", maxCount: 1 },
   ]),
   async (req: any, res: any) => {
     const client = await prisma.client.findUnique({
@@ -608,7 +644,7 @@ app.post(
     if (files?.fotoCarnet?.[0]) {
       data.fotoCarnet = await subirImagen(files.fotoCarnet[0].buffer, "clientes/carnets");
     }
-     if (files?.fotoCarnet2?.[0]) {
+    if (files?.fotoCarnet2?.[0]) {
       data.fotoCarnet2 = await subirImagen(files.fotoCarnet2[0].buffer, "clientes/carnets");
     }
 
@@ -648,7 +684,6 @@ app.put("/clients/form/:token", async (req, res) => {
     },
   });
 
-  // ── Generar credenciales automáticas (si no tiene) ──────────
   let username = updated.clientUsername;
   let password = "";
 
@@ -683,25 +718,12 @@ app.put("/clients/form/:token", async (req, res) => {
     });
   }
 
-  // ── Enviar credenciales SIEMPRE (usa los datos más recientes) ──
   const LINK_PORTAL = process.env.CLIENT_PORTAL_URL || "https://tudominio.com/cliente";
   const nombreCompletoEnvio = updated.nombreCompleto || [updated.nombres, updated.apellidoPaterno, updated.apellidoMaterno].filter(Boolean).join(" ") || "Cliente";
   const emailEnvio = updated.email || "";
   const celularEnvio = updated.celular || "";
 
-  console.log("⏰ Programando envío de credenciales en 5 segundos...");
-  console.log("📧 Datos para envío:", {
-    email: emailEnvio,
-    nombreCompleto: nombreCompletoEnvio,
-    username,
-    password,
-    linkPortal: LINK_PORTAL,
-    celular: celularEnvio,
-  });
-
   setTimeout(() => {
-    console.log("🚀 Iniciando envío de credenciales...");
-
     enviarCorreo({
       email: emailEnvio,
       nombreCompleto: nombreCompletoEnvio,
@@ -721,9 +743,8 @@ app.put("/clients/form/:token", async (req, res) => {
     )
       .then(() => console.log("✅ WhatsApp enviado correctamente"))
       .catch((err) => console.error("❌ Error al enviar WhatsApp:", err));
-  }, 5000); // 5 segundos para prueba
+  }, 5000);
 
-  // ── Recrear tareas y entrega ──────────────────────────────
   await prisma.clienteTask.deleteMany({ where: { clienteId: updated.id } });
   await prisma.entrega.deleteMany({ where: { clienteId: updated.id } });
 
@@ -812,7 +833,6 @@ app.put("/clients/:id/regenerar", auth, async (req, res) => {
 app.delete("/clients/:id", auth, async (req, res) => {
   const id = Number(req.params.id);
 
-  // 1. Desvincula revistas y libros
   await prisma.magazine.updateMany({
     where: { clienteId: id },
     data: { clienteId: null },
@@ -822,13 +842,11 @@ app.delete("/clients/:id", auth, async (req, res) => {
     data: { clienteId: null },
   });
 
-  // 2. Elimina dependencias directas
   await prisma.mensaje.deleteMany({ where: { clienteId: id } });
   await prisma.libroDetalle.deleteMany({ where: { clienteId: id } });
   await prisma.clienteTask.deleteMany({ where: { clienteId: id } });
   await prisma.entrega.deleteMany({ where: { clienteId: id } });
 
-  // 3. Ahora sí borra el cliente
   await prisma.client.delete({ where: { id } });
 
   res.json({ ok: true });
@@ -881,25 +899,12 @@ app.post("/clients/:id/regenerar-credenciales", auth, async (req, res) => {
     },
   });
 
-  // ── Enviar credenciales automáticamente ────────────────────────
   const LINK_PORTAL = process.env.CLIENT_PORTAL_URL || "https://tudominio.com/cliente";
   const nombreCompleto = cliente.nombreCompleto || [cliente.nombres, cliente.apellidoPaterno, cliente.apellidoMaterno].filter(Boolean).join(" ") || "Cliente";
   const emailCliente = cliente.email || "";
   const celularCliente = cliente.celular || "";
 
-  console.log("⏰ Programando envío de credenciales en 5 segundos...");
-  console.log("📧 Datos para envío:", {
-    email: emailCliente,
-    nombreCompleto,
-    username,
-    password,
-    linkPortal: LINK_PORTAL,
-    celular: celularCliente,
-  });
-
   setTimeout(() => {
-    console.log("🚀 Iniciando envío de credenciales...");
-
     enviarCorreo({
       email: emailCliente,
       nombreCompleto,
@@ -994,7 +999,6 @@ app.post("/items/:id/revision", auth, upload.array("archivos", 5), async (req: a
       archivos,
     },
   });
-  // Notificar al cliente
   try {
     const item = await prisma.itemPedido.findUnique({
       where: { id: itemId },
@@ -1221,10 +1225,10 @@ app.post("/cliente/mensajes", authCliente, async (req: any, res) => {
 
   try {
     const noLeidos = await prisma.mensaje.count({
-      where: { 
-        clienteId: req.clienteId, 
+      where: {
+        clienteId: req.clienteId,
         emisor: "cliente",
-        leido: false 
+        leido: false
       },
     });
 
@@ -1404,7 +1408,7 @@ app.get("/cliente/archivos", authCliente, async (req: any, res) => {
 // ─── PEDIDOS (CLIENTE) ───────────────────────────────────────────────────────
 app.post("/cliente/pedidos", authCliente, async (req: any, res) => {
   const { items } = req.body;
-  
+
   const precios: Record<string, number> = {
     libroA: 800,
     libroB: 1100,
@@ -1570,22 +1574,12 @@ app.get("/stats", auth, async (req, res) => {
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
   const [
-    clientesTotal,
-    clientesPendientes,
-    clientesFormularioLlenado,
-    clientesEnProceso,
-    clientesProcesados,
-    entregasTotal,
-    entregasPendientes,
-    entregasEntregadas,
-    tareasTotal,
-    tareasPendientes,
-    tareasCompletadas,
-    clienteTareasTotal,
-    clienteTareasPendientes,
-    clienteTareasCompletadas,
-    revistasTotal,
-    librosTotal,
+    clientesTotal, clientesPendientes, clientesFormularioLlenado,
+    clientesEnProceso, clientesProcesados, entregasTotal,
+    entregasPendientes, entregasEntregadas, tareasTotal,
+    tareasPendientes, tareasCompletadas, clienteTareasTotal,
+    clienteTareasPendientes, clienteTareasCompletadas,
+    revistasTotal, librosTotal,
   ] = await Promise.all([
     prisma.client.count({ where: { createdAt: { gte: start, lte: end } } }),
     prisma.client.count({ where: { status: "pendiente", createdAt: { gte: start, lte: end } } }),
@@ -1605,36 +1599,19 @@ app.get("/stats", auth, async (req, res) => {
     prisma.book.count(),
   ]);
 
-  const meses = [
-    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
-  ];
+  const meses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
   res.json({
     mesActual: `${meses[now.getMonth()]} ${now.getFullYear()}`,
     clientes: {
-      total: clientesTotal,
-      pendientes: clientesPendientes,
+      total: clientesTotal, pendientes: clientesPendientes,
       formularioLlenado: clientesFormularioLlenado,
-      enProceso: clientesEnProceso,
-      procesados: clientesProcesados,
+      enProceso: clientesEnProceso, procesados: clientesProcesados,
     },
-    entregas: {
-      total: entregasTotal,
-      pendientes: entregasPendientes,
-      entregadas: entregasEntregadas,
-    },
+    entregas: { total: entregasTotal, pendientes: entregasPendientes, entregadas: entregasEntregadas },
     tareas: {
-      manuales: {
-        total: tareasTotal,
-        pendientes: tareasPendientes,
-        completadas: tareasCompletadas,
-      },
-      clientes: {
-        total: clienteTareasTotal,
-        pendientes: clienteTareasPendientes,
-        completadas: clienteTareasCompletadas,
-      },
+      manuales: { total: tareasTotal, pendientes: tareasPendientes, completadas: tareasCompletadas },
+      clientes: { total: clienteTareasTotal, pendientes: clienteTareasPendientes, completadas: clienteTareasCompletadas },
     },
     revistas: revistasTotal,
     libros: librosTotal,

@@ -44,50 +44,93 @@ function CarritoPage() {
     setStep("pago");
   };
 
+  // ✅ Versión mejorada con FormData y logs
   const handleSubirComprobante = async () => {
     if (!comprobante || !nombreDeclarado || !monto || !celular) return;
     setEnviando(true);
+
+    console.log("📤 Enviando comprobante...");
     const formData = new FormData();
     formData.append("comprobante", comprobante);
     formData.append("tipo", "imagen");
     formData.append("nombreDeclarado", nombreDeclarado);
     formData.append("monto", monto);
     formData.append("celular", celular);
-    formData.append("productos", JSON.stringify(carrito.map(p => ({ id: p.id, nombre: p.nombre }))));
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/pagos`, { method: "POST", body: formData });
+    formData.append(
+      "productos",
+      JSON.stringify(carrito.map((p) => ({ id: p.id, nombre: p.nombre })))
+    );
+
+    console.log("📦 FormData campos:", {
+      nombreDeclarado,
+      monto,
+      celular,
+      archivo: comprobante.name,
+      productos: carrito.map((p) => p.nombre),
+    });
+
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/pagos`, {
+      method: "POST",
+      body: formData,
+    });
+
+    console.log("📡 Respuesta status:", res.status);
+    const data = await res.json();
+    console.log("📡 Respuesta body:", data);
+
     if (res.ok) {
       setMensaje("✅ Pago registrado correctamente. La asociación se comunicará contigo al número proporcionado.");
       localStorage.removeItem("carrito");
       setCarrito([]);
       setStep("confirmacion");
     } else {
-      alert("❌ Error al enviar. Intenta de nuevo.");
+      alert(`❌ Error: ${data.error || "Intenta de nuevo."}`);
     }
     setEnviando(false);
   };
 
+  // ✅ Versión mejorada: también usa FormData
   const handleDeclararPago = async () => {
     if (!nombreDeclarado || !monto || !celular) return;
     setEnviando(true);
+
+    console.log("📤 Declarando pago...");
+
+    const formData = new FormData();
+    formData.append("nombreDeclarado", nombreDeclarado);
+    formData.append("monto", monto);
+    formData.append("tipo", "declarado");
+    formData.append("celular", celular);
+    if (descripcion) formData.append("descripcion", descripcion);
+    formData.append(
+      "productos",
+      JSON.stringify(carrito.map((p) => ({ id: p.id, nombre: p.nombre })))
+    );
+
+    console.log("📦 FormData campos:", {
+      nombreDeclarado,
+      monto,
+      celular,
+      descripcion,
+      productos: carrito.map((p) => p.nombre),
+    });
+
     const res = await fetch(`${import.meta.env.VITE_API_URL}/pagos`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nombreDeclarado,
-        monto: Number(monto),
-        tipo: "declarado",
-        descripcion,
-        celular,
-        productos: JSON.stringify(carrito.map(p => ({ id: p.id, nombre: p.nombre }))),
-      }),
+      body: formData,
     });
+
+    console.log("📡 Respuesta status:", res.status);
+    const data = await res.json();
+    console.log("📡 Respuesta body:", data);
+
     if (res.ok) {
       setMensaje("✅ Pago registrado correctamente. La asociación se comunicará contigo al número proporcionado.");
       localStorage.removeItem("carrito");
       setCarrito([]);
       setStep("confirmacion");
     } else {
-      alert("❌ Error al enviar. Intenta de nuevo.");
+      alert(`❌ Error: ${data.error || "Intenta de nuevo."}`);
     }
     setEnviando(false);
   };
@@ -103,7 +146,6 @@ function CarritoPage() {
           ← Seguir comprando
         </p>
 
-        {/* ── VACÍO ────────────────────────────────────────── */}
         {carrito.length === 0 && step !== "confirmacion" && (
           <div style={{ textAlign: "center", padding: 40, background: "#1e293b", borderRadius: 14 }}>
             <p style={{ color: "#64748b", fontSize: 16 }}>Tu carrito está vacío.</p>
@@ -113,7 +155,6 @@ function CarritoPage() {
           </div>
         )}
 
-        {/* ── CONFIRMACIÓN ─────────────────────────────────── */}
         {step === "confirmacion" && (
           <div style={{ background: "#1e293b", padding: 32, borderRadius: 14, textAlign: "center" }}>
             <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
@@ -127,10 +168,8 @@ function CarritoPage() {
           </div>
         )}
 
-        {/* ── CARRITO CON PRODUCTOS ────────────────────────── */}
         {carrito.length > 0 && (step === "carrito" || step === "celular" || step === "pago") && (
           <>
-            {/* Lista de productos */}
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
               {carrito.map((item, i) => {
                 const precio = item.descuento > 0 ? item.precio - (item.precio * item.descuento / 100) : item.precio;
@@ -148,7 +187,6 @@ function CarritoPage() {
               })}
             </div>
 
-            {/* Total */}
             <div style={{ background: "#1e293b", padding: 20, borderRadius: 14, marginBottom: 24 }}>
               <p style={{ fontSize: 18, marginBottom: 8 }}>
                 Total: <strong style={{ color: "#22c55e" }}>Bs {total.toFixed(2)}</strong>
@@ -158,7 +196,6 @@ function CarritoPage() {
               </p>
             </div>
 
-            {/* ── PASO: PEDIR CELULAR ──────────────────────── */}
             {step === "carrito" && (
               <div style={{ background: "#1e293b", padding: 24, borderRadius: 14 }}>
                 <button
@@ -191,12 +228,10 @@ function CarritoPage() {
               </div>
             )}
 
-            {/* ── PASO: MOSTRAR QR Y OPCIONES DE PAGO ──────── */}
             {step === "pago" && (
               <div id="pago" style={{ background: "#1e293b", padding: 24, borderRadius: 14 }}>
                 <h3 style={{ marginBottom: 16, fontSize: 18 }}>💳 Realiza tu pago</h3>
 
-                {/* QR y datos bancarios */}
                 <div style={{ background: "#0f172a", padding: 20, borderRadius: 10, textAlign: "center", marginBottom: 20 }}>
                   <img
                     src="/qr-pago.jpeg"
@@ -229,7 +264,6 @@ function CarritoPage() {
                   <p style={{ color: "#94a3b8", fontSize: 13 }}>Titular: Asociación Vanguardistas 3.0</p>
                 </div>
 
-                {/* Mensaje de monto sugerido */}
                 <div style={{ background: "#1e3a5f", padding: 14, borderRadius: 8, marginBottom: 20, textAlign: "center" }}>
                   <p style={{ color: "#93c5fd", fontSize: 15, margin: 0 }}>
                     Paga <strong style={{ color: "white" }}>Bs {adelanto.toFixed(2)}</strong> (adelanto del 30%) y la asociación se comunicará contigo después de realizado el pago.
@@ -239,7 +273,6 @@ function CarritoPage() {
                   </p>
                 </div>
 
-                {/* Botones de acción */}
                 {!modo ? (
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <button onClick={() => setModo("subir")} style={btnStyle}>
@@ -251,7 +284,6 @@ function CarritoPage() {
                   </div>
                 ) : (
                   <>
-                    {/* Subir comprobante */}
                     {modo === "subir" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <input placeholder="Nombre completo" value={nombreDeclarado} onChange={e => setNombreDeclarado(e.target.value)} style={inputStyle} />
@@ -264,7 +296,6 @@ function CarritoPage() {
                       </div>
                     )}
 
-                    {/* Declarar pago */}
                     {modo === "declarar" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <input placeholder="Nombre completo" value={nombreDeclarado} onChange={e => setNombreDeclarado(e.target.value)} style={inputStyle} />
