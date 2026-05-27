@@ -20,7 +20,6 @@ function CatalogoProductos() {
   }, [carrito]);
 
   const agregarAlCarrito = (producto: any) => {
-    // Determinar el tipo según el nombre del producto
     const nombre = producto.nombre.toLowerCase();
     let tipo = "autor";
     if (nombre.includes("categoría a")) tipo = "libroA";
@@ -32,7 +31,6 @@ function CatalogoProductos() {
     setCarrito(prev => [...prev, { ...producto, tipo }]);
   };
 
-  // Inferir categoría del nombre del producto
   const getCategoria = (nombre: string): string => {
     const n = nombre.toLowerCase();
     if (n.includes("categoría a") || n.includes("categoria a")) return "libroA";
@@ -44,7 +42,6 @@ function CatalogoProductos() {
     return "otro";
   };
 
-  // Obtener productos similares (misma categoría inferida, excluyendo el actual)
   const getSimilares = (producto: any) => {
     const cat = getCategoria(producto.nombre);
     return productos.filter(p => p.id !== producto.id && getCategoria(p.nombre) === cat).slice(0, 4);
@@ -64,7 +61,7 @@ function CatalogoProductos() {
             overflow: "hidden", cursor: "pointer",
             display: "flex", flexDirection: "column",
           }}>
-            {/* Imagen con proporción 2:3 */}
+            {/* Imagen con proporción 2:3 (sin cambios) */}
             <div onClick={() => setSelected(p)} style={{ position: "relative", width: "100%", paddingTop: "150%", overflow: "hidden" }}>
               {p.imagenUrl ? (
                 <img src={p.imagenUrl} alt={p.nombre} style={{
@@ -80,7 +77,7 @@ function CatalogoProductos() {
                 }}>📦</div>
               )}
             </div>
-            {/* Contenido textual */}
+            {/* Contenido textual (sin "Ver más") */}
             <div style={{ padding: 20, flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
               <h3 style={{ color: "#3b82f6", fontSize: 18, fontWeight: 700, margin: 0 }}>{p.nombre}</h3>
               <p style={{
@@ -92,12 +89,6 @@ function CatalogoProductos() {
                 textOverflow: "ellipsis",
               }}>
                 {p.descripcion}
-              </p>
-              <p
-                onClick={(e) => { e.stopPropagation(); setSelected(p); }}
-                style={{ color: "#60a5fa", fontSize: 12, cursor: "pointer", textDecoration: "underline", margin: 0 }}
-              >
-                Ver más
               </p>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
                 {p.descuento > 0 && (
@@ -129,7 +120,7 @@ function CatalogoProductos() {
         );
       })}
 
-      {/* Modal de detalle MEJORADO */}
+      {/* Modal de detalle MEJORADO (tipo Amazon) */}
       {selected && (
         <div style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
@@ -137,7 +128,7 @@ function CatalogoProductos() {
           zIndex: 9999, padding: "20px", overflowY: "auto",
         }} onClick={() => setSelected(null)}>
           <div style={{
-            background: "#1e293b", borderRadius: 20, maxWidth: 900, width: "100%",
+            background: "#1e293b", borderRadius: 20, maxWidth: 1000, width: "100%",
             padding: 28, color: "white", position: "relative",
             margin: "20px 0",
           }} onClick={e => e.stopPropagation()}>
@@ -150,7 +141,7 @@ function CatalogoProductos() {
             }}>✕</button>
 
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 30 }}>
-              {/* Imagen grande */}
+              {/* Imagen a la izquierda (completa, sin recortar) */}
               <div style={{
                 background: "#0f172a", borderRadius: 16,
                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -158,15 +149,15 @@ function CatalogoProductos() {
               }}>
                 {selected.imagenUrl ? (
                   <img src={selected.imagenUrl} alt={selected.nombre} style={{
-                    width: "100%", maxHeight: 400, objectFit: "contain",
-                    borderRadius: 12,
+                    width: "100%", height: "auto", maxHeight: "70vh",
+                    objectFit: "contain", borderRadius: 12,
                   }} />
                 ) : (
                   <div style={{ fontSize: 80, opacity: 0.5 }}>📦</div>
                 )}
               </div>
 
-              {/* Detalles */}
+              {/* Detalles a la derecha */}
               <div>
                 <h2 style={{ fontSize: 24, marginBottom: 12, color: "#f1f5f9" }}>{selected.nombre}</h2>
 
@@ -192,7 +183,7 @@ function CatalogoProductos() {
                   {selected.descripcion}
                 </p>
 
-                {/* Características / Especificaciones */}
+                {/* Características */}
                 <div style={{ marginBottom: 24 }}>
                   <h4 style={{ color: "#cbd5e1", marginBottom: 10, fontSize: 14, textTransform: "uppercase", letterSpacing: 1 }}>
                     📋 Características
