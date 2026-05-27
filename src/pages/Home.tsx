@@ -67,7 +67,6 @@ function Home() {
         padding: "20px", position: "relative", zIndex: 1, paddingTop: 80,
       }}>
         <div style={{ animation: "fadeIn 1s ease" }}>
-          {/* LOGO */}
           <div style={{
             width: isMobile ? 100 : 140, height: isMobile ? 100 : 140,
             borderRadius: "50%", background: "white",
@@ -92,7 +91,6 @@ function Home() {
             VANGUARDISTAS 3.0
           </h2>
 
-          {/* TYPEWRITER */}
           <h1 style={{
             fontSize: isMobile ? 28 : 52, fontWeight: 700,
             marginBottom: 20, lineHeight: 1.2,
@@ -117,7 +115,7 @@ function Home() {
         </div>
       </section>
 
-      {/* ─── CATÁLOGO DE PRODUCTOS ─────────────────────────────────── */}
+      {/* CATÁLOGO */}
       <section style={{
         padding: isMobile ? "40px 20px" : "60px 40px",
         maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1,
@@ -137,7 +135,7 @@ function Home() {
           gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
           gap: 24,
         }}>
-          <CatalogoProductos />
+          <CatalogoProductos isMobile={isMobile} />
         </div>
       </section>
 
@@ -179,8 +177,8 @@ function Home() {
   );
 }
 
-// ─── Componente de Catálogo de Productos ────────────────────────────────────
-function CatalogoProductos() {
+// ─── Componente de Catálogo ──────────────────────────────────────────────────
+function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
   const navigate = useNavigate();
   const [productos, setProductos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -209,7 +207,6 @@ function CatalogoProductos() {
     else if (nombre.includes("categoría c")) tipo = "libroC";
     else if (nombre.includes("director")) tipo = "director";
     else if (nombre.includes("fundador")) tipo = "fundador";
-
     setCarrito(prev => [...prev, { ...producto, tipo }]);
   };
 
@@ -243,7 +240,6 @@ function CatalogoProductos() {
             overflow: "hidden", cursor: "pointer",
             display: "flex", flexDirection: "column",
           }}>
-            {/* Imagen con proporción 2:3 (sin cambios) */}
             <div onClick={() => setSelected(p)} style={{ position: "relative", width: "100%", paddingTop: "150%", overflow: "hidden" }}>
               {p.imagenUrl ? (
                 <img src={p.imagenUrl} alt={p.nombre} style={{
@@ -259,7 +255,6 @@ function CatalogoProductos() {
                 }}>📦</div>
               )}
             </div>
-            {/* Contenido textual (sin "Ver más") */}
             <div style={{ padding: 20, flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
               <h3 style={{ color: "#3b82f6", fontSize: 18, fontWeight: 700, margin: 0 }}>{p.nombre}</h3>
               <p style={{
@@ -302,7 +297,7 @@ function CatalogoProductos() {
         );
       })}
 
-      {/* Modal de detalle MEJORADO (tipo Amazon) */}
+      {/* MODAL tipo Amazon */}
       {selected && (
         <div style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
@@ -314,7 +309,7 @@ function CatalogoProductos() {
             padding: 28, color: "white", position: "relative",
             margin: "20px 0",
           }} onClick={e => e.stopPropagation()}>
-            {/* Botón cerrar */}
+
             <button onClick={() => setSelected(null)} style={{
               position: "absolute", top: 12, right: 12,
               background: "rgba(0,0,0,0.5)", border: "none", color: "white",
@@ -323,7 +318,6 @@ function CatalogoProductos() {
             }}>✕</button>
 
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 30 }}>
-              {/* Imagen a la izquierda (completa, sin recortar) */}
               <div style={{
                 background: "#0f172a", borderRadius: 16,
                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -339,11 +333,9 @@ function CatalogoProductos() {
                 )}
               </div>
 
-              {/* Detalles a la derecha */}
               <div>
                 <h2 style={{ fontSize: 24, marginBottom: 12, color: "#f1f5f9" }}>{selected.nombre}</h2>
 
-                {/* Precio */}
                 <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 20 }}>
                   {selected.descuento > 0 && (
                     <span style={{ color: "#ef4444", fontSize: 18, textDecoration: "line-through" }}>
@@ -360,12 +352,10 @@ function CatalogoProductos() {
                   )}
                 </div>
 
-                {/* Descripción completa */}
                 <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.7, marginBottom: 24 }}>
                   {selected.descripcion}
                 </p>
 
-                {/* Características */}
                 <div style={{ marginBottom: 24 }}>
                   <h4 style={{ color: "#cbd5e1", marginBottom: 10, fontSize: 14, textTransform: "uppercase", letterSpacing: 1 }}>
                     📋 Características
@@ -377,7 +367,6 @@ function CatalogoProductos() {
                   </ul>
                 </div>
 
-                {/* Botón de compra */}
                 <button onClick={() => {
                   agregarAlCarrito(selected);
                   setSelected(null);
@@ -387,7 +376,7 @@ function CatalogoProductos() {
                   color: "white", fontWeight: "bold", fontSize: 18, cursor: "pointer",
                   marginBottom: 12,
                 }}>
-                  🛒 Comprar ahora - Bs {(selected.descuento > 0 ? selected.precio - (selected.precio * selected.descuento / 100) : selected.precio).toFixed(2)}
+                  🛒 Comprar ahora — Bs {(selected.descuento > 0 ? selected.precio - (selected.precio * selected.descuento / 100) : selected.precio).toFixed(2)}
                 </button>
 
                 <button onClick={() => {
@@ -406,47 +395,45 @@ function CatalogoProductos() {
             {/* Productos similares */}
             {(() => {
               const similares = getSimilares(selected);
-              if (similares.length > 0) {
-                return (
-                  <div style={{ marginTop: 40, borderTop: "1px solid #334155", paddingTop: 28 }}>
-                    <h3 style={{ marginBottom: 20, fontSize: 18, color: "#cbd5f1" }}>✨ Productos similares</h3>
-                    <div style={{
-                      display: "grid",
-                      gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
-                      gap: 16,
-                    }}>
-                      {similares.map((sim: any) => {
-                        const precioSim = sim.descuento > 0 ? sim.precio - (sim.precio * sim.descuento / 100) : sim.precio;
-                        return (
-                          <div key={sim.id} style={{
-                            background: "#0f172a", borderRadius: 12, padding: 14,
-                            textAlign: "center", cursor: "pointer",
-                            border: "1px solid #334155", transition: "all 0.2s",
-                          }} onClick={() => setSelected(sim)}>
-                            {sim.imagenUrl ? (
-                              <img src={sim.imagenUrl} alt={sim.nombre} style={{
-                                width: "100%", height: 120, objectFit: "cover",
-                                borderRadius: 8, marginBottom: 10,
-                              }} />
-                            ) : (
-                              <div style={{
-                                width: "100%", height: 120, background: "#1e293b",
-                                borderRadius: 8, display: "flex", alignItems: "center",
-                                justifyContent: "center", fontSize: 40, marginBottom: 10,
-                              }}>📦</div>
-                            )}
-                            <h4 style={{ color: "white", fontSize: 13, marginBottom: 6 }}>{sim.nombre}</h4>
-                            <p style={{ color: "#22c55e", fontWeight: "bold", fontSize: 14 }}>
-                              Bs {precioSim.toFixed(2)}
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
+              if (similares.length === 0) return null;
+              return (
+                <div style={{ marginTop: 40, borderTop: "1px solid #334155", paddingTop: 28 }}>
+                  <h3 style={{ marginBottom: 20, fontSize: 18, color: "#cbd5f1" }}>✨ Productos similares</h3>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+                    gap: 16,
+                  }}>
+                    {similares.map((sim: any) => {
+                      const precioSim = sim.descuento > 0 ? sim.precio - (sim.precio * sim.descuento / 100) : sim.precio;
+                      return (
+                        <div key={sim.id} style={{
+                          background: "#0f172a", borderRadius: 12, padding: 14,
+                          textAlign: "center", cursor: "pointer",
+                          border: "1px solid #334155", transition: "all 0.2s",
+                        }} onClick={() => setSelected(sim)}>
+                          {sim.imagenUrl ? (
+                            <img src={sim.imagenUrl} alt={sim.nombre} style={{
+                              width: "100%", height: 120, objectFit: "cover",
+                              borderRadius: 8, marginBottom: 10,
+                            }} />
+                          ) : (
+                            <div style={{
+                              width: "100%", height: 120, background: "#1e293b",
+                              borderRadius: 8, display: "flex", alignItems: "center",
+                              justifyContent: "center", fontSize: 40, marginBottom: 10,
+                            }}>📦</div>
+                          )}
+                          <h4 style={{ color: "white", fontSize: 13, marginBottom: 6 }}>{sim.nombre}</h4>
+                          <p style={{ color: "#22c55e", fontWeight: "bold", fontSize: 14 }}>
+                            Bs {precioSim.toFixed(2)}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              }
-              return null;
+                </div>
+              );
             })()}
           </div>
         </div>
