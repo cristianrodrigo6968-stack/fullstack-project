@@ -412,14 +412,12 @@ app.delete("/productos/:id", auth, async (req, res) => {
 // ─── PAGOS ────────────────────────────────────────────────────────────────────
 app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
   try {
-    // ── LOGS DE DIAGNÓSTICO ──────────────────────────────────
     console.log("═══════════════════════════════════════");
     console.log("📥 POST /pagos recibido");
     console.log("📋 Content-Type:", req.headers["content-type"]);
     console.log("📦 req.body:", req.body);
     console.log("📎 req.file:", req.file ? `archivo: ${req.file.originalname}` : "sin archivo");
     console.log("═══════════════════════════════════════");
-    // ────────────────────────────────────────────────────────
 
     const { nombreDeclarado, monto, tipo, descripcion, productos, celular } = req.body;
 
