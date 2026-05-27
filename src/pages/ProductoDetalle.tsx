@@ -8,6 +8,7 @@ function ProductoDetalle() {
   const { isMobile } = useWindowSize();
   const [producto, setProducto] = useState<any | null>(null);
   const [similares, setSimilares] = useState<any[]>([]);
+  const [todosLosProductos, setTodosLosProductos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [agregado, setAgregado] = useState(false);
 
@@ -15,26 +16,6 @@ function ProductoDetalle() {
     const saved = localStorage.getItem("carrito");
     return saved ? JSON.parse(saved) : [];
   });
-
-  useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/productos`)
-      .then(r => r.json())
-      .then((data: any[]) => {
-        const encontrado = data.find(p => String(p.id) === String(id));
-        setProducto(encontrado || null);
-
-        if (encontrado) {
-          const cat = getCategoria(encontrado.nombre);
-          setSimilares(data.filter(p => p.id !== encontrado.id && getCategoria(p.nombre) === cat).slice(0, 4));
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [id]);
-
-  useEffect(() => {
-    localStorage.setItem("carrito", JSON.stringify(carrito));
-  }, [carrito]);
 
   const getCategoria = (nombre: string): string => {
     const n = nombre.toLowerCase();
@@ -46,6 +27,27 @@ function ProductoDetalle() {
     if (n.includes("artículo") || n.includes("articulo") || n.includes("autor")) return "autor";
     return "otro";
   };
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`${import.meta.env.VITE_API_URL}/productos`)
+      .then(r => r.json())
+      .then((data: any[]) => {
+        const encontrado = data.find(p => String(p.id) === String(id));
+        setProducto(encontrado || null);
+        if (encontrado) {
+          const cat = getCategoria(encontrado.nombre);
+          setSimilares(data.filter(p => p.id !== encontrado.id && getCategoria(p.nombre) === cat).slice(0, 4));
+        }
+        setTodosLosProductos(data.filter(p => String(p.id) !== String(id)));
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [id]);
+
+  useEffect(() => {
+    localStorage.setItem("carrito", JSON.stringify(carrito));
+  }, [carrito]);
 
   const agregarAlCarrito = (p: any) => {
     const nombre = p.nombre.toLowerCase();
@@ -84,10 +86,7 @@ function ProductoDetalle() {
 
       {/* BREADCRUMB */}
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: isMobile ? "16px 20px" : "16px 40px" }}>
-        <span
-          onClick={() => navigate("/")}
-          style={{ color: "#3b82f6", cursor: "pointer", fontSize: 14 }}
-        >
+        <span onClick={() => navigate("/")} style={{ color: "#3b82f6", cursor: "pointer", fontSize: 14 }}>
           ← Volver al catálogo
         </span>
       </div>
@@ -100,7 +99,6 @@ function ProductoDetalle() {
         gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
         gap: 40,
       }}>
-
         {/* IMAGEN */}
         <div style={{
           background: "#0f172a", borderRadius: 20,
@@ -119,7 +117,6 @@ function ProductoDetalle() {
 
         {/* INFO */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
           <h1 style={{ fontSize: isMobile ? 22 : 30, fontWeight: 700, color: "#f1f5f9", margin: 0 }}>
             {producto.nombre}
           </h1>
@@ -187,49 +184,77 @@ function ProductoDetalle() {
 
       {/* PRODUCTOS SIMILARES */}
       {similares.length > 0 && (
-        <div style={{
-          maxWidth: 1100, margin: "60px auto 0",
-          padding: isMobile ? "0 20px 60px" : "0 40px 60px",
-          borderTop: "1px solid #1e293b", paddingTop: 40,
-        }}>
-          <h3 style={{ fontSize: 20, marginBottom: 24, color: "#cbd5e1" }}>✨ Productos similares</h3>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
-            gap: 20,
-          }}>
-            {similares.map((sim: any) => {
-              const precioSim = sim.descuento > 0 ? sim.precio - (sim.precio * sim.descuento / 100) : sim.precio;
-              return (
-                <div
-                  key={sim.id}
-                  onClick={() => navigate(`/producto/${sim.id}`)}
-                  style={{
+        <div style={{ maxWidth: 1100, margin: "60px auto 0", padding: isMobile ? "0 20px" : "0 40px" }}>
+          <div style={{ borderTop: "1px solid #1e293b", paddingTop: 40 }}>
+            <h3 style={{ fontSize: 20, marginBottom: 24, color: "#cbd5e1" }}>✨ Productos similares</h3>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+              gap: 20, marginBottom: 20,
+            }}>
+              {similares.map((sim: any) => {
+                const precioSim = sim.descuento > 0 ? sim.precio - (sim.precio * sim.descuento / 100) : sim.precio;
+                return (
+                  <div key={sim.id} onClick={() => navigate(`/producto/${sim.id}`)} style={{
                     background: "#0f172a", borderRadius: 14, overflow: "hidden",
-                    cursor: "pointer", border: "1px solid #1e293b",
-                    transition: "border-color 0.2s",
-                  }}
-                >
-                  {sim.imagenUrl ? (
-                    <img src={sim.imagenUrl} alt={sim.nombre} style={{
-                      width: "100%", height: 160, objectFit: "cover",
-                    }} />
-                  ) : (
-                    <div style={{
-                      width: "100%", height: 160, background: "#1e293b",
-                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48,
-                    }}>📦</div>
-                  )}
-                  <div style={{ padding: 14 }}>
-                    <h4 style={{ color: "white", fontSize: 13, marginBottom: 6 }}>{sim.nombre}</h4>
-                    <p style={{ color: "#22c55e", fontWeight: "bold", fontSize: 15 }}>Bs {precioSim.toFixed(2)}</p>
+                    cursor: "pointer", border: "1px solid #1e293b", transition: "border-color 0.2s",
+                  }}>
+                    {sim.imagenUrl ? (
+                      <img src={sim.imagenUrl} alt={sim.nombre} style={{ width: "100%", height: 160, objectFit: "cover" }} />
+                    ) : (
+                      <div style={{ width: "100%", height: 160, background: "#1e293b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 }}>📦</div>
+                    )}
+                    <div style={{ padding: 14 }}>
+                      <h4 style={{ color: "white", fontSize: 13, marginBottom: 6 }}>{sim.nombre}</h4>
+                      <p style={{ color: "#22c55e", fontWeight: "bold", fontSize: 15, margin: 0 }}>Bs {precioSim.toFixed(2)}</p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
+
+      {/* TODOS LOS PRODUCTOS */}
+      {todosLosProductos.length > 0 && (
+        <div style={{ maxWidth: 1100, margin: "40px auto 0", padding: isMobile ? "0 20px 60px" : "0 40px 60px" }}>
+          <div style={{ borderTop: "1px solid #1e293b", paddingTop: 40 }}>
+            <h3 style={{ fontSize: 20, marginBottom: 24, color: "#cbd5e1" }}>📦 Todos los productos</h3>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+              gap: 20,
+            }}>
+              {todosLosProductos.map((p: any) => {
+                const precio = p.descuento > 0 ? p.precio - (p.precio * p.descuento / 100) : p.precio;
+                return (
+                  <div key={p.id} onClick={() => navigate(`/producto/${p.id}`)} style={{
+                    background: "#0f172a", borderRadius: 14, overflow: "hidden",
+                    cursor: "pointer", border: "1px solid #1e293b", transition: "border-color 0.2s",
+                  }}>
+                    {p.imagenUrl ? (
+                      <img src={p.imagenUrl} alt={p.nombre} style={{ width: "100%", height: 160, objectFit: "cover" }} />
+                    ) : (
+                      <div style={{ width: "100%", height: 160, background: "#1e293b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 }}>📦</div>
+                    )}
+                    <div style={{ padding: 14 }}>
+                      <h4 style={{ color: "white", fontSize: 13, marginBottom: 6 }}>{p.nombre}</h4>
+                      {p.descuento > 0 && (
+                        <span style={{ color: "#ef4444", fontSize: 12, textDecoration: "line-through", marginRight: 6 }}>
+                          Bs {p.precio.toFixed(2)}
+                        </span>
+                      )}
+                      <p style={{ color: "#22c55e", fontWeight: "bold", fontSize: 15, margin: 0 }}>Bs {precio.toFixed(2)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
