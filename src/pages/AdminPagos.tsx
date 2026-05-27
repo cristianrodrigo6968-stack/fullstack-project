@@ -23,7 +23,7 @@ interface Pago {
 function AdminPagos() {
   const { token } = useAuth();
   const { isMobile } = useWindowSize();
-  const { mesLabel, anio, anterior, siguiente, esActual, filtrarPorMes } = useMesActual();
+  const { mes, anio, mesLabel, anterior, siguiente, esActual } = useMesActual();
 
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +58,7 @@ function AdminPagos() {
     if (res.ok) {
       const data = await res.json();
       console.log("✅ Pagos cargados:", data.length, "registros");
-      console.log("📅 Mes seleccionado:", mesLabel, anio);
+      console.log("📅 Mes seleccionado:", mesLabel, anio, "índice mes:", mes);
       if (data.length > 0) {
         console.log("📆 Fechas de pagos:", data.map((p: Pago) => p.creadoEn));
       }
@@ -71,7 +71,16 @@ function AdminPagos() {
 
   useEffect(() => { load(); }, []);
 
-  // ─── Funciones de verificar, rechazar, manual, editar, eliminar ──────────
+  // ── Filtro manual por mes (sin depender del hook filtrarPorMes) ─────
+  const pagosMes = pagos.filter(p => {
+    const fecha = new Date(p.creadoEn);
+    return fecha.getMonth() === mes && fecha.getFullYear() === anio;
+  });
+
+  console.log("🔎 pagosMes.length:", pagosMes.length, "pagos.length:", pagos.length);
+
+  const pagosFiltrados = pagosMes.filter(p => filtro === "todos" || p.estado === filtro);
+
   const verificar = async (id: number) => {
     const res = await fetch(`${API_URL}/pagos/${id}/verificar`, { method: "PUT", headers });
     if (res.ok) {
@@ -144,9 +153,6 @@ function AdminPagos() {
     return { bg: "#422006", color: "#f59e0b" };
   };
 
-  // ── Aplicar filtro por mes y luego por estado ──────────────────────────
-  const pagosFiltrados = filtrarPorMes(pagos).filter(p => filtro === "todos" || p.estado === filtro);
-
   return (
     <div>
       <h1 style={{ marginBottom: 8, fontSize: isMobile ? 22 : 28 }}>💰 Pagos</h1>
@@ -201,7 +207,7 @@ function AdminPagos() {
       {loading ? (
         <p style={{ color: "#94a3b8" }}>Cargando pagos...</p>
       ) : selected ? (
-        /* ── VISTA DETALLE (igual que antes, sin cambios) ───────────────── */
+        /* ── VISTA DETALLE ──────────────────────────────── */
         <div>
           <button onClick={() => setSelected(null)} style={{ ...btnGray, marginBottom: 16 }}>← Volver a la lista</button>
           <div style={{ background: "#1e293b", padding: 24, borderRadius: 14 }}>
