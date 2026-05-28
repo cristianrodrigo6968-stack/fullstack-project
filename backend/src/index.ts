@@ -489,7 +489,26 @@ app.post("/pagos/manual", auth, async (req, res) => {
 });
 
 app.get("/pagos", auth, async (req, res) => {
-  res.json(await prisma.pago.findMany({ orderBy: { creadoEn: "desc" } }));
+  const pagos = await prisma.pago.findMany({
+    orderBy: { creadoEn: "desc" },
+    include: {
+      cliente: {
+        include: {
+          pedidos: {
+            where: { estado: { not: "completado" } }, // pedidos activos
+            orderBy: { creadoEn: "desc" },
+            take: 1,
+          },
+        },
+      },
+    },
+  });
+  // Transformar para que cada pago tenga un campo "pedido" con el último pedido activo del cliente
+  const pagosConPedido = pagos.map(p => ({
+    ...p,
+    pedido: p.cliente?.pedidos?.[0] || null,
+  }));
+  res.json(pagosConPedido);
 });
 
 app.put("/pagos/:id", auth, async (req, res) => {
