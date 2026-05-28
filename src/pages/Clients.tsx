@@ -48,7 +48,7 @@ interface Client {
   notasServicio: string | null;
   fotografia: string | null;
   fotoCarnet: string | null;
-  fotoCarnet2?: string | null; // campo extra para el reverso
+  fotoCarnet2?: string | null;
 }
 
 interface SenapiPayload {
@@ -180,7 +180,8 @@ function Clients() {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
-  const [confirmAction, setConfirmAction] = useState<() => void>(() => () => {});
+  // ✅ FIX: usar objeto para evitar que React ejecute la función al hacer setState
+  const [confirmAction, setConfirmAction] = useState<{ fn: () => void }>({ fn: () => {} });
   const [confirmLabel, setConfirmLabel] = useState("Sí, confirmar");
   const [confirmIcon, setConfirmIcon] = useState("🗑️");
 
@@ -200,9 +201,10 @@ function Clients() {
 
   const clientesMes = filtrarPorMes(clients);
 
+  // ✅ FIX: setConfirmAction recibe objeto { fn: action } en vez de () => action
   const showConfirm = (message: string, action: () => void, label = "Sí, confirmar", icon = "🗑️") => {
     setConfirmMessage(message);
-    setConfirmAction(() => () => action());
+    setConfirmAction({ fn: action });
     setConfirmLabel(label);
     setConfirmIcon(icon);
     setConfirmOpen(true);
@@ -338,7 +340,16 @@ function Clients() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div>
-      {confirmOpen && <ConfirmModal message={confirmMessage} onConfirm={confirmAction} onCancel={() => setConfirmOpen(false)} confirmLabel={confirmLabel} icon={confirmIcon} />}
+      {/* ✅ FIX: onConfirm llama confirmAction.fn en vez de confirmAction directamente */}
+      {confirmOpen && (
+        <ConfirmModal
+          message={confirmMessage}
+          onConfirm={confirmAction.fn}
+          onCancel={() => setConfirmOpen(false)}
+          confirmLabel={confirmLabel}
+          icon={confirmIcon}
+        />
+      )}
 
       <h1 style={{ marginBottom: 8, fontSize: isMobile ? 22 : 28 }}>👥 Clientes</h1>
       <p style={{ color: "#94a3b8", marginBottom: 24, fontSize: isMobile ? 13 : 15 }}>
