@@ -495,7 +495,7 @@ app.get("/pagos", auth, async (req, res) => {
       cliente: {
         include: {
           pedidos: {
-            where: { estado: { not: "completado" } }, // pedidos activos
+            where: { estado: { not: "completado" } },
             orderBy: { creadoEn: "desc" },
             take: 1,
           },
@@ -503,7 +503,7 @@ app.get("/pagos", auth, async (req, res) => {
       },
     },
   });
-  // Transformar para que cada pago tenga un campo "pedido" con el último pedido activo del cliente
+  // Transformar para que cada pago tenga un campo "pedido" (el último pedido activo del cliente)
   const pagosConPedido = pagos.map(p => ({
     ...p,
     pedido: p.cliente?.pedidos?.[0] || null,
@@ -527,64 +527,111 @@ app.delete("/pagos/:id", auth, async (req, res) => {
 
 app.put("/pagos/:id/verificar", auth, async (req, res) => {
   const id = Number(req.params.id);
-  const pago = await prisma.pago.update({
+  const pago = await prisma.pago.findUnique({ where: { id } });
+  if (!pago) return res.status(404).json({ error: "Pago no encontrado" });
+
+  // 1. Actualizar estado del pago
+  const pagoActualizado = await prisma.pago.update({
     where: { id },
     data: { estado: "verificado" },
   });
 
-  if (!pago.clienteId) {
-    const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 4);
-    const cliente = await prisma.client.create({
-      data: { token, expiresAt, nombreCompleto: pago.nombreDeclarado },
+  // 2. Si ya tiene cliente, solo sumamos al pedido activo
+  if (pago.clienteId) {
+    const pedidoActivo = await prisma.pedido.findFirst({
+      where: { clienteId: pago.clienteId, estado: { not: "completado" } },
     });
-    await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
+    if (pedidoActivo) {
+      await prisma.pedido.update({
+        where: { id: pedidoActivo.id },
+        data: { montoPagado: pedidoActivo.montoPagado + pago.monto },
+      });
+    }
+    return res.json(pagoActualizado);
+  }
 
-    if (pago.productos) {
-      try {
-        const itemsCarrito = JSON.parse(pago.productos);
-        if (Array.isArray(itemsCarrito) && itemsCarrito.length > 0) {
-          const precios: Record<string, number> = {
-            libroA: 800, libroB: 1100, libroC: 1600,
-            director: 2000, fundador: 800, autor: 500,
-          };
-          const items = itemsCarrito.map((prod: any) => ({
-            tipo: prod.tipo || "autor",
-            titulo: prod.titulo || prod.nombre || null,
-          }));
-          const montoTotal = items.reduce((sum, item) => sum + (precios[item.tipo] || 0), 0);
+  // 3. Crear nuevo cliente
+  const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 4);
+  const cliente = await prisma.client.create({
+    data: { token, expiresAt, nombreCompleto: pago.nombreDeclarado },
+  });
+  await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
 
-          await prisma.pedido.create({
-            data: {
-              clienteId: cliente.id,
-              montoTotal,
-              montoPagado: pago.monto,
-              items: {
-                create: items.map((item: any) => ({
-                  tipo: item.tipo,
-                  titulo: item.titulo,
-                })),
-              },
-            },
+  // 4. Calcular monto total y preparar items del pedido usando los precios REALES de la BD
+  let montoTotal = 0;
+  const itemsParaPedido: any[] = [];
+
+  if (pago.productos) {
+    try {
+      const carrito = JSON.parse(pago.productos); // Array de {id, nombre}
+      if (Array.isArray(carrito) && carrito.length > 0) {
+        // Obtener los ids únicos
+        const ids = carrito.map(item => item.id).filter(id => id != null);
+        // Consultar productos en la BD
+        const productosBD = await prisma.producto.findMany({
+          where: { id: { in: ids } },
+        });
+        const productoPorId = new Map(productosBD.map(p => [p.id, p]));
+
+        // Recorrer cada ítem del carrito (cada uno representa 1 unidad)
+        for (const item of carrito) {
+          const producto = productoPorId.get(item.id);
+          if (!producto) continue;
+
+          // Aplicar descuento si tiene
+          const precioFinal = producto.descuento > 0
+            ? producto.precio - (producto.precio * producto.descuento / 100)
+            : producto.precio;
+          montoTotal += precioFinal;
+
+          // Crear un ItemPedido por cada unidad
+          itemsParaPedido.push({
+            tipo: "producto",
+            titulo: producto.nombre,
+            conSenapi: false,
+            conIsbn: false,
+            periodicidad: null,
+            tipoAutor: null,
+            asociacionEncargaTitulo: false,
+            notas: `Precio unitario: Bs ${precioFinal}`,
           });
         }
-      } catch (e) {
-        console.error("Error al crear pedido desde productos del carrito:", e);
       }
-    }
-
-    const LINK_PORTAL = process.env.CLIENT_PORTAL_URL || "https://tudominio.com";
-    const linkFormulario = `${LINK_PORTAL}/formulario/${token}`;
-    try {
-      const { notificarAdminMensaje } = await import("./whatsapp");
-      await notificarAdminMensaje(`Pago verificado para ${pago.nombreDeclarado}. Link del formulario: ${linkFormulario}`);
     } catch (err) {
-      console.warn("No se pudo notificar:", err);
+      console.error("Error parseando productos del pago:", err);
     }
   }
 
-  res.json(pago);
+  // Si no se pudo calcular (ej. no hay productos), usar el monto del pago como respaldo
+  if (montoTotal === 0 && itemsParaPedido.length === 0) {
+    montoTotal = pago.monto;
+    itemsParaPedido.push({ tipo: "desconocido", titulo: "Pago sin productos específicos" });
+  }
+
+  // 5. Crear el pedido
+  const pedido = await prisma.pedido.create({
+    data: {
+      clienteId: cliente.id,
+      montoTotal,
+      montoPagado: pago.monto,
+      items: { create: itemsParaPedido },
+    },
+  });
+
+  // 6. Notificar al admin (opcional)
+  try {
+    const { notificarAdminMensaje } = await import("./whatsapp");
+    const linkFormulario = `${process.env.CLIENT_PORTAL_URL || ""}/formulario/${token}`;
+    await notificarAdminMensaje(
+      `✅ Pago verificado para ${pago.nombreDeclarado}. Total pedido: Bs ${montoTotal}. Link formulario: ${linkFormulario}`
+    );
+  } catch (err) {
+    console.warn("No se pudo notificar:", err);
+  }
+
+  res.json({ ...pagoActualizado, pedido });
 });
 
 app.put("/pagos/:id/rechazar", auth, async (req, res) => {
