@@ -140,12 +140,32 @@ function AdminPagos() {
   };
 
   const eliminarPago = async (id: number) => {
-    if (!confirm("¿Eliminar este pago permanentemente?")) return;
-    setEliminandoId(id);
-    await fetch(`${API_URL}/pagos/${id}`, { method: "DELETE", headers });
+  if (!confirm("¿Eliminar este pago permanentemente?")) return;
+  setEliminandoId(id);
+  try {
+    const res = await fetch(`${API_URL}/pagos/${id}`, {
+      method: "DELETE",
+      headers,
+    });
+    if (res.ok) {
+      // ✅ Actualizar el estado local eliminando el pago de la lista
+      setPagos(prev => prev.filter(p => p.id !== id));
+      // Si el pago eliminado estaba en detalle, cerrar el detalle
+      if (selected?.id === id) setSelected(null);
+      // Opcional: recargar desde el servidor para estar 100% seguro
+      // await load();
+    } else {
+      const errorText = await res.text();
+      console.error(`Error ${res.status}:`, errorText);
+      alert(`No se pudo eliminar: ${errorText}`);
+    }
+  } catch (error) {
+    console.error("Error de red:", error);
+    alert("Error de conexión");
+  } finally {
     setEliminandoId(null);
-    await load();
-  };
+  }
+};
 
   const getEstadoColor = (estado: string) => {
     if (estado === "verificado") return { bg: "#14532d", color: "#22c55e" };
