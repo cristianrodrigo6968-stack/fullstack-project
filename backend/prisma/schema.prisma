@@ -143,6 +143,8 @@ model Client {
   archivos          ClienteArchivo[]
   pagos             Pago[]
   pedidos           Pedido[]
+
+  @@unique([ci, extension])   // 👈 ESTA ES LA LÍNEA QUE AGREGASTE
 }
 
 model Entrega {

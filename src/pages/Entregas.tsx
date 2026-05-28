@@ -6,25 +6,25 @@ import NavegadorMes from "../components/NavegadorMes";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-interface ClienteTask {
+interface ItemPedido {
   id: number;
-  tipo: string;
-  descripcion: string;
-  completada: boolean;
-}
-
-interface Cliente {
-  id: number;
-  nombreCompleto: string | null;
-  clienteTasks: ClienteTask[];
-}
-
-interface Entrega {
-  id: number;
-  estado: string;
-  fechaEntrega: string | null;
-  createdAt: string;
-  cliente: Cliente | null;
+  tipo: string;        // "libro", "articulo", "edicion_revista", "fundador"
+  titulo: string | null;
+  conSenapi: boolean;
+  conIsbn: boolean;
+  periodicidad: string | null;
+  tipoAutor: string | null;
+  asociacionEncargaTitulo: boolean;
+  notas: string | null;
+  archivoWord: string | null;
+  archivoPdf: string | null;
+  estado: string;      // "pendiente", "en_proceso", "completado", "entregado"
+  cliente: {
+    id: number;
+    nombreCompleto: string | null;
+  };
+  pedidoId: number;
+  creadoEn: string;
 }
 
 function Spinner() {
@@ -41,9 +41,7 @@ function Spinner() {
   );
 }
 
-function ConfirmModal({ message, onConfirm, onCancel }: {
-  message: string; onConfirm: () => void; onCancel: () => void;
-}) {
+function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
@@ -75,39 +73,51 @@ function getTipoIcon(tipo: string) {
   return "📋";
 }
 
+function getEstadoColor(estado: string) {
+  switch (estado) {
+    case "completado": return { bg: "#14532d", color: "#22c55e", label: "✅ Completado" };
+    case "entregado": return { bg: "#1e3a5f", color: "#60a5fa", label: "📦 Entregado" };
+    case "en_proceso": return { bg: "#422006", color: "#f59e0b", label: "⚙️ En proceso" };
+    default: return { bg: "#1e293b", color: "#94a3b8", label: "⏳ Pendiente" };
+  }
+}
+
 function Entregas() {
   const { token } = useAuth();
   const { isMobile } = useWindowSize();
-  const { mes, anio, mesLabel, anterior, siguiente, esActual, filtrarPorMes } = useMesActual();
+  const { mes, anio, mesLabel, anterior, siguiente, esActual } = useMesActual();
 
-  const [entregas, setEntregas] = useState<Entrega[]>([]);
+  const [items, setItems] = useState<ItemPedido[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
-
-  // Editar
-  const [editandoId, setEditandoId] = useState<number | null>(null);
-  const [editEstado, setEditEstado] = useState("");
-  const [editFecha, setEditFecha] = useState("");
-
-  // Eliminar
-  const [eliminandoId, setEliminandoId] = useState<number | null>(null);
+  const [subiendoArchivo, setSubiendoArchivo] = useState<number | null>(null);
+  const [notasEdit, setNotasEdit] = useState<{ [key: number]: string }>({});
 
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
 
-  const load = async () => {
+  const loadItems = async () => {
     setLoading(true);
-    const res = await fetch(`${API_URL}/entregas`, { headers });
-    if (res.ok) setEntregas(await res.json());
+    try {
+      const res = await fetch(`${API_URL}/items-pedido`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data);
+      } else {
+        console.error("Error al cargar items:", res.status);
+      }
+    } catch (error) {
+      console.error("Error de red:", error);
+    }
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { loadItems(); }, []);
 
   const showConfirm = (message: string, action: () => void) => {
     setConfirmMessage(message);
@@ -115,160 +125,64 @@ function Entregas() {
     setConfirmOpen(true);
   };
 
-  const marcarEntregado = (e: Entrega) => {
-    showConfirm(
-      `¿Confirmas que entregaste todo el trabajo a ${e.cliente?.nombreCompleto || "este cliente"}?`,
-      async () => {
-        setConfirmOpen(false);
-        await fetch(`${API_URL}/entregas/${e.id}`, {
-          method: "PUT", headers,
-          body: JSON.stringify({ estado: "entregado" }),
-        });
-        await load();
-      }
-    );
-  };
-
-  const marcarPendiente = async (id: number) => {
-    await fetch(`${API_URL}/entregas/${id}`, {
-      method: "PUT", headers,
-      body: JSON.stringify({ estado: "pendiente" }),
+  const updateEstado = async (id: number, nuevoEstado: string) => {
+    const res = await fetch(`${API_URL}/items-pedido/${id}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ estado: nuevoEstado }),
     });
-    await load();
+    if (res.ok) await loadItems();
   };
 
-  const editarEntrega = async (id: number) => {
-    const body: any = {};
-    if (editEstado) body.estado = editEstado;
-    if (editFecha) body.fechaEntrega = editFecha;
-    await fetch(`${API_URL}/entregas/${id}`, { method: "PUT", headers, body: JSON.stringify(body) });
-    setEditandoId(null);
-    await load();
-  };
-
-  const eliminarEntrega = async (id: number) => {
-    showConfirm("¿Eliminar esta entrega permanentemente?", async () => {
-      setConfirmOpen(false);
-      setEliminandoId(id);
-      await fetch(`${API_URL}/entregas/${id}`, { method: "DELETE", headers });
-      setEliminandoId(null);
-      await load();
+  const updateNotas = async (id: number) => {
+    const notas = notasEdit[id];
+    if (notas === undefined) return;
+    await fetch(`${API_URL}/items-pedido/${id}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ notas }),
     });
+    setNotasEdit(prev => { const newPrev = { ...prev }; delete newPrev[id]; return newPrev; });
+    await loadItems();
   };
 
-  const entregasMes = filtrarPorMes(entregas);
-  const pendientes = entregasMes.filter(e => e.estado === "pendiente");
-  const entregados = entregasMes.filter(e => e.estado === "entregado");
-
-  const EntregaCard = ({ e }: { e: Entrega }) => {
-    const isSelected = selectedId === e.id;
-    const tareas = e.cliente?.clienteTasks || [];
-    const completadas = tareas.filter(t => t.completada).length;
-    const pct = tareas.length === 0 ? 0 : Math.round((completadas / tareas.length) * 100);
-    const listo = pct === 100;
-
-    return (
-      <div style={{ marginBottom: 12 }}>
-        <div
-          onClick={() => setSelectedId(isSelected ? null : e.id)}
-          style={{
-            background: "#1e293b", padding: isMobile ? 16 : 20,
-            borderRadius: isSelected ? "12px 12px 0 0" : 12,
-            cursor: "pointer",
-            borderLeft: `4px solid ${e.estado === "entregado" ? "#22c55e" : listo ? "#f59e0b" : "#3b82f6"}`,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <div>
-              <h3 style={{ color: "white", fontSize: isMobile ? 15 : 17, marginBottom: 4 }}>
-                👤 {e.cliente?.nombreCompleto || "Sin nombre"}
-              </h3>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                {e.estado === "entregado" ? (
-                  <span style={{ fontSize: 11, padding: "2px 10px", borderRadius: 99, background: "#14532d", color: "#22c55e", fontWeight: "bold" }}>
-                    ✅ Entregado el {e.fechaEntrega ? new Date(e.fechaEntrega).toLocaleDateString() : ""}
-                  </span>
-                ) : listo ? (
-                  <span style={{ fontSize: 11, padding: "2px 10px", borderRadius: 99, background: "#422006", color: "#f59e0b", fontWeight: "bold" }}>
-                    ⚠️ Listo para entregar
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 11, padding: "2px 10px", borderRadius: 99, background: "#1e3a5f", color: "#60a5fa", fontWeight: "bold" }}>
-                    🔄 En producción ({pct}%)
-                  </span>
-                )}
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              {e.estado === "pendiente" && listo && (
-                <button onClick={(ev) => { ev.stopPropagation(); marcarEntregado(e); }} style={{ ...btnGreen, fontSize: 13 }}>
-                  📦 Entregar
-                </button>
-              )}
-              {e.estado === "entregado" && (
-                <button onClick={(ev) => { ev.stopPropagation(); marcarPendiente(e.id); }} style={{ ...btnGray, fontSize: 13 }}>
-                  ↩️ Revertir
-                </button>
-              )}
-              <span style={{ color: "#64748b", fontSize: 18 }}>{isSelected ? "▲" : "▼"}</span>
-            </div>
-          </div>
-          {tareas.length > 0 && e.estado === "pendiente" && (
-            <div style={{ marginTop: 12 }}>
-              <div style={{ background: "#334155", borderRadius: 99, height: 6, overflow: "hidden" }}>
-                <div style={{ width: `${pct}%`, height: "100%", background: listo ? "#f59e0b" : "#3b82f6", borderRadius: 99, transition: "width 0.3s" }} />
-              </div>
-              <p style={{ color: "#64748b", fontSize: 11, marginTop: 4 }}>{completadas}/{tareas.length} tareas completadas</p>
-            </div>
-          )}
-        </div>
-
-        {isSelected && (
-          <div style={{ background: "#0f172a", padding: 16, borderRadius: "0 0 12px 12px", border: "1px solid #334155", borderTop: "none" }}>
-            <p style={{ color: "#64748b", fontSize: 12, marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 }}>
-              Trabajo a entregar
-            </p>
-            {tareas.length === 0 ? (
-              <p style={{ color: "#64748b", fontSize: 13 }}>No hay tareas registradas.</p>
-            ) : (
-              tareas.map((t) => (
-                <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #1e293b" }}>
-                  <span style={{ fontSize: 18 }}>{getTipoIcon(t.tipo)}</span>
-                  <p style={{ flex: 1, color: t.completada ? "#64748b" : "white", textDecoration: t.completada ? "line-through" : "none", fontSize: isMobile ? 12 : 13 }}>
-                    {t.descripcion}
-                  </p>
-                  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, background: t.completada ? "#14532d" : "#1e3a5f", color: t.completada ? "#22c55e" : "#60a5fa" }}>
-                    {t.completada ? "✅ Listo" : "⏳ Pendiente"}
-                  </span>
-                </div>
-              ))
-            )}
-
-            {/* Editar y Eliminar */}
-            <div style={{ marginTop: 12, borderTop: "1px solid #334155", paddingTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {editandoId === e.id ? (
-                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                  <select value={editEstado} onChange={ev => setEditEstado(ev.target.value)} style={{ ...inputStyle, width: 140 }}>
-                    <option value="">Estado</option>
-                    <option value="pendiente">Pendiente</option>
-                    <option value="entregado">Entregado</option>
-                  </select>
-                  <input type="date" value={editFecha} onChange={ev => setEditFecha(ev.target.value)} style={{ ...inputStyle, width: 140 }} />
-                  <button onClick={() => editarEntrega(e.id)} style={btnGreen}>Guardar</button>
-                  <button onClick={() => setEditandoId(null)} style={btnGray}>Cancelar</button>
-                </div>
-              ) : (
-                <button onClick={() => { setEditandoId(e.id); setEditEstado(e.estado); setEditFecha(e.fechaEntrega?.split("T")[0] || ""); }} style={btnYellow}>✏️ Editar</button>
-              )}
-              <button onClick={() => eliminarEntrega(e.id)} disabled={eliminandoId === e.id} style={btnRed}>
-                {eliminandoId === e.id ? "..." : "🗑 Eliminar"}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
+  const subirArchivo = async (id: number, tipo: "word" | "pdf", file: File) => {
+    const formData = new FormData();
+    formData.append("archivo", file);
+    formData.append("tipo", tipo);
+    setSubiendoArchivo(id);
+    try {
+      const res = await fetch(`${API_URL}/items-pedido/${id}/archivo`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (res.ok) await loadItems();
+    } catch (error) {
+      console.error("Error subiendo archivo:", error);
+    } finally {
+      setSubiendoArchivo(null);
+    }
   };
+
+  // Filtrar por mes de creación del pedido
+  const itemsMes = items.filter(item => {
+    const fecha = new Date(item.creadoEn);
+    return fecha.getMonth() === mes && fecha.getFullYear() === anio;
+  });
+
+  // Agrupar por cliente
+  const groupedByClient = itemsMes.reduce((acc, item) => {
+    const clientId = item.cliente.id;
+    if (!acc[clientId]) acc[clientId] = { cliente: item.cliente, items: [] };
+    acc[clientId].items.push(item);
+    return acc;
+  }, {} as Record<number, { cliente: ItemPedido["cliente"]; items: ItemPedido[] }>);
+
+  const pendientesCount = itemsMes.filter(i => i.estado === "pendiente").length;
+  const enProcesoCount = itemsMes.filter(i => i.estado === "en_proceso").length;
+  const completadosCount = itemsMes.filter(i => i.estado === "completado").length;
+  const entregadosCount = itemsMes.filter(i => i.estado === "entregado").length;
 
   return (
     <div>
@@ -276,22 +190,19 @@ function Entregas() {
         <ConfirmModal message={confirmMessage} onConfirm={confirmAction} onCancel={() => setConfirmOpen(false)} />
       )}
 
-      <h1 style={{ marginBottom: 8, fontSize: isMobile ? 22 : 28 }}>📦 Entregas</h1>
+      <h1 style={{ marginBottom: 8, fontSize: isMobile ? 22 : 28 }}>📦 Producción / Entregas</h1>
       <p style={{ color: "#94a3b8", marginBottom: 24, fontSize: isMobile ? 13 : 15 }}>
-        Confirma las entregas a los clientes cuando el trabajo esté listo.
+        Gestiona la producción de libros, artículos y ediciones solicitadas por los clientes.
       </p>
 
-      <NavegadorMes
-        mesLabel={mesLabel} anio={anio}
-        onAnterior={anterior} onSiguiente={siguiente}
-        esActual={esActual()}
-      />
+      <NavegadorMes mesLabel={mesLabel} anio={anio} onAnterior={anterior} onSiguiente={siguiente} esActual={esActual()} />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 28 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 28 }}>
         {[
-          { label: "Total", value: entregasMes.length, color: "#3b82f6" },
-          { label: "Pendientes", value: pendientes.length, color: "#f59e0b" },
-          { label: "Entregados", value: entregados.length, color: "#22c55e" },
+          { label: "Pendientes", value: pendientesCount, color: "#94a3b8" },
+          { label: "En proceso", value: enProcesoCount, color: "#f59e0b" },
+          { label: "Completados", value: completadosCount, color: "#22c55e" },
+          { label: "Entregados", value: entregadosCount, color: "#3b82f6" },
         ].map(s => (
           <div key={s.label} style={{ background: "#1e293b", padding: isMobile ? 12 : 16, borderRadius: 12, textAlign: "center", borderTop: `3px solid ${s.color}` }}>
             <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: "bold", color: s.color }}>{s.value}</div>
@@ -302,29 +213,102 @@ function Entregas() {
 
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", marginTop: 60 }}><Spinner /></div>
-      ) : entregasMes.length === 0 ? (
+      ) : Object.keys(groupedByClient).length === 0 ? (
         <div style={{ textAlign: "center", padding: 40 }}>
-          <p style={{ color: "#64748b", fontSize: 16 }}>No hay entregas en {mesLabel} {anio}</p>
+          <p style={{ color: "#64748b", fontSize: 16 }}>No hay pedidos en {mesLabel} {anio}</p>
         </div>
       ) : (
-        <div>
-          {pendientes.length > 0 && (
-            <div style={{ marginBottom: 32 }}>
-              <h3 style={{ color: "#f59e0b", marginBottom: 16, fontSize: isMobile ? 15 : 17 }}>
-                ⏳ Pendientes ({pendientes.length})
-              </h3>
-              {pendientes.map(e => <EntregaCard key={e.id} e={e} />)}
+        Object.values(groupedByClient).map(({ cliente, items: clientItems }) => {
+          const isSelected = selectedClientId === cliente.id;
+          return (
+            <div key={cliente.id} style={{ marginBottom: 24, background: "#0f172a", borderRadius: 12, overflow: "hidden" }}>
+              <div
+                onClick={() => setSelectedClientId(isSelected ? null : cliente.id)}
+                style={{
+                  background: "#1e293b", padding: 16, cursor: "pointer",
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                }}
+              >
+                <h3 style={{ color: "white", margin: 0 }}>👤 {cliente.nombreCompleto || "Cliente sin nombre"}</h3>
+                <span style={{ color: "#64748b", fontSize: 18 }}>{isSelected ? "▲" : "▼"}</span>
+              </div>
+              {isSelected && (
+                <div style={{ padding: 16 }}>
+                  {clientItems.map(item => {
+                    const estadoStyle = getEstadoColor(item.estado);
+                    return (
+                      <div key={item.id} style={{ background: "#1e293b", marginBottom: 12, borderRadius: 8, padding: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                          <div>
+                            <span style={{ fontSize: 20, marginRight: 8 }}>{getTipoIcon(item.tipo)}</span>
+                            <strong style={{ color: "white" }}>{item.titulo || (item.tipo === "libro" ? "Libro sin título" : item.tipo === "articulo" ? "Artículo" : "Edición de revista")}</strong>
+                          </div>
+                          <span style={{ fontSize: 12, padding: "2px 10px", borderRadius: 99, background: estadoStyle.bg, color: estadoStyle.color }}>
+                            {estadoStyle.label}
+                          </span>
+                        </div>
+
+                        {/* Detalles adicionales */}
+                        <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 8 }}>
+                          {item.conSenapi && <span>🔖 SENAPI </span>}
+                          {item.conIsbn && <span>📘 ISBN </span>}
+                          {item.periodicidad && <span>🔄 {item.periodicidad} </span>}
+                          {item.tipoAutor && <span>✍️ {item.tipoAutor}</span>}
+                        </div>
+
+                        {/* Notas */}
+                        <div style={{ marginBottom: 8 }}>
+                          {notasEdit[item.id] !== undefined ? (
+                            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                              <input
+                                value={notasEdit[item.id]}
+                                onChange={e => setNotasEdit(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                style={{ flex: 1, ...inputStyle, fontSize: 12 }}
+                                placeholder="Notas de producción..."
+                              />
+                              <button onClick={() => updateNotas(item.id)} style={btnGreen}>💾</button>
+                              <button onClick={() => setNotasEdit(prev => { const newPrev = { ...prev }; delete newPrev[item.id]; return newPrev; })} style={btnGray}>✖️</button>
+                            </div>
+                          ) : (
+                            <p style={{ fontSize: 12, color: "#cbd5e1", background: "#0f172a", padding: 6, borderRadius: 4 }}>
+                              📝 {item.notas || "Sin notas"} 
+                              <button onClick={() => setNotasEdit(prev => ({ ...prev, [item.id]: item.notas || "" }))} style={{ marginLeft: 8, ...btnGray, padding: "2px 6px", fontSize: 10 }}>Editar</button>
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Archivos y acciones */}
+                        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
+                          {item.archivoWord && <a href={item.archivoWord} target="_blank" style={{ color: "#60a5fa", fontSize: 12 }}>📄 Word</a>}
+                          {item.archivoPdf && <a href={item.archivoPdf} target="_blank" style={{ color: "#60a5fa", fontSize: 12 }}>📑 PDF</a>}
+                          <label style={{ ...btnGray, fontSize: 11, padding: "4px 8px", cursor: "pointer" }}>
+                            📎 Subir Word
+                            <input type="file" accept=".doc,.docx" style={{ display: "none" }} onChange={e => e.target.files?.[0] && subirArchivo(item.id, "word", e.target.files[0])} disabled={subiendoArchivo === item.id} />
+                          </label>
+                          <label style={{ ...btnGray, fontSize: 11, padding: "4px 8px", cursor: "pointer" }}>
+                            📎 Subir PDF
+                            <input type="file" accept=".pdf" style={{ display: "none" }} onChange={e => e.target.files?.[0] && subirArchivo(item.id, "pdf", e.target.files[0])} disabled={subiendoArchivo === item.id} />
+                          </label>
+                          {subiendoArchivo === item.id && <Spinner />}
+                          <select
+                            value={item.estado}
+                            onChange={e => updateEstado(item.id, e.target.value)}
+                            style={{ ...inputStyle, fontSize: 11, padding: "4px 8px", width: 130 }}
+                          >
+                            <option value="pendiente">⏳ Pendiente</option>
+                            <option value="en_proceso">⚙️ En proceso</option>
+                            <option value="completado">✅ Completado</option>
+                            <option value="entregado">📦 Entregado</option>
+                          </select>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
-          {entregados.length > 0 && (
-            <div>
-              <h3 style={{ color: "#22c55e", marginBottom: 16, fontSize: isMobile ? 15 : 17 }}>
-                ✅ Entregados ({entregados.length})
-              </h3>
-              {entregados.map(e => <EntregaCard key={e.id} e={e} />)}
-            </div>
-          )}
-        </div>
+          );
+        })
       )}
     </div>
   );
@@ -332,8 +316,6 @@ function Entregas() {
 
 const btnGreen: React.CSSProperties = { background: "#22c55e", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
 const btnGray: React.CSSProperties = { background: "#334155", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnRed: React.CSSProperties = { background: "#ef4444", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnYellow: React.CSSProperties = { background: "#f59e0b", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
 const inputStyle: React.CSSProperties = { padding: 6, borderRadius: 4, border: "none", background: "#0f172a", color: "white", fontSize: 12, boxSizing: "border-box" };
 
 export default Entregas;

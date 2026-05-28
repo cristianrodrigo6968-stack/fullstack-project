@@ -1570,6 +1570,73 @@ app.post("/clients/form/:token/libro-detalles", async (req, res) => {
   }
   res.json({ ok: true });
 });
+// ─── ITEMS PEDIDO (ADMIN) ───────────────────────────────────────────────────
+app.get("/items-pedido", auth, async (req, res) => {
+  const items = await prisma.itemPedido.findMany({
+    include: {
+      pedido: {
+        include: {
+          cliente: {
+            select: {
+              id: true,
+              nombreCompleto: true,
+              nombres: true,
+              apellidoPaterno: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: { id: "desc" },
+  });
+  // Transformamos para que cada item tenga un campo `cliente` plano
+  const result = items.map(item => ({
+    ...item,
+    cliente: item.pedido.cliente,
+    creadoEn: item.pedido.creadoEn, // la fecha del pedido
+  }));
+  res.json(result);
+});
 
+app.put("/items-pedido/:id", auth, async (req, res) => {
+  const id = Number(req.params.id);
+  const { estado, notas } = req.body;
+  const data: any = {};
+  if (estado !== undefined) data.estado = estado;
+  if (notas !== undefined) data.notas = notas;
+  const updated = await prisma.itemPedido.update({
+    where: { id },
+    data,
+    include: { pedido: { include: { cliente: true } } },
+  });
+  res.json({
+    ...updated,
+    cliente: updated.pedido.cliente,
+    creadoEn: updated.pedido.creadoEn,
+  });
+});
+
+app.post("/items-pedido/:id/archivo", auth, upload.single("archivo"), async (req: any, res) => {
+  const id = Number(req.params.id);
+  const { tipo } = req.body; // "word" o "pdf"
+  if (!req.file) return res.status(400).json({ error: "Archivo requerido" });
+  const ext = req.file.originalname.split(".").pop();
+  const carpeta = tipo === "word" ? "items/word" : "items/pdf";
+  const url = await subirImagen(req.file.buffer, carpeta, "auto", ext);
+  const data: any = {};
+  if (tipo === "word") data.archivoWord = url;
+  else if (tipo === "pdf") data.archivoPdf = url;
+  else return res.status(400).json({ error: "Tipo inválido" });
+  const updated = await prisma.itemPedido.update({
+    where: { id },
+    data,
+    include: { pedido: { include: { cliente: true } } },
+  });
+  res.json({
+    ...updated,
+    cliente: updated.pedido.cliente,
+    creadoEn: updated.pedido.creadoEn,
+  });
+});
 // ─── START ────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
