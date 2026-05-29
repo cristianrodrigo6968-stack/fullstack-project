@@ -419,7 +419,6 @@ app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
     console.log("📎 req.file:", req.file ? `archivo: ${req.file.originalname}` : "sin archivo");
     console.log("═══════════════════════════════════════");
 
-    // ✅ Ahora también extraemos ci
     const { nombreDeclarado, monto, tipo, descripcion, productos, celular, ci } = req.body;
 
     if (!nombreDeclarado || !monto) {
@@ -436,7 +435,6 @@ app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
       }
     }
 
-    // ✅ Guardamos ci en la BD
     const pago = await prisma.pago.create({
       data: {
         nombreDeclarado,
@@ -467,7 +465,7 @@ app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
 });
 
 app.post("/pagos/manual", auth, async (req, res) => {
-  const { nombreDeclarado, monto, pedidoId, celular } = req.body;
+  const { nombreDeclarado, monto, pedidoId, celular, ci } = req.body;
   const pago = await prisma.pago.create({
     data: {
       nombreDeclarado,
@@ -475,6 +473,7 @@ app.post("/pagos/manual", auth, async (req, res) => {
       tipo: "manual",
       estado: "verificado",
       celular: celular || null,
+      ci: ci || null,
     },
   });
 
@@ -527,6 +526,7 @@ app.delete("/pagos/:id", auth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── VERIFICAR PAGO (MEJORADA) ───────────────────────────────────────────────
 app.put("/pagos/:id/verificar", auth, async (req, res) => {
   const id = Number(req.params.id);
   const pago = await prisma.pago.findUnique({ where: { id } });
@@ -538,9 +538,8 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     data: { estado: "verificado" },
   });
 
-  // 2. Buscar cliente existente: primero por CI, luego por celular como fallback
+  // 2. Buscar cliente existente: CI o celular
   let cliente = null;
-
   if (pago.ci) {
     cliente = await prisma.client.findFirst({ where: { ci: pago.ci } });
   }
@@ -548,25 +547,81 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     cliente = await prisma.client.findFirst({ where: { celular: pago.celular } });
   }
 
-  // 3a. Cliente existente: asociar pago y sumar al pedido activo
+  // Función para calcular monto total e items del pedido a partir del carrito
+  const calcularPedido = async () => {
+    let montoTotal = 0;
+    const itemsParaPedido: any[] = [];
+    if (pago.productos) {
+      try {
+        const carrito = JSON.parse(pago.productos);
+        if (Array.isArray(carrito) && carrito.length > 0) {
+          const ids = carrito.map((item: any) => item.id).filter((id: any) => id != null);
+          const productosBD = await prisma.producto.findMany({ where: { id: { in: ids } } });
+          const productoPorId = new Map(productosBD.map(p => [p.id, p]));
+          for (const item of carrito) {
+            const producto = productoPorId.get(item.id);
+            if (!producto) continue;
+            const precioFinal = producto.descuento > 0
+              ? producto.precio - (producto.precio * producto.descuento / 100)
+              : producto.precio;
+            montoTotal += precioFinal;
+            itemsParaPedido.push({
+              tipo: "producto",
+              titulo: producto.nombre,
+              conSenapi: false,
+              conIsbn: false,
+              periodicidad: null,
+              tipoAutor: null,
+              asociacionEncargaTitulo: false,
+              notas: `Precio unitario: Bs ${precioFinal}`,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error parseando productos del pago:", err);
+      }
+    }
+    if (montoTotal === 0 && itemsParaPedido.length === 0) {
+      montoTotal = pago.monto;
+      itemsParaPedido.push({ tipo: "desconocido", titulo: "Pago sin productos específicos" });
+    }
+    return { montoTotal, itemsParaPedido };
+  };
+
+  // 3. Caso: Cliente existente
   if (cliente) {
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
 
-    const pedidoActivo = await prisma.pedido.findFirst({
+    // Buscar un pedido activo (no completado)
+    let pedidoActivo = await prisma.pedido.findFirst({
       where: { clienteId: cliente.id, estado: { not: "completado" } },
     });
-    if (pedidoActivo) {
+
+    // Si no hay pedido activo, crear uno nuevo (nueva compra)
+    if (!pedidoActivo) {
+      const { montoTotal, itemsParaPedido } = await calcularPedido();
+      pedidoActivo = await prisma.pedido.create({
+        data: {
+          clienteId: cliente.id,
+          montoTotal,
+          montoPagado: pago.monto,
+          items: { create: itemsParaPedido },
+        },
+      });
+    } else {
+      // Solo sumar el pago al pedido activo existente
       await prisma.pedido.update({
         where: { id: pedidoActivo.id },
         data: { montoPagado: pedidoActivo.montoPagado + pago.monto },
       });
     }
-    return res.json(pagoActualizado);
+
+    // No generar credenciales ni enviar nuevas
+    return res.json({ ...pagoActualizado, pedido: pedidoActivo });
   }
 
-  // 3b. Cliente nuevo: crear desde cero usando CI como username
-  const token =
-    Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+  // 4. Caso: Cliente nuevo (crear cliente, credenciales, pedido)
+  const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 4);
 
@@ -581,7 +636,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
   });
   await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
 
-  // Generar username basado en CI (o fallback aleatorio si no hay CI)
+  // Generar username basado en CI
   let username = pago.ci ? String(pago.ci) : token.substring(0, 8);
   let counter = 1;
   while (await prisma.client.findFirst({ where: { clientUsername: username } })) {
@@ -605,49 +660,8 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     },
   });
 
-  // 4. Calcular monto total y preparar items del pedido
-  let montoTotal = 0;
-  const itemsParaPedido: any[] = [];
-
-  if (pago.productos) {
-    try {
-      const carrito = JSON.parse(pago.productos);
-      if (Array.isArray(carrito) && carrito.length > 0) {
-        const ids = carrito.map((item: any) => item.id).filter((id: any) => id != null);
-        const productosBD = await prisma.producto.findMany({ where: { id: { in: ids } } });
-        const productoPorId = new Map(productosBD.map(p => [p.id, p]));
-
-        for (const item of carrito) {
-          const producto = productoPorId.get(item.id);
-          if (!producto) continue;
-          const precioFinal =
-            producto.descuento > 0
-              ? producto.precio - (producto.precio * producto.descuento / 100)
-              : producto.precio;
-          montoTotal += precioFinal;
-          itemsParaPedido.push({
-            tipo: "producto",
-            titulo: producto.nombre,
-            conSenapi: false,
-            conIsbn: false,
-            periodicidad: null,
-            tipoAutor: null,
-            asociacionEncargaTitulo: false,
-            notas: `Precio unitario: Bs ${precioFinal}`,
-          });
-        }
-      }
-    } catch (err) {
-      console.error("Error parseando productos del pago:", err);
-    }
-  }
-
-  if (montoTotal === 0 && itemsParaPedido.length === 0) {
-    montoTotal = pago.monto;
-    itemsParaPedido.push({ tipo: "desconocido", titulo: "Pago sin productos específicos" });
-  }
-
-  // 5. Crear el pedido
+  // Calcular monto total y crear pedido
+  const { montoTotal, itemsParaPedido } = await calcularPedido();
   const pedido = await prisma.pedido.create({
     data: {
       clienteId: cliente.id,
@@ -657,7 +671,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     },
   });
 
-  // 6. Enviar credenciales por WhatsApp
+  // Enviar credenciales por WhatsApp
   const LINK_PORTAL = process.env.CLIENT_PORTAL_URL || "";
   const nombreCompleto = pago.nombreDeclarado || "Cliente";
   const celularCliente = pago.celular || "";
@@ -668,7 +682,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
       .catch((err) => console.error("❌ Error WhatsApp:", err));
   }, 5000);
 
-  // 7. Notificar al admin
+  // Notificar al admin
   try {
     const { notificarAdminMensaje } = await import("./whatsapp");
     const linkFormulario = `${LINK_PORTAL}/formulario/${token}`;
@@ -1534,7 +1548,7 @@ app.post("/cliente/items/:id/revision", authCliente, upload.array("archivos", 5)
   res.json(revision);
 });
 
-// ─── ENTREGAS ─────────────────────────────────────────────────────────────────
+// ─── ENTREGAS (antiguo, se mantiene por compatibilidad) ───────────────────────
 app.get("/entregas", auth, async (req, res) => {
   res.json(
     await prisma.entrega.findMany({
