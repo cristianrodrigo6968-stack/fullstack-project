@@ -224,6 +224,7 @@ model Pago {
   motivoRechazo   String?
   productos       String?
   celular         String?
+   ci        String?   // cédula de identidad del cliente
   creadoEn        DateTime @default(now())
   clienteId       Int?
   cliente         Client?  @relation(fields: [clienteId], references: [id])

@@ -7,8 +7,9 @@ function CarritoPage() {
   const { isMobile } = useWindowSize();
   const [carrito, setCarrito] = useState<any[]>([]);
 
-  const [step, setStep] = useState<"carrito" | "celular" | "pago" | "confirmacion">("carrito");
+  const [step, setStep] = useState<"carrito" | "datos" | "pago" | "confirmacion">("carrito");
   const [celular, setCelular] = useState("");
+  const [ci, setCi] = useState("");
   const [modo, setModo] = useState<"subir" | "declarar" | null>(null);
   const [comprobante, setComprobante] = useState<File | null>(null);
   const [nombreDeclarado, setNombreDeclarado] = useState("");
@@ -36,48 +37,42 @@ function CarritoPage() {
 
   const adelanto = total * 0.30;
 
-  const handleContinuarPago = () => {
+  const handleContinuarDatos = () => {
     if (!celular.trim() || celular.trim().length < 7) {
       alert("Ingresa un número de celular válido");
+      return;
+    }
+    if (!ci.trim() || ci.trim().length < 5) {
+      alert("Ingresa tu número de CI (cédula de identidad)");
       return;
     }
     setStep("pago");
   };
 
-  // ✅ Versión mejorada con FormData y logs
+  // Función para generar el payload de productos (con id y nombre)
+  const getProductosPayload = () => {
+    return carrito.map((p) => ({ id: p.id, nombre: p.nombre }));
+  };
+
   const handleSubirComprobante = async () => {
-    if (!comprobante || !nombreDeclarado || !monto || !celular) return;
+    if (!comprobante || !nombreDeclarado || !monto || !celular || !ci) return;
     setEnviando(true);
 
-    console.log("📤 Enviando comprobante...");
     const formData = new FormData();
     formData.append("comprobante", comprobante);
     formData.append("tipo", "imagen");
     formData.append("nombreDeclarado", nombreDeclarado);
     formData.append("monto", monto);
     formData.append("celular", celular);
-    formData.append(
-      "productos",
-      JSON.stringify(carrito.map((p) => ({ id: p.id, nombre: p.nombre })))
-    );
-
-    console.log("📦 FormData campos:", {
-      nombreDeclarado,
-      monto,
-      celular,
-      archivo: comprobante.name,
-      productos: carrito.map((p) => p.nombre),
-    });
+    formData.append("ci", ci);
+    formData.append("productos", JSON.stringify(getProductosPayload()));
 
     const res = await fetch(`${import.meta.env.VITE_API_URL}/pagos`, {
       method: "POST",
       body: formData,
     });
 
-    console.log("📡 Respuesta status:", res.status);
     const data = await res.json();
-    console.log("📡 Respuesta body:", data);
-
     if (res.ok) {
       setMensaje("✅ Pago registrado correctamente. La asociación se comunicará contigo al número proporcionado.");
       localStorage.removeItem("carrito");
@@ -89,41 +84,25 @@ function CarritoPage() {
     setEnviando(false);
   };
 
-  // ✅ Versión mejorada: también usa FormData
   const handleDeclararPago = async () => {
-    if (!nombreDeclarado || !monto || !celular) return;
+    if (!nombreDeclarado || !monto || !celular || !ci) return;
     setEnviando(true);
-
-    console.log("📤 Declarando pago...");
 
     const formData = new FormData();
     formData.append("nombreDeclarado", nombreDeclarado);
     formData.append("monto", monto);
     formData.append("tipo", "declarado");
     formData.append("celular", celular);
+    formData.append("ci", ci);
     if (descripcion) formData.append("descripcion", descripcion);
-    formData.append(
-      "productos",
-      JSON.stringify(carrito.map((p) => ({ id: p.id, nombre: p.nombre })))
-    );
-
-    console.log("📦 FormData campos:", {
-      nombreDeclarado,
-      monto,
-      celular,
-      descripcion,
-      productos: carrito.map((p) => p.nombre),
-    });
+    formData.append("productos", JSON.stringify(getProductosPayload()));
 
     const res = await fetch(`${import.meta.env.VITE_API_URL}/pagos`, {
       method: "POST",
       body: formData,
     });
 
-    console.log("📡 Respuesta status:", res.status);
     const data = await res.json();
-    console.log("📡 Respuesta body:", data);
-
     if (res.ok) {
       setMensaje("✅ Pago registrado correctamente. La asociación se comunicará contigo al número proporcionado.");
       localStorage.removeItem("carrito");
@@ -160,7 +139,7 @@ function CarritoPage() {
             <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
             <p style={{ color: "white", fontSize: 17, marginBottom: 8 }}>{mensaje}</p>
             <p style={{ color: "#94a3b8", fontSize: 14 }}>
-              Tu número de contacto es <strong style={{ color: "white" }}>{celular}</strong>. Te escribiremos pronto.
+              Tu número de contacto es <strong style={{ color: "white" }}>{celular}</strong> y tu CI <strong style={{ color: "white" }}>{ci}</strong>. Te escribiremos pronto.
             </p>
             <button onClick={() => navigate("/")} style={{ marginTop: 24, background: "#3b82f6", border: "none", padding: "12px 24px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 14 }}>
               Volver al inicio
@@ -168,7 +147,7 @@ function CarritoPage() {
           </div>
         )}
 
-        {carrito.length > 0 && (step === "carrito" || step === "celular" || step === "pago") && (
+        {carrito.length > 0 && (step === "carrito" || step === "datos" || step === "pago") && (
           <>
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
               {carrito.map((item, i) => {
@@ -179,7 +158,7 @@ function CarritoPage() {
                       <p style={{ color: "white", fontWeight: "bold" }}>{item.nombre}</p>
                       <p style={{ color: "#22c55e", fontWeight: "bold" }}>Bs {precio.toFixed(2)}</p>
                     </div>
-                    {(step === "carrito" || step === "celular") && (
+                    {(step === "carrito" || step === "datos") && (
                       <button onClick={() => quitarDelCarrito(i)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 16 }}>✕</button>
                     )}
                   </div>
@@ -199,7 +178,7 @@ function CarritoPage() {
             {step === "carrito" && (
               <div style={{ background: "#1e293b", padding: 24, borderRadius: 14 }}>
                 <button
-                  onClick={() => setStep("celular")}
+                  onClick={() => setStep("datos")}
                   style={{ width: "100%", padding: 14, background: "#22c55e", border: "none", borderRadius: 10, color: "white", fontWeight: "bold", fontSize: 16, cursor: "pointer" }}
                 >
                   💳 Proceder al pago
@@ -207,18 +186,24 @@ function CarritoPage() {
               </div>
             )}
 
-            {step === "celular" && (
+            {step === "datos" && (
               <div style={{ background: "#1e293b", padding: 24, borderRadius: 14 }}>
-                <h3 style={{ marginBottom: 16, fontSize: 18 }}>📱 Ingresa tu número de celular</h3>
-                <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 16 }}>La asociación te contactará a este número después de tu pago.</p>
+                <h3 style={{ marginBottom: 16, fontSize: 18 }}>📋 Tus datos</h3>
+                <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 16 }}>La asociación te contactará a estos datos para la gestión de tu pedido.</p>
                 <input
-                  placeholder="Ej: 70012345"
+                  placeholder="Número de celular (Ej: 70012345)"
                   value={celular}
                   onChange={e => setCelular(e.target.value.replace(/\D/g, ""))}
-                  style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: "#334155", color: "white", fontSize: 15, boxSizing: "border-box", marginBottom: 16 }}
+                  style={{ ...inputStyle, marginBottom: 12 }}
                 />
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={handleContinuarPago} style={{ flex: 1, padding: 12, background: "#22c55e", border: "none", borderRadius: 8, color: "white", fontWeight: "bold", fontSize: 14, cursor: "pointer" }}>
+                <input
+                  placeholder="Número de CI (Ej: 1234567)"
+                  value={ci}
+                  onChange={e => setCi(e.target.value.replace(/\D/g, ""))}
+                  style={inputStyle}
+                />
+                <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                  <button onClick={handleContinuarDatos} style={{ flex: 1, padding: 12, background: "#22c55e", border: "none", borderRadius: 8, color: "white", fontWeight: "bold", fontSize: 14, cursor: "pointer" }}>
                     Continuar
                   </button>
                   <button onClick={() => setStep("carrito")} style={{ padding: "12px 20px", background: "#334155", border: "none", borderRadius: 8, color: "white", fontWeight: "bold", fontSize: 14, cursor: "pointer" }}>
@@ -269,7 +254,7 @@ function CarritoPage() {
                     Paga <strong style={{ color: "white" }}>Bs {adelanto.toFixed(2)}</strong> (adelanto del 30%) y la asociación se comunicará contigo después de realizado el pago.
                   </p>
                   <p style={{ color: "#64748b", fontSize: 12, marginTop: 6 }}>
-                    📞 Te contactaremos al <strong style={{ color: "white" }}>{celular}</strong>
+                    📞 Te contactaremos al <strong style={{ color: "white" }}>{celular}</strong> y con CI <strong style={{ color: "white" }}>{ci}</strong>
                   </p>
                 </div>
 

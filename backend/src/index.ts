@@ -419,7 +419,8 @@ app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
     console.log("📎 req.file:", req.file ? `archivo: ${req.file.originalname}` : "sin archivo");
     console.log("═══════════════════════════════════════");
 
-    const { nombreDeclarado, monto, tipo, descripcion, productos, celular } = req.body;
+    // ✅ Ahora también extraemos ci
+    const { nombreDeclarado, monto, tipo, descripcion, productos, celular, ci } = req.body;
 
     if (!nombreDeclarado || !monto) {
       return res.status(400).json({ error: "Faltan datos obligatorios: nombreDeclarado y monto" });
@@ -435,6 +436,7 @@ app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
       }
     }
 
+    // ✅ Guardamos ci en la BD
     const pago = await prisma.pago.create({
       data: {
         nombreDeclarado,
@@ -444,6 +446,7 @@ app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
         imagenUrl,
         productos: productos || null,
         celular: celular || null,
+        ci: ci || null,
       },
     });
 
@@ -503,7 +506,6 @@ app.get("/pagos", auth, async (req, res) => {
       },
     },
   });
-  // Transformar para que cada pago tenga un campo "pedido" (el último pedido activo del cliente)
   const pagosConPedido = pagos.map(p => ({
     ...p,
     pedido: p.cliente?.pedidos?.[0] || null,
@@ -536,10 +538,22 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     data: { estado: "verificado" },
   });
 
-  // 2. Si ya tiene cliente, solo sumamos al pedido activo
-  if (pago.clienteId) {
+  // 2. Buscar cliente existente: primero por CI, luego por celular como fallback
+  let cliente = null;
+
+  if (pago.ci) {
+    cliente = await prisma.client.findFirst({ where: { ci: pago.ci } });
+  }
+  if (!cliente && pago.celular) {
+    cliente = await prisma.client.findFirst({ where: { celular: pago.celular } });
+  }
+
+  // 3a. Cliente existente: asociar pago y sumar al pedido activo
+  if (cliente) {
+    await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
+
     const pedidoActivo = await prisma.pedido.findFirst({
-      where: { clienteId: pago.clienteId, estado: { not: "completado" } },
+      where: { clienteId: cliente.id, estado: { not: "completado" } },
     });
     if (pedidoActivo) {
       await prisma.pedido.update({
@@ -550,43 +564,67 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     return res.json(pagoActualizado);
   }
 
-  // 3. Crear nuevo cliente
-  const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+  // 3b. Cliente nuevo: crear desde cero usando CI como username
+  const token =
+    Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 4);
-  const cliente = await prisma.client.create({
-    data: { token, expiresAt, nombreCompleto: pago.nombreDeclarado },
+
+  cliente = await prisma.client.create({
+    data: {
+      token,
+      expiresAt,
+      nombreCompleto: pago.nombreDeclarado,
+      ci: pago.ci || null,
+      celular: pago.celular || null,
+    },
   });
   await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
 
-  // 4. Calcular monto total y preparar items del pedido usando los precios REALES de la BD
+  // Generar username basado en CI (o fallback aleatorio si no hay CI)
+  let username = pago.ci ? String(pago.ci) : token.substring(0, 8);
+  let counter = 1;
+  while (await prisma.client.findFirst({ where: { clientUsername: username } })) {
+    username = `${pago.ci || token.substring(0, 8)}${counter}`;
+    counter++;
+  }
+
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let password = "";
+  for (let i = 0; i < 8; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  await prisma.client.update({
+    where: { id: cliente.id },
+    data: {
+      clientUsername: username,
+      clientPassword: hashedPassword,
+      credencialesGeneradaAt: new Date(),
+    },
+  });
+
+  // 4. Calcular monto total y preparar items del pedido
   let montoTotal = 0;
   const itemsParaPedido: any[] = [];
 
   if (pago.productos) {
     try {
-      const carrito = JSON.parse(pago.productos); // Array de {id, nombre}
+      const carrito = JSON.parse(pago.productos);
       if (Array.isArray(carrito) && carrito.length > 0) {
-        // Obtener los ids únicos
-        const ids = carrito.map(item => item.id).filter(id => id != null);
-        // Consultar productos en la BD
-        const productosBD = await prisma.producto.findMany({
-          where: { id: { in: ids } },
-        });
+        const ids = carrito.map((item: any) => item.id).filter((id: any) => id != null);
+        const productosBD = await prisma.producto.findMany({ where: { id: { in: ids } } });
         const productoPorId = new Map(productosBD.map(p => [p.id, p]));
 
-        // Recorrer cada ítem del carrito (cada uno representa 1 unidad)
         for (const item of carrito) {
           const producto = productoPorId.get(item.id);
           if (!producto) continue;
-
-          // Aplicar descuento si tiene
-          const precioFinal = producto.descuento > 0
-            ? producto.precio - (producto.precio * producto.descuento / 100)
-            : producto.precio;
+          const precioFinal =
+            producto.descuento > 0
+              ? producto.precio - (producto.precio * producto.descuento / 100)
+              : producto.precio;
           montoTotal += precioFinal;
-
-          // Crear un ItemPedido por cada unidad
           itemsParaPedido.push({
             tipo: "producto",
             titulo: producto.nombre,
@@ -604,7 +642,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     }
   }
 
-  // Si no se pudo calcular (ej. no hay productos), usar el monto del pago como respaldo
   if (montoTotal === 0 && itemsParaPedido.length === 0) {
     montoTotal = pago.monto;
     itemsParaPedido.push({ tipo: "desconocido", titulo: "Pago sin productos específicos" });
@@ -620,12 +657,23 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     },
   });
 
-  // 6. Notificar al admin (opcional)
+  // 6. Enviar credenciales por WhatsApp
+  const LINK_PORTAL = process.env.CLIENT_PORTAL_URL || "";
+  const nombreCompleto = pago.nombreDeclarado || "Cliente";
+  const celularCliente = pago.celular || "";
+
+  setTimeout(() => {
+    enviarWhatsAppCliente(celularCliente, nombreCompleto, username, password, LINK_PORTAL)
+      .then(() => console.log("✅ WhatsApp enviado"))
+      .catch((err) => console.error("❌ Error WhatsApp:", err));
+  }, 5000);
+
+  // 7. Notificar al admin
   try {
     const { notificarAdminMensaje } = await import("./whatsapp");
-    const linkFormulario = `${process.env.CLIENT_PORTAL_URL || ""}/formulario/${token}`;
+    const linkFormulario = `${LINK_PORTAL}/formulario/${token}`;
     await notificarAdminMensaje(
-      `✅ Pago verificado para ${pago.nombreDeclarado}. Total pedido: Bs ${montoTotal}. Link formulario: ${linkFormulario}`
+      `✅ Pago verificado para ${nombreCompleto}. Total: Bs ${montoTotal}. Link formulario: ${linkFormulario}`
     );
   } catch (err) {
     console.warn("No se pudo notificar:", err);
@@ -878,7 +926,6 @@ app.put("/clients/:id/regenerar", auth, async (req, res) => {
   );
 });
 
-// ✅ DELETE CLIENTS — FIX: borrar pedidos, items y revisiones antes de eliminar el cliente
 app.delete("/clients/:id", auth, async (req, res) => {
   const id = Number(req.params.id);
 
@@ -1636,6 +1683,7 @@ app.post("/clients/form/:token/libro-detalles", async (req, res) => {
   }
   res.json({ ok: true });
 });
+
 // ─── ITEMS PEDIDO (ADMIN) ───────────────────────────────────────────────────
 app.get("/items-pedido", auth, async (req, res) => {
   const items = await prisma.itemPedido.findMany({
@@ -1655,11 +1703,10 @@ app.get("/items-pedido", auth, async (req, res) => {
     },
     orderBy: { id: "desc" },
   });
-  // Transformamos para que cada item tenga un campo `cliente` plano
   const result = items.map(item => ({
     ...item,
     cliente: item.pedido.cliente,
-    creadoEn: item.pedido.creadoEn, // la fecha del pedido
+    creadoEn: item.pedido.creadoEn,
   }));
   res.json(result);
 });
@@ -1684,7 +1731,7 @@ app.put("/items-pedido/:id", auth, async (req, res) => {
 
 app.post("/items-pedido/:id/archivo", auth, upload.single("archivo"), async (req: any, res) => {
   const id = Number(req.params.id);
-  const { tipo } = req.body; // "word" o "pdf"
+  const { tipo } = req.body;
   if (!req.file) return res.status(400).json({ error: "Archivo requerido" });
   const ext = req.file.originalname.split(".").pop();
   const carpeta = tipo === "word" ? "items/word" : "items/pdf";
@@ -1704,5 +1751,6 @@ app.post("/items-pedido/:id/archivo", auth, upload.single("archivo"), async (req
     creadoEn: updated.pedido.creadoEn,
   });
 });
+
 // ─── START ────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

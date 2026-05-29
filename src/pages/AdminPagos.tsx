@@ -17,6 +17,7 @@ interface Pago {
   motivoRechazo: string | null;
   productos: string | null;
   celular: string | null;
+  ci: string | null;
   creadoEn: string;
   pedido?: {
     id: number;
@@ -42,6 +43,7 @@ function AdminPagos() {
   const [manualNombre, setManualNombre] = useState("");
   const [manualMonto, setManualMonto] = useState("");
   const [manualCelular, setManualCelular] = useState("");
+  const [manualCi, setManualCi] = useState("");
   const [manualPedidoId, setManualPedidoId] = useState("");
   const [agregandoManual, setAgregandoManual] = useState(false);
 
@@ -72,7 +74,6 @@ function AdminPagos() {
 
   useEffect(() => { load(); }, []);
 
-  // Filtro por mes (manual)
   const pagosMes = pagos.filter(p => {
     const fecha = new Date(p.creadoEn);
     return fecha.getMonth() === mes && fecha.getFullYear() === anio;
@@ -110,6 +111,7 @@ function AdminPagos() {
       nombreDeclarado: manualNombre,
       monto: Number(manualMonto),
       celular: manualCelular || null,
+      ci: manualCi || null,
       pedidoId: manualPedidoId ? Number(manualPedidoId) : null,
     };
     await fetch(`${API_URL}/pagos/manual`, {
@@ -120,6 +122,7 @@ function AdminPagos() {
     setManualNombre("");
     setManualMonto("");
     setManualCelular("");
+    setManualCi("");
     setManualPedidoId("");
     setAgregandoManual(false);
     await load();
@@ -162,7 +165,6 @@ function AdminPagos() {
         Gestiona los pagos de los clientes.
       </p>
 
-      {/* Filtros de estado */}
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         {["todos", "pendiente", "verificado", "rechazado"].map(f => (
           <button
@@ -184,11 +186,11 @@ function AdminPagos() {
         ))}
       </div>
 
-      {/* Formulario de pago manual */}
       <div style={{ background: "#1e293b", padding: 16, borderRadius: 12, marginBottom: 24, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <input placeholder="Nombre" value={manualNombre} onChange={e => setManualNombre(e.target.value)} style={inputStyle} />
         <input placeholder="Monto" type="number" value={manualMonto} onChange={e => setManualMonto(e.target.value)} style={{ ...inputStyle, width: 100 }} />
-        <input placeholder="Celular (opcional)" value={manualCelular} onChange={e => setManualCelular(e.target.value)} style={{ ...inputStyle, width: 140 }} />
+        <input placeholder="Celular" value={manualCelular} onChange={e => setManualCelular(e.target.value)} style={{ ...inputStyle, width: 140 }} />
+        <input placeholder="C.I." value={manualCi} onChange={e => setManualCi(e.target.value)} style={{ ...inputStyle, width: 120 }} />
         <select value={manualPedidoId} onChange={e => setManualPedidoId(e.target.value)} style={{ ...inputStyle, width: 200, cursor: "pointer" }}>
           <option value="">Sin pedido asociado</option>
         </select>
@@ -197,7 +199,6 @@ function AdminPagos() {
         </button>
       </div>
 
-      {/* Navegador de mes */}
       <NavegadorMes
         mesLabel={mesLabel}
         anio={anio}
@@ -209,21 +210,20 @@ function AdminPagos() {
       {loading ? (
         <p style={{ color: "#94a3b8" }}>Cargando pagos...</p>
       ) : selected ? (
-        /* ── VISTA DETALLE ── */
         <div>
           <button onClick={() => setSelected(null)} style={{ ...btnGray, marginBottom: 16 }}>← Volver a la lista</button>
           <div style={{ background: "#1e293b", padding: 24, borderRadius: 14 }}>
             <h2 style={{ marginBottom: 12 }}>Pago #{selected.id}</h2>
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16, marginBottom: 20 }}>
-              <div><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Nombre</p><p style={{ color: "white", fontWeight: "bold" }}>{selected.nombreDeclarado}</p></div>
-              <div><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Monto pagado</p><p style={{ color: "#22c55e", fontWeight: "bold", fontSize: 18 }}>Bs {selected.monto.toFixed(2)}</p></div>
-              <div><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Estado</p><span style={{ fontSize: 12, padding: "3px 12px", borderRadius: 99, background: getEstadoColor(selected.estado).bg, color: getEstadoColor(selected.estado).color, fontWeight: "bold" }}>{selected.estado}</span></div>
-              <div><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Tipo</p><p style={{ color: "white" }}>{selected.tipo === "imagen" ? "📷 Comprobante" : selected.tipo === "manual" ? "✍️ Manual" : "📝 Declarado"}</p></div>
-              <div><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Celular</p><p style={{ color: "white" }}>{selected.celular || "No registrado"}</p></div>
-              <div><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase" }}>Fecha</p><p style={{ color: "white" }}>{new Date(selected.creadoEn).toLocaleString()}</p></div>
+              <div><p style={{ color: "#64748b", fontSize: 11 }}>Nombre</p><p style={{ color: "white", fontWeight: "bold" }}>{selected.nombreDeclarado}</p></div>
+              <div><p style={{ color: "#64748b", fontSize: 11 }}>Monto pagado</p><p style={{ color: "#22c55e", fontWeight: "bold", fontSize: 18 }}>Bs {selected.monto.toFixed(2)}</p></div>
+              <div><p style={{ color: "#64748b", fontSize: 11 }}>Estado</p><span style={{ fontSize: 12, padding: "3px 12px", borderRadius: 99, background: getEstadoColor(selected.estado).bg, color: getEstadoColor(selected.estado).color, fontWeight: "bold" }}>{selected.estado}</span></div>
+              <div><p style={{ color: "#64748b", fontSize: 11 }}>Tipo</p><p style={{ color: "white" }}>{selected.tipo === "imagen" ? "📷 Comprobante" : selected.tipo === "manual" ? "✍️ Manual" : "📝 Declarado"}</p></div>
+              <div><p style={{ color: "#64748b", fontSize: 11 }}>Celular</p><p style={{ color: "white" }}>{selected.celular || "No registrado"}</p></div>
+              <div><p style={{ color: "#64748b", fontSize: 11 }}>C.I.</p><p style={{ color: "white" }}>{selected.ci || "No registrado"}</p></div>
+              <div><p style={{ color: "#64748b", fontSize: 11 }}>Fecha</p><p style={{ color: "white" }}>{new Date(selected.creadoEn).toLocaleString()}</p></div>
             </div>
 
-            {/* MOSTRAR INFORMACIÓN DEL PEDIDO ASOCIADO */}
             {selected.pedido && (
               <div style={{ marginBottom: 20, background: "#0f172a", padding: 16, borderRadius: 12 }}>
                 <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", marginBottom: 8 }}>📦 Pedido asociado</p>
@@ -238,9 +238,9 @@ function AdminPagos() {
               </div>
             )}
 
-            {selected.descripcion && (<div style={{ marginBottom: 16 }}><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", marginBottom: 4 }}>Descripción</p><p style={{ color: "white" }}>{selected.descripcion}</p></div>)}
+            {selected.descripcion && (<div style={{ marginBottom: 16 }}><p style={{ color: "#64748b", fontSize: 11 }}>Descripción</p><p style={{ color: "white" }}>{selected.descripcion}</p></div>)}
             {selected.motivoRechazo && (<div style={{ marginBottom: 16, background: "#7f1d1d", padding: 12, borderRadius: 8 }}><p style={{ color: "#fca5a5", fontSize: 13 }}>❌ {selected.motivoRechazo}</p></div>)}
-            {selected.imagenUrl && (<div style={{ marginBottom: 20 }}><p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", marginBottom: 8 }}>Comprobante</p><img src={selected.imagenUrl} alt="comprobante" style={{ maxWidth: "100%", borderRadius: 8 }} /></div>)}
+            {selected.imagenUrl && (<div style={{ marginBottom: 20 }}><p style={{ color: "#64748b", fontSize: 11 }}>Comprobante</p><img src={selected.imagenUrl} alt="comprobante" style={{ maxWidth: "100%", borderRadius: 8 }} /></div>)}
 
             {selected.estado === "pendiente" && (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -274,17 +274,13 @@ function AdminPagos() {
           </div>
         </div>
       ) : (
-        /* ── LISTA ── */
         <>
           {pagosFiltrados.length === 0 ? (
-            <p style={{ color: "#64748b", textAlign: "center", padding: 40 }}>
-              No hay pagos con este filtro en {mesLabel} {anio}.
-            </p>
+            <p style={{ color: "#64748b", textAlign: "center", padding: 40 }}>No hay pagos con este filtro en {mesLabel} {anio}.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {pagosFiltrados.map(p => {
                 const sc = getEstadoColor(p.estado);
-                // Calcular saldo pendiente si existe pedido asociado
                 const saldoPendiente = p.pedido ? (p.pedido.montoTotal - p.pedido.montoPagado) : null;
                 const estaPagado = saldoPendiente !== null && saldoPendiente <= 0;
                 return (
@@ -297,9 +293,9 @@ function AdminPagos() {
                           <span style={{ fontSize: 11, padding: "2px 10px", borderRadius: 99, background: sc.bg, color: sc.color, fontWeight: "bold" }}>{p.estado}</span>
                           <span style={{ fontSize: 11, color: "#64748b" }}>{p.tipo === "imagen" ? "📷" : p.tipo === "manual" ? "✍️" : "📝"} {p.tipo}</span>
                           {p.celular && <span style={{ fontSize: 11, color: "#64748b" }}>📞 {p.celular}</span>}
+                          {p.ci && <span style={{ fontSize: 11, color: "#64748b" }}>🆔 {p.ci}</span>}
                           <span style={{ fontSize: 11, color: "#64748b" }}>{new Date(p.creadoEn).toLocaleDateString()}</span>
                         </div>
-                        {/* Mostrar deuda si existe */}
                         {saldoPendiente !== null && (
                           <div style={{ marginTop: 6 }}>
                             <span style={{ fontSize: 11, color: estaPagado ? "#22c55e" : "#ef4444", fontWeight: "bold" }}>
@@ -321,7 +317,6 @@ function AdminPagos() {
   );
 }
 
-// Estilos reutilizables
 const btnGreen: React.CSSProperties = { background: "#22c55e", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
 const btnRed: React.CSSProperties = { background: "#ef4444", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
 const btnGray: React.CSSProperties = { background: "#334155", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
