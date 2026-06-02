@@ -144,9 +144,9 @@ function ProductoDetalle() {
           </div>
 
           {/* DESCRIPCIÓN ÚNICA (sin duplicación) */}
-          <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.8 }}>
-            {descripcionLimpia(producto.descripcion)}
-          </p>
+          <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
+  {descripcionLimpia(producto.descripcion)}
+</p>
 
           {/* BOTONES */}
           <button
