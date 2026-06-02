@@ -184,12 +184,15 @@ function AdminProductos() {
             <h3 style={{ marginBottom: 16 }}>{editId ? "Editar producto" : "Nuevo producto"}</h3>
             <input placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} style={inputStyle} />
       <textarea
-  placeholder="Descripción (puedes usar saltos de línea)"
+  placeholder="Descripción (puedes usar saltos de línea con Enter)"
   value={descripcion}
   onChange={e => setDescripcion(e.target.value)}
   onKeyDown={(e) => {
-    if (e.key === 'Enter') {
-      e.stopPropagation(); // Evita que el formulario se envíe
+    // Si presiona Enter sin Shift, permitimos salto de línea (comportamiento normal)
+    if (e.key === 'Enter' && !e.shiftKey) {
+      // No hacemos nada, el textarea ya maneja el salto de línea
+      // Solo evitamos que el formulario se envíe si hay un formulario padre
+      e.stopPropagation();
     }
   }}
   rows={6}
