@@ -8,6 +8,7 @@ import cloudinary from "./cloudinary";
 import bcrypt from "bcrypt";
 import { enviarCorreo } from "./mailer";
 import { enviarWhatsAppCliente } from "./whatsapp";
+import { generarReciboPDF } from "./pdfGenerator";
 
 const app = express();
 const prisma = new PrismaClient();
@@ -16,7 +17,7 @@ const SECRET = process.env.JWT_SECRET || "secret123";
 
 app.use(cors());
 app.use(express.json());
-
+app.use(express.static('public'));
 const upload = multer({ storage: multer.memoryStorage() });
 
 const subirImagen = (
@@ -370,22 +371,31 @@ app.delete("/projects/:id", auth, async (req, res) => {
 app.get("/productos", async (req, res) => {
   res.json(await prisma.producto.findMany({ where: { activo: true } }));
 });
-
 app.get("/productos/admin", auth, async (req, res) => {
   res.json(await prisma.producto.findMany({ orderBy: { creadoEn: "desc" } }));
 });
-
 app.post("/productos", auth, upload.single("imagen"), async (req: any, res) => {
   const { nombre, descripcion, precio, descuento } = req.body;
-  let imagenUrl: string | undefined;
-  if (req.file) {
-    imagenUrl = await subirImagen(req.file.buffer, "productos", "image");
-  }
-  res.json(await prisma.producto.create({
-    data: { nombre, descripcion, precio: Number(precio), descuento: descuento ? Number(descuento) : 0, imagenUrl },
-  }));
+  // Imagen opcional: por ahora no la subimos
+  let imagenUrl: string | undefined = undefined;
+  // if (req.file) {
+  //   try {
+  //     imagenUrl = await subirImagen(req.file.buffer, "productos", "image");
+  //   } catch (err) {
+  //     console.error("Error subiendo imagen:", err);
+  //   }
+  // }
+  const producto = await prisma.producto.create({
+    data: {
+      nombre,
+      descripcion,
+      precio: Number(precio),
+      descuento: descuento ? Number(descuento) : 0,
+      imagenUrl,
+    },
+  });
+  res.json(producto);
 });
-
 app.put("/productos/:id", auth, upload.single("imagen"), async (req: any, res) => {
   const id = Number(req.params.id);
   const { nombre, descripcion, precio, descuento, activo } = req.body;
@@ -403,7 +413,6 @@ app.put("/productos/:id", auth, upload.single("imagen"), async (req: any, res) =
 
   res.json(await prisma.producto.update({ where: { id }, data }));
 });
-
 app.delete("/productos/:id", auth, async (req, res) => {
   await prisma.producto.delete({ where: { id: Number(req.params.id) } });
   res.json({ ok: true });
@@ -414,10 +423,8 @@ app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
   try {
     console.log("═══════════════════════════════════════");
     console.log("📥 POST /pagos recibido");
-    console.log("📋 Content-Type:", req.headers["content-type"]);
     console.log("📦 req.body:", req.body);
     console.log("📎 req.file:", req.file ? `archivo: ${req.file.originalname}` : "sin archivo");
-    console.log("═══════════════════════════════════════");
 
     const { nombreDeclarado, monto, tipo, descripcion, productos, celular, ci } = req.body;
 
@@ -425,16 +432,16 @@ app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
       return res.status(400).json({ error: "Faltan datos obligatorios: nombreDeclarado y monto" });
     }
 
-    let imagenUrl: string | undefined;
-    if (req.file) {
-      try {
-        imagenUrl = await subirImagen(req.file.buffer, "pagos/comprobantes");
-      } catch (cloudErr) {
-        console.error("❌ Error subiendo imagen a Cloudinary:", cloudErr);
-        return res.status(500).json({ error: "Error al subir el comprobante" });
-      }
-    }
-
+  // Comenta el bloque de subirImagen
+let imagenUrl: string | undefined = undefined;
+// if (req.file) {
+//   try {
+//     imagenUrl = await subirImagen(req.file.buffer, "pagos/comprobantes");
+//   } catch (cloudErr) {
+//     console.error("❌ Error subiendo imagen a Cloudinary:", cloudErr);
+//     return res.status(500).json({ error: "Error al subir el comprobante" });
+//   }
+// }
     const pago = await prisma.pago.create({
       data: {
         nombreDeclarado,
@@ -454,12 +461,12 @@ app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
         `Nuevo pago pendiente de ${nombreDeclarado} por Bs ${monto}`
       );
     } catch (err) {
-      console.warn("⚠️  No se pudo notificar al admin:", err);
+      console.warn("⚠️ No se pudo notificar al admin:", err);
     }
 
     res.json(pago);
   } catch (error: any) {
-    console.error("💥 Error general en POST /pagos:", error?.message);
+    console.error("💥 Error en POST /pagos:", error?.message);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
@@ -526,19 +533,16 @@ app.delete("/pagos/:id", auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ─── VERIFICAR PAGO (MEJORADA) ───────────────────────────────────────────────
+// ─── VERIFICAR PAGO (VERSIÓN DEFINITIVA) ─────────────────────────────────────
 app.put("/pagos/:id/verificar", auth, async (req, res) => {
   const id = Number(req.params.id);
   const pago = await prisma.pago.findUnique({ where: { id } });
   if (!pago) return res.status(404).json({ error: "Pago no encontrado" });
 
-  // 1. Actualizar estado del pago
-  const pagoActualizado = await prisma.pago.update({
-    where: { id },
-    data: { estado: "verificado" },
-  });
+  // 1. Marcar pago como verificado
+  await prisma.pago.update({ where: { id }, data: { estado: "verificado" } });
 
-  // 2. Buscar o crear cliente (basado en CI o celular)
+  // 2. Buscar cliente por CI (principal) o celular (secundario)
   let cliente = null;
   if (pago.ci) {
     cliente = await prisma.client.findFirst({ where: { ci: pago.ci } });
@@ -548,14 +552,20 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
   }
 
   let esClienteNuevo = false;
+  let username: string | undefined;
+  let password: string | undefined;
+  let tokenFormulario: string | undefined;
+
+  // 3. Cliente nuevo: crear registro y credenciales
   if (!cliente) {
     esClienteNuevo = true;
-    const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+    tokenFormulario = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 4);
     cliente = await prisma.client.create({
       data: {
-        token, expiresAt,
+        token: tokenFormulario,
+        expiresAt,
         nombreCompleto: pago.nombreDeclarado,
         ci: pago.ci || null,
         celular: pago.celular || null,
@@ -563,34 +573,37 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     });
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
 
-    // Generar username con CI (si hay) o fallback
-    let username = pago.ci ? String(pago.ci) : token.substring(0, 8);
+    username = pago.ci ? String(pago.ci) : tokenFormulario.substring(0, 8);
     let counter = 1;
     while (await prisma.client.findFirst({ where: { clientUsername: username } })) {
-      username = `${pago.ci || token.substring(0, 8)}${counter}`;
+      username = `${pago.ci || tokenFormulario.substring(0, 8)}${counter}`;
       counter++;
     }
     const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let password = "";
+    password = "";
     for (let i = 0; i < 8; i++) password += chars.charAt(Math.floor(Math.random() * chars.length));
     const hashedPassword = await bcrypt.hash(password, 10);
     await prisma.client.update({
       where: { id: cliente.id },
-      data: { clientUsername: username, clientPassword: hashedPassword, credencialesGeneradaAt: new Date() },
+      data: {
+        clientUsername: username,
+        clientPassword: hashedPassword,
+        credencialesGeneradaAt: new Date(),
+      },
     });
-
-    // Enviar credenciales por WhatsApp (código que ya tenías)
-    const LINK_PORTAL = process.env.CLIENT_PORTAL_URL || "";
-    setTimeout(() => {
-      enviarWhatsAppCliente(pago.celular || "", pago.nombreDeclarado, username, password, LINK_PORTAL)
-        .catch(err => console.error("Error enviando WhatsApp:", err));
-    }, 5000);
   } else {
-    // Cliente existente: solo asociar el pago al cliente (sin tocar sus pedidos anteriores)
+    // Cliente existente: actualizar sus datos con la información más reciente del pago
+    await prisma.client.update({
+      where: { id: cliente.id },
+      data: {
+        celular: pago.celular || cliente.celular,
+        nombreCompleto: pago.nombreDeclarado || cliente.nombreCompleto,
+      },
+    });
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
   }
 
-  // 3. Calcular montoTotal e items para el NUEVO pedido (usando el carrito del pago actual)
+  // 4. Calcular montoTotal y items del nuevo pedido (solo con el carrito de este pago)
   let montoTotal = 0;
   const itemsParaPedido: any[] = [];
   if (pago.productos) {
@@ -600,7 +613,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
         const ids = carrito.map((item: any) => item.id).filter((id: any) => id != null);
         const productosBD = await prisma.producto.findMany({ where: { id: { in: ids } } });
         const productoPorId = new Map(productosBD.map(p => [p.id, p]));
-
         for (const item of carrito) {
           const producto = productoPorId.get(item.id);
           if (!producto) continue;
@@ -624,30 +636,87 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     itemsParaPedido.push({ tipo: "desconocido", titulo: "Pago sin productos específicos" });
   }
 
-  // 4. Crear el NUEVO pedido (siempre)
+  // 5. Crear nuevo pedido (siempre uno nuevo por cada pago verificado)
   const nuevoPedido = await prisma.pedido.create({
     data: {
       clienteId: cliente.id,
       montoTotal,
-      montoPagado: pago.monto,   // lo que pagó en este pago
+      montoPagado: pago.monto,
       items: { create: itemsParaPedido },
     },
   });
 
-  // Opcional: asociar el pedido al pago (requiere agregar campo pedidoId en Pago)
-  // await prisma.pago.update({ where: { id }, data: { pedidoId: nuevoPedido.id } });
+  // 6. Generar PDF del recibo
+  const itemsParaPDF = itemsParaPedido.map(item => ({
+    titulo: item.titulo || "Producto",
+    tipo: item.tipo,
+    precioUnitario: montoTotal / (itemsParaPedido.length || 1),
+  }));
+  const reciboData = {
+    cliente: {
+      nombreCompleto: cliente.nombreCompleto || pago.nombreDeclarado,
+      ci: cliente.ci || "",
+      celular: cliente.celular || "",
+      email: cliente.email || "",
+    },
+    pedido: {
+      id: nuevoPedido.id,
+      montoTotal,
+      montoPagado: pago.monto,
+      saldoPendiente: montoTotal - pago.monto,
+      fecha: new Date(),
+    },
+    items: itemsParaPDF,
+  };
+  let pdfBuffer: Buffer | undefined;
+  try {
+    pdfBuffer = await generarReciboPDF(reciboData);
+  } catch (err) {
+    console.error("Error generando PDF:", err);
+  }
 
-  // 5. Notificar al admin (opcional)
+  // 7. Enviar notificación al admin (WhatsApp)
   try {
     const { notificarAdminMensaje } = await import("./whatsapp");
     const linkFormulario = `${process.env.CLIENT_PORTAL_URL || ""}/formulario/${cliente.token}`;
     await notificarAdminMensaje(
-      `✅ Nuevo pedido para ${cliente.nombreCompleto}. Total: Bs ${montoTotal}, Pagado: Bs ${pago.monto}. Link: ${linkFormulario}`
+      `✅ Nuevo pedido de ${cliente.nombreCompleto || pago.nombreDeclarado}. Total: Bs ${montoTotal}, Pagado: Bs ${pago.monto}. Link: ${linkFormulario}`
     );
-  } catch (err) { console.warn(err); }
+  } catch (err) {
+    console.warn("No se pudo notificar al admin:", err);
+  }
 
-  res.json({ ...pagoActualizado, pedido: nuevoPedido });
+  // 8. Enviar WhatsApp al cliente (con credenciales si es nuevo, o solo recibo si existe)
+  const LINK_PORTAL = process.env.CLIENT_PORTAL_URL || "";
+  if (esClienteNuevo && username && password) {
+    setTimeout(async () => {
+      await enviarWhatsAppCliente(
+        cliente.celular || "",
+        cliente.nombreCompleto || pago.nombreDeclarado,
+        username!,
+        password!,
+        LINK_PORTAL,
+        pdfBuffer,
+        `Recibo_Pedido_${nuevoPedido.id}.pdf`
+      );
+    }, 5000);
+  } else if (pdfBuffer) {
+    setTimeout(async () => {
+      await enviarWhatsAppCliente(
+        cliente.celular || "",
+        cliente.nombreCompleto || pago.nombreDeclarado,
+        "", // sin credenciales
+        "",
+        "",
+        pdfBuffer,
+        `Recibo_Pedido_${nuevoPedido.id}.pdf`
+      );
+    }, 5000);
+  }
+
+  res.json({ ...pago, clienteId: cliente.id, pedido: nuevoPedido });
 });
+
 app.put("/pagos/:id/rechazar", auth, async (req, res) => {
   const id = Number(req.params.id);
   const { motivoRechazo } = req.body;
@@ -672,8 +741,7 @@ app.get("/clients/form/:token", async (req, res) => {
 });
 
 app.post("/clients", auth, async (req, res) => {
-  const token =
-    Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+  const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 4);
   res.json(
@@ -801,7 +869,9 @@ app.put("/clients/form/:token", async (req, res) => {
       nombreCompletoEnvio,
       username,
       password,
-      LINK_PORTAL
+      LINK_PORTAL,
+      undefined,
+      undefined
     )
       .then(() => console.log("✅ WhatsApp enviado correctamente"))
       .catch((err) => console.error("❌ Error al enviar WhatsApp:", err));
@@ -880,8 +950,7 @@ app.put("/clients/:id/progreso", auth, async (req, res) => {
 });
 
 app.put("/clients/:id/regenerar", auth, async (req, res) => {
-  const token =
-    Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+  const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 4);
   res.json(
@@ -1084,7 +1153,9 @@ app.post("/items/:id/revision", auth, upload.array("archivos", 5), async (req: a
         item.pedido.cliente.nombreCompleto || "Cliente",
         "Nuevo avance disponible",
         "Revisa tu pedido",
-        process.env.CLIENT_PORTAL_URL || ""
+        process.env.CLIENT_PORTAL_URL || "",
+        undefined,
+        undefined
       );
     }
   } catch (err) {
@@ -1500,7 +1571,7 @@ app.post("/cliente/items/:id/revision", authCliente, upload.array("archivos", 5)
   res.json(revision);
 });
 
-// ─── ENTREGAS (antiguo, se mantiene por compatibilidad) ───────────────────────
+// ─── ENTREGAS (modelo antiguo) ───────────────────────────────────────────────
 app.get("/entregas", auth, async (req, res) => {
   res.json(
     await prisma.entrega.findMany({

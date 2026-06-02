@@ -7,7 +7,6 @@ function ProductoDetalle() {
   const navigate = useNavigate();
   const { isMobile } = useWindowSize();
   const [producto, setProducto] = useState<any | null>(null);
-  const [similares, setSimilares] = useState<any[]>([]);
   const [todosLosProductos, setTodosLosProductos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [agregado, setAgregado] = useState(false);
@@ -35,10 +34,6 @@ function ProductoDetalle() {
       .then((data: any[]) => {
         const encontrado = data.find(p => String(p.id) === String(id));
         setProducto(encontrado || null);
-        if (encontrado) {
-          const cat = getCategoria(encontrado.nombre);
-          setSimilares(data.filter(p => p.id !== encontrado.id && getCategoria(p.nombre) === cat).slice(0, 4));
-        }
         setTodosLosProductos(data.filter(p => String(p.id) !== String(id)));
         setLoading(false);
       })
@@ -80,6 +75,16 @@ function ProductoDetalle() {
   const precioFinal = producto.descuento > 0
     ? producto.precio - (producto.precio * producto.descuento / 100)
     : producto.precio;
+
+  // Función para limpiar descripciones que contengan código (ej: opciones del PDF)
+  const descripcionLimpia = (desc: string) => {
+    if (!desc) return "";
+    // Si la descripción parece código JavaScript (contiene "const" o "format:"), mostrar mensaje
+    if (desc.includes("const options") || desc.includes("format:")) {
+      return "Descripción no disponible. Por favor, contacta al administrador.";
+    }
+    return desc;
+  };
 
   return (
     <div style={{ background: "#000", color: "white", minHeight: "100vh", paddingTop: 80 }}>
@@ -138,22 +143,10 @@ function ProductoDetalle() {
             )}
           </div>
 
-          {/* DESCRIPCIÓN */}
+          {/* DESCRIPCIÓN ÚNICA (sin duplicación) */}
           <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.8 }}>
-            {producto.descripcion}
+            {descripcionLimpia(producto.descripcion)}
           </p>
-
-          {/* CARACTERÍSTICAS */}
-          <div style={{ background: "#0f172a", borderRadius: 14, padding: 20 }}>
-            <h4 style={{ color: "#cbd5e1", fontSize: 13, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
-              📋 Características
-            </h4>
-            <ul style={{ color: "#94a3b8", fontSize: 14, lineHeight: 2.2, paddingLeft: 20, margin: 0 }}>
-              {producto.descripcion?.split(".").filter((s: string) => s.trim()).slice(0, 5).map((item: string, idx: number) => (
-                <li key={idx}>{item.trim()}</li>
-              ))}
-            </ul>
-          </div>
 
           {/* BOTONES */}
           <button
@@ -182,41 +175,7 @@ function ProductoDetalle() {
         </div>
       </div>
 
-      {/* PRODUCTOS SIMILARES */}
-      {similares.length > 0 && (
-        <div style={{ maxWidth: 1100, margin: "60px auto 0", padding: isMobile ? "0 20px" : "0 40px" }}>
-          <div style={{ borderTop: "1px solid #1e293b", paddingTop: 40 }}>
-            <h3 style={{ fontSize: 20, marginBottom: 24, color: "#cbd5e1" }}>✨ Productos similares</h3>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
-              gap: 20, marginBottom: 20,
-            }}>
-              {similares.map((sim: any) => {
-                const precioSim = sim.descuento > 0 ? sim.precio - (sim.precio * sim.descuento / 100) : sim.precio;
-                return (
-                  <div key={sim.id} onClick={() => navigate(`/producto/${sim.id}`)} style={{
-                    background: "#0f172a", borderRadius: 14, overflow: "hidden",
-                    cursor: "pointer", border: "1px solid #1e293b", transition: "border-color 0.2s",
-                  }}>
-                    {sim.imagenUrl ? (
-                      <img src={sim.imagenUrl} alt={sim.nombre} style={{ width: "100%", height: 160, objectFit: "cover" }} />
-                    ) : (
-                      <div style={{ width: "100%", height: 160, background: "#1e293b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 }}>📦</div>
-                    )}
-                    <div style={{ padding: 14 }}>
-                      <h4 style={{ color: "white", fontSize: 13, marginBottom: 6 }}>{sim.nombre}</h4>
-                      <p style={{ color: "#22c55e", fontWeight: "bold", fontSize: 15, margin: 0 }}>Bs {precioSim.toFixed(2)}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TODOS LOS PRODUCTOS */}
+      {/* TODOS LOS PRODUCTOS (sin "similares") */}
       {todosLosProductos.length > 0 && (
         <div style={{ maxWidth: 1100, margin: "40px auto 0", padding: isMobile ? "0 20px 60px" : "0 40px 60px" }}>
           <div style={{ borderTop: "1px solid #1e293b", paddingTop: 40 }}>
