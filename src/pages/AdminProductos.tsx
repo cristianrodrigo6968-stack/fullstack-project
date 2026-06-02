@@ -183,10 +183,15 @@ function AdminProductos() {
           }}>
             <h3 style={{ marginBottom: 16 }}>{editId ? "Editar producto" : "Nuevo producto"}</h3>
             <input placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} style={inputStyle} />
-            <textarea
+      <textarea
   placeholder="Descripción (puedes usar saltos de línea)"
   value={descripcion}
   onChange={e => setDescripcion(e.target.value)}
+  onKeyDown={(e) => {
+    if (e.key === 'Enter') {
+      e.stopPropagation(); // Evita que el formulario se envíe
+    }
+  }}
   rows={6}
   style={{ width: "100%", padding: 10, marginBottom: 8, borderRadius: 8, border: "none", background: "#334155", color: "white", fontSize: 14, boxSizing: "border-box", resize: "vertical" }}
 />
