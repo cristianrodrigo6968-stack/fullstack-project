@@ -184,12 +184,12 @@ function AdminProductos() {
             <h3 style={{ marginBottom: 16 }}>{editId ? "Editar producto" : "Nuevo producto"}</h3>
             <input placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} style={inputStyle} />
             <textarea
-              placeholder="Descripción (puedes usar saltos de línea)"
-              value={descripcion}
-              onChange={e => setDescripcion(e.target.value)}
-              rows={6}
-              style={{ width: "100%", padding: 10, marginBottom: 8, borderRadius: 8, border: "none", background: "#334155", color: "white", fontSize: 14, boxSizing: "border-box", resize: "vertical" }}
-            />
+  placeholder="Descripción (puedes usar saltos de línea)"
+  value={descripcion}
+  onChange={e => setDescripcion(e.target.value)}
+  rows={6}
+  style={{ width: "100%", padding: 10, marginBottom: 8, borderRadius: 8, border: "none", background: "#334155", color: "white", fontSize: 14, boxSizing: "border-box", resize: "vertical" }}
+/>
             <input placeholder="Precio (Bs)" type="number" value={precio} onChange={e => setPrecio(e.target.value)} style={inputStyle} />
             <input placeholder="Descuento (%)" type="number" value={descuento} onChange={e => setDescuento(e.target.value)} style={inputStyle} />
             <label style={{ color: "#94a3b8", fontSize: 12, display: "block", marginBottom: 6 }}>Imagen del producto</label>
