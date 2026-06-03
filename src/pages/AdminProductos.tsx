@@ -188,9 +188,10 @@ function AdminProductos() {
   value={descripcion}
   onChange={e => setDescripcion(e.target.value)}
   onKeyDown={(e) => {
+    // Evita que el Enter cierre el modal o envíe formulario
     if (e.key === 'Enter') {
-      // Permitir que el textarea cree una nueva línea (comportamiento normal)
-      e.stopPropagation(); // Evita que el evento llegue al formulario
+      e.stopPropagation();
+      // No prevenir default para que el textarea reciba el salto
     }
   }}
   rows={6}
