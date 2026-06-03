@@ -387,20 +387,22 @@ app.get("/productos/admin", auth, async (req, res) => {
 
 app.post("/productos", auth, upload.single("imagen"), async (req, res) => {
   const { nombre, descripcion, precio, descuento } = req.body;
-  let imagenUrl: string | null = null;
-  if (req.file) {
-    console.log(`📷 Subiendo imagen para producto: ${nombre}`);
-    imagenUrl = await subirImagen(req.file.buffer, "productos", "image");
-  } else {
-    console.log(`ℹ️ Producto "${nombre}" sin imagen.`);
-  }
+  let imagenUrl: string | undefined = undefined;
+  // Comentar toda la lógica de subida por ahora
+  // if (req.file) {
+  //   try {
+  //     imagenUrl = await subirImagen(req.file.buffer, "productos", "image");
+  //   } catch (err) {
+  //     console.error("Error subiendo imagen:", err);
+  //   }
+  // }
   const producto = await prisma.producto.create({
     data: {
       nombre,
       descripcion,
       precio: Number(precio),
       descuento: Number(descuento),
-      imagenUrl: imagenUrl || undefined,
+      imagenUrl,
     },
   });
   res.json(producto);
