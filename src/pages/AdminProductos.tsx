@@ -68,7 +68,8 @@ function AdminProductos() {
 
     const formData = new FormData();
     formData.append("nombre", nombre);
-    formData.append("descripcion", descripcion);
+    // Normalizamos saltos de línea a \n antes de enviar
+    formData.append("descripcion", descripcion.replace(/\r\n/g, "\n"));
     formData.append("precio", precio);
     formData.append("descuento", descuento);
     if (imagen) formData.append("imagen", imagen);
@@ -134,17 +135,33 @@ function AdminProductos() {
             }}>
               <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                 {p.imagenUrl && (
-                  <img src={p.imagenUrl} alt={p.nombre} style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8 }} />
+                  <img
+                    src={p.imagenUrl}
+                    alt={p.nombre}
+                    style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8 }}
+                  />
                 )}
                 <div>
                   <p style={{ color: "white", fontWeight: "bold", fontSize: 15 }}>{p.nombre}</p>
-                  <p style={{ color: "#94a3b8", fontSize: 12, marginTop: 4, whiteSpace: "pre-wrap" }}>{p.descripcion}</p>
+                  {/* whiteSpace: "pre-wrap" respeta los \n guardados en la BD */}
+                  <p style={{
+                    color: "#94a3b8",
+                    fontSize: 12,
+                    marginTop: 4,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                  }}>
+                    {p.descripcion}
+                  </p>
                   <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
                     <span style={{ color: "#22c55e", fontWeight: "bold" }}>
                       Bs {p.precio.toFixed(2)}
                     </span>
                     {p.descuento > 0 && (
-                      <span style={{ background: "#ef4444", color: "white", padding: "2px 10px", borderRadius: 99, fontSize: 12 }}>
+                      <span style={{
+                        background: "#ef4444", color: "white",
+                        padding: "2px 10px", borderRadius: 99, fontSize: 12,
+                      }}>
                         -{p.descuento}%
                       </span>
                     )}
@@ -182,25 +199,50 @@ function AdminProductos() {
             width: "100%", maxWidth: 460, color: "white",
           }}>
             <h3 style={{ marginBottom: 16 }}>{editId ? "Editar producto" : "Nuevo producto"}</h3>
-            <input placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} style={inputStyle} />
-<textarea
-  placeholder="Descripción (puedes usar saltos de línea con Enter)"
-  value={descripcion}
-  onChange={e => setDescripcion(e.target.value)}
-  onKeyDown={(e) => {
-    // Evita que el Enter cierre el modal o envíe formulario
-    if (e.key === 'Enter') {
-      e.stopPropagation();
-      // No prevenir default para que el textarea reciba el salto
-    }
-  }}
-  rows={6}
-  style={{ width: "100%", padding: 10, marginBottom: 8, borderRadius: 8, border: "none", background: "#334155", color: "white", fontSize: 14, boxSizing: "border-box", resize: "vertical" }}
-/>
-            <input placeholder="Precio (Bs)" type="number" value={precio} onChange={e => setPrecio(e.target.value)} style={inputStyle} />
-            <input placeholder="Descuento (%)" type="number" value={descuento} onChange={e => setDescuento(e.target.value)} style={inputStyle} />
-            <label style={{ color: "#94a3b8", fontSize: 12, display: "block", marginBottom: 6 }}>Imagen del producto</label>
-            <input type="file" accept="image/*" onChange={e => setImagen(e.target.files?.[0] || null)} style={{ color: "white", marginBottom: 12 }} />
+
+            <input
+              placeholder="Nombre"
+              value={nombre}
+              onChange={e => setNombre(e.target.value)}
+              style={inputStyle}
+            />
+
+            {/* ── TEXTAREA: Enter hace salto de línea de forma nativa.
+                No necesita onKeyDown. El valor se guarda con \n en el estado
+                y se normaliza antes de enviarlo al backend. ── */}
+            <textarea
+              placeholder="Descripción (Enter para saltar de línea)"
+              value={descripcion}
+              onChange={e => setDescripcion(e.target.value)}
+              rows={6}
+              style={textareaStyle}
+            />
+
+            <input
+              placeholder="Precio (Bs)"
+              type="number"
+              value={precio}
+              onChange={e => setPrecio(e.target.value)}
+              style={inputStyle}
+            />
+            <input
+              placeholder="Descuento (%)"
+              type="number"
+              value={descuento}
+              onChange={e => setDescuento(e.target.value)}
+              style={inputStyle}
+            />
+
+            <label style={{ color: "#94a3b8", fontSize: 12, display: "block", marginBottom: 6 }}>
+              Imagen del producto
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={e => setImagen(e.target.files?.[0] || null)}
+              style={{ color: "white", marginBottom: 12 }}
+            />
+
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               <button onClick={save} disabled={saving} style={btnBlue}>
                 {saving ? "Guardando..." : "💾 Guardar"}
@@ -214,10 +256,36 @@ function AdminProductos() {
   );
 }
 
-const inputStyle: React.CSSProperties = { width: "100%", padding: 10, marginBottom: 8, borderRadius: 8, border: "none", background: "#334155", color: "white", fontSize: 14, boxSizing: "border-box" };
-const btnBlue: React.CSSProperties = { background: "#3b82f6", border: "none", padding: "10px 18px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
-const btnRed: React.CSSProperties = { background: "#ef4444", border: "none", padding: "10px 18px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: 10,
+  marginBottom: 8,
+  borderRadius: 8,
+  border: "none",
+  background: "#334155",
+  color: "white",
+  fontSize: 14,
+  boxSizing: "border-box",
+};
+
+const textareaStyle: React.CSSProperties = {
+  width: "100%",
+  padding: 10,
+  marginBottom: 8,
+  borderRadius: 8,
+  border: "none",
+  background: "#334155",
+  color: "white",
+  fontSize: 14,
+  boxSizing: "border-box",
+  resize: "vertical",
+  lineHeight: "1.5",
+  fontFamily: "inherit",  // evita que el textarea use monospace por defecto
+};
+
+const btnBlue: React.CSSProperties   = { background: "#3b82f6", border: "none", padding: "10px 18px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
+const btnRed: React.CSSProperties    = { background: "#ef4444", border: "none", padding: "10px 18px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
 const btnYellow: React.CSSProperties = { background: "#f59e0b", border: "none", padding: "10px 18px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
-const btnGray: React.CSSProperties = { background: "#334155", border: "none", padding: "10px 18px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
+const btnGray: React.CSSProperties   = { background: "#334155", border: "none", padding: "10px 18px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
 
 export default AdminProductos;
