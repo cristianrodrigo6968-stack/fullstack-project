@@ -18,6 +18,7 @@ const SECRET = process.env.JWT_SECRET || "secret123";
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
 const upload = multer({ storage: multer.memoryStorage() });
 
 const subirImagen = (
@@ -374,23 +375,18 @@ app.get("/productos", async (req, res) => {
 app.get("/productos/admin", auth, async (req, res) => {
   res.json(await prisma.producto.findMany({ orderBy: { creadoEn: "desc" } }));
 });
-app.post("/productos", auth, upload.single("imagen"), async (req: any, res) => {
+app.post("/productos", auth, upload.single("imagen"), async (req, res) => {
   const { nombre, descripcion, precio, descuento } = req.body;
-  // Imagen opcional: por ahora no la subimos
-  let imagenUrl: string | undefined = undefined;
-  // if (req.file) {
-  //   try {
-  //     imagenUrl = await subirImagen(req.file.buffer, "productos", "image");
-  //   } catch (err) {
-  //     console.error("Error subiendo imagen:", err);
-  //   }
-  // }
+  let imagenUrl: string | undefined;
+  if (req.file) {
+    imagenUrl = await subirImagen(req.file.buffer, "productos", "image");
+  }
   const producto = await prisma.producto.create({
     data: {
       nombre,
       descripcion,
       precio: Number(precio),
-      descuento: descuento ? Number(descuento) : 0,
+      descuento: Number(descuento),
       imagenUrl,
     },
   });
