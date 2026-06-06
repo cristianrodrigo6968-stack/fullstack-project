@@ -10,15 +10,13 @@ function ProductoDetalle() {
   const [todosLosProductos, setTodosLosProductos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [agregado, setAgregado] = useState(false);
-  const [showImageModal, setShowImageModal] = useState(false); // Nuevo estado
+  const [showImageModal, setShowImageModal] = useState(false);
 
   const [carrito, setCarrito] = useState<any[]>(() => {
     const saved = localStorage.getItem("carrito");
     return saved ? JSON.parse(saved) : [];
   });
 
-  // ... resto de funciones (getCategoria, useEffect, agregarAlCarrito, etc.) igual que antes ...
-  // Mantén exactamente las mismas funciones que ya tenías (no las cambio)
   const getCategoria = (nombre: string): string => {
     const n = nombre.toLowerCase();
     if (n.includes("categoría a") || n.includes("categoria a")) return "libroA";
@@ -91,7 +89,6 @@ function ProductoDetalle() {
     <div style={{ background: "#000", color: "white", minHeight: "100vh", paddingTop: 80 }}>
 
       {/* Modal para ver imagen en grande */}
-    {/* Modal para ver imagen en grande (con scroll) */}
       {showImageModal && (
         <div
           onClick={() => setShowImageModal(false)}
@@ -101,10 +98,10 @@ function ProductoDetalle() {
             background: "rgba(0,0,0,0.9)",
             display: "flex",
             justifyContent: "center",
-            alignItems: "flex-start", // Cambiado a flex-start para permitir scroll
+            alignItems: "flex-start",
             zIndex: 1000,
             cursor: "pointer",
-            overflowY: "auto", // Habilita scroll vertical
+            overflowY: "auto",
             overflowX: "hidden",
             padding: "40px 20px",
             boxSizing: "border-box"
@@ -174,30 +171,43 @@ function ProductoDetalle() {
         gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
         gap: 40,
       }}>
-        {/* IMAGEN (ahora clickeable) */}
+
+        {/* IMAGEN CLICKEABLE - CONTENEDOR FLEXIBLE */}
         <div
-          style={{
-            background: "#0f172a", borderRadius: 20,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 24, minHeight: 350, cursor: "pointer"
-          }}
           onClick={() => producto.imagenUrl && setShowImageModal(true)}
+          style={{
+            background: "#0f172a",
+            borderRadius: 20,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            minHeight: 300,
+            cursor: "pointer",
+            width: "100%",
+            boxSizing: "border-box",
+          }}
         >
           {producto.imagenUrl ? (
             <img
               src={producto.imagenUrl}
               alt={producto.nombre}
               style={{
-                width: "100%", height: "auto", maxHeight: "60vh",
-                objectFit: "contain", borderRadius: 14,
+                maxWidth: "100%",
+                maxHeight: "400px",
+                width: "auto",
+                height: "auto",
+                objectFit: "contain",
+                borderRadius: "12px",
+                display: "block",
               }}
             />
           ) : (
-            <div style={{ fontSize: 100, opacity: 0.4 }}>📦</div>
+            <div style={{ fontSize: "80px", opacity: 0.4 }}>📦</div>
           )}
         </div>
 
-        {/* INFO (sin cambios) */}
+        {/* INFO */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <h1 style={{ fontSize: isMobile ? 22 : 30, fontWeight: 700, color: "#f1f5f9", margin: 0 }}>
             {producto.nombre}
@@ -249,7 +259,7 @@ function ProductoDetalle() {
         </div>
       </div>
 
-      {/* TODOS LOS PRODUCTOS (sin cambios) */}
+      {/* TODOS LOS PRODUCTOS */}
       {todosLosProductos.length > 0 && (
         <div style={{ maxWidth: 1100, margin: "40px auto 0", padding: isMobile ? "0 20px 60px" : "0 40px 60px" }}>
           <div style={{ borderTop: "1px solid #1e293b", paddingTop: 40 }}>
