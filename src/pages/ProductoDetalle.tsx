@@ -1,6 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useWindowSize } from "../hooks/useWindowSize";
+
+interface Toast {
+  id: number;
+  y: number;
+}
 
 function ProductoDetalle() {
   const { id } = useParams();
@@ -9,8 +14,15 @@ function ProductoDetalle() {
   const [producto, setProducto] = useState<any | null>(null);
   const [todosLosProductos, setTodosLosProductos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [agregado, setAgregado] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
+
+  // Contador de veces agregado en esta sesión
+  const [vecesAgregado, setVecesAgregado] = useState(0);
+  // Toasts flotantes: cada click genera uno nuevo
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastIdRef = useRef(0);
+  // Animación del botón (rebote)
+  const [btnBounce, setBtnBounce] = useState(false);
 
   const [carrito, setCarrito] = useState<any[]>(() => {
     const saved = localStorage.getItem("carrito");
@@ -53,9 +65,23 @@ function ProductoDetalle() {
     else if (nombre.includes("categoría c")) tipo = "libroC";
     else if (nombre.includes("director")) tipo = "director";
     else if (nombre.includes("fundador")) tipo = "fundador";
+
     setCarrito(prev => [...prev, { ...p, tipo }]);
-    setAgregado(true);
-    setTimeout(() => setAgregado(false), 2000);
+    setVecesAgregado(prev => prev + 1);
+
+    // Animación de rebote en el botón
+    setBtnBounce(true);
+    setTimeout(() => setBtnBounce(false), 300);
+
+    // Toast flotante nuevo por cada click
+    const newId = ++toastIdRef.current;
+    // Offset vertical aleatorio pequeño para que no se apilen exactamente
+    const randomY = Math.floor(Math.random() * 20);
+    setToasts(prev => [...prev, { id: newId, y: randomY }]);
+    // Remover el toast después de la animación
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== newId));
+    }, 1800);
   };
 
   if (loading) return (
@@ -87,59 +113,57 @@ function ProductoDetalle() {
 
   return (
     <div style={{ background: "#000", color: "white", minHeight: "100vh", paddingTop: 80 }}>
+      <style>{`
+        @keyframes toastUp {
+          0%   { opacity: 0; transform: translateY(0px) scale(0.8); }
+          15%  { opacity: 1; transform: translateY(-10px) scale(1); }
+          70%  { opacity: 1; transform: translateY(-28px) scale(1); }
+          100% { opacity: 0; transform: translateY(-44px) scale(0.9); }
+        }
+        @keyframes btnBounce {
+          0%   { transform: scale(1); }
+          40%  { transform: scale(0.94); }
+          70%  { transform: scale(1.04); }
+          100% { transform: scale(1); }
+        }
+        @keyframes badgePop {
+          0%   { transform: scale(0.6); opacity: 0; }
+          60%  { transform: scale(1.2); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
 
-      {/* MODAL - imagen siempre completa, sin scroll, centrada en pantalla */}
+      {/* MODAL imagen */}
       {showImageModal && (
         <div
           onClick={() => setShowImageModal(false)}
           style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.92)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            cursor: "zoom-out",
-            padding: "60px 24px 24px",
-            boxSizing: "border-box",
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 1000, cursor: "zoom-out",
+            padding: "60px 24px 24px", boxSizing: "border-box",
           }}
         >
           <img
             src={producto.imagenUrl}
             alt={producto.nombre}
             style={{
-              maxWidth: "100%",
-              maxHeight: "100%",
-              objectFit: "contain",
-              borderRadius: 12,
-              display: "block",
+              maxWidth: "100%", maxHeight: "100%", objectFit: "contain",
+              borderRadius: 12, display: "block",
               boxShadow: "0 0 60px rgba(0,0,0,0.8)",
             }}
           />
           <button
             onClick={(e) => { e.stopPropagation(); setShowImageModal(false); }}
             style={{
-              position: "fixed",
-              top: 16,
-              right: 16,
-              background: "rgba(255,255,255,0.15)",
-              border: "none",
-              color: "white",
-              fontSize: 22,
-              cursor: "pointer",
-              borderRadius: "50%",
-              width: 40,
-              height: 40,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backdropFilter: "blur(8px)",
-              zIndex: 1001,
+              position: "fixed", top: 16, right: 16,
+              background: "rgba(255,255,255,0.15)", border: "none", color: "white",
+              fontSize: 22, cursor: "pointer", borderRadius: "50%",
+              width: 40, height: 40, display: "flex",
+              alignItems: "center", justifyContent: "center",
+              backdropFilter: "blur(8px)", zIndex: 1001,
             }}
-          >
-            ✕
-          </button>
+          >✕</button>
         </div>
       )}
 
@@ -150,7 +174,7 @@ function ProductoDetalle() {
         </span>
       </div>
 
-      {/* TÍTULO Y PRECIO — arriba, ancho completo */}
+      {/* TÍTULO Y PRECIO */}
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: isMobile ? "0 20px 24px" : "0 40px 24px" }}>
         <h1 style={{ fontSize: isMobile ? 22 : 32, fontWeight: 700, color: "#f1f5f9", margin: "0 0 12px 0" }}>
           {producto.nombre}
@@ -172,7 +196,7 @@ function ProductoDetalle() {
         </div>
       </div>
 
-      {/* IMAGEN (izq) + DESCRIPCIÓN Y BOTONES (der) */}
+      {/* IMAGEN + DESCRIPCIÓN */}
       <div style={{
         maxWidth: 1100, margin: "0 auto",
         padding: isMobile ? "0 20px" : "0 40px",
@@ -186,11 +210,8 @@ function ProductoDetalle() {
         <div
           onClick={() => producto.imagenUrl && setShowImageModal(true)}
           style={{
-            borderRadius: 20,
-            cursor: producto.imagenUrl ? "zoom-in" : "default",
-            width: "100%",
-            boxSizing: "border-box",
-            overflow: "hidden",
+            borderRadius: 20, cursor: producto.imagenUrl ? "zoom-in" : "default",
+            width: "100%", boxSizing: "border-box", overflow: "hidden",
             background: producto.imagenUrl ? "transparent" : "#0f172a",
           }}
         >
@@ -213,18 +234,75 @@ function ProductoDetalle() {
             {descripcionLimpia(producto.descripcion)}
           </p>
 
-          <button
-            onClick={() => agregarAlCarrito(producto)}
-            style={{
-              width: "100%", padding: 16,
-              background: agregado ? "#16a34a" : "#22c55e",
-              border: "none", borderRadius: 12,
-              color: "white", fontWeight: "bold", fontSize: 18, cursor: "pointer",
-              transition: "background 0.3s",
-            }}
-          >
-            {agregado ? "✅ Agregado al carrito" : `🛒 Comprar — Bs ${precioFinal.toFixed(2)}`}
-          </button>
+          {/* BOTÓN COMPRAR con feedback */}
+          <div style={{ position: "relative" }}>
+
+            {/* Toasts flotantes — uno por cada click */}
+            {toasts.map(toast => (
+              <div
+                key={toast.id}
+                style={{
+                  position: "absolute",
+                  bottom: "100%",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  marginBottom: 8 + toast.y,
+                  background: "#16a34a",
+                  color: "white",
+                  padding: "7px 16px",
+                  borderRadius: 99,
+                  fontSize: 14,
+                  fontWeight: "bold",
+                  whiteSpace: "nowrap",
+                  pointerEvents: "none",
+                  animation: "toastUp 1.8s ease forwards",
+                  zIndex: 10,
+                  boxShadow: "0 4px 16px rgba(22,163,74,0.4)",
+                }}
+              >
+                ✅ ¡Agregado al carrito!
+              </div>
+            ))}
+
+            <button
+              onClick={() => agregarAlCarrito(producto)}
+              style={{
+                width: "100%",
+                padding: 16,
+                background: vecesAgregado > 0 ? "#16a34a" : "#22c55e",
+                border: "none",
+                borderRadius: 12,
+                color: "white",
+                fontWeight: "bold",
+                fontSize: 18,
+                cursor: "pointer",
+                animation: btnBounce ? "btnBounce 0.3s ease" : "none",
+                transition: "background 0.3s",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+              }}
+            >
+              <span>🛒 Comprar — Bs {precioFinal.toFixed(2)}</span>
+
+              {/* Badge con contador — aparece desde el 2do click */}
+              {vecesAgregado > 0 && (
+                <span style={{
+                  background: "rgba(0,0,0,0.25)",
+                  borderRadius: 99,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  padding: "2px 10px",
+                  minWidth: 24,
+                  textAlign: "center",
+                  animation: "badgePop 0.3s ease",
+                }}>
+                  ×{vecesAgregado}
+                </span>
+              )}
+            </button>
+          </div>
 
           <button
             onClick={() => navigate("/carrito")}
@@ -232,6 +310,7 @@ function ProductoDetalle() {
               width: "100%", padding: 14,
               background: "transparent", border: "2px solid #3b82f6", borderRadius: 12,
               color: "#3b82f6", fontWeight: "bold", fontSize: 16, cursor: "pointer",
+              transition: "background 0.2s",
             }}
           >
             Ir al carrito ({carrito.length})
