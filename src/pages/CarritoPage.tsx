@@ -2,6 +2,17 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWindowSize } from "../hooks/useWindowSize";
 
+// Función para redondear hacia arriba al múltiplo adecuado
+const redondearAdelanto = (valor: number): number => {
+  if (valor < 100) {
+    return Math.ceil(valor / 10) * 10;      // múltiplo de 10
+  } else if (valor < 1000) {
+    return Math.ceil(valor / 50) * 50;      // múltiplo de 50
+  } else {
+    return Math.ceil(valor / 100) * 100;    // múltiplo de 100
+  }
+};
+
 function CarritoPage() {
   const navigate = useNavigate();
   const { isMobile } = useWindowSize();
@@ -35,7 +46,8 @@ function CarritoPage() {
     return sum + precio;
   }, 0);
 
-  const adelanto = total * 0.30;
+  const adelantoBruto = total * 0.3;
+  const adelanto = redondearAdelanto(adelantoBruto);
 
   const handleContinuarDatos = () => {
     if (!celular.trim() || celular.trim().length < 7) {
@@ -49,7 +61,6 @@ function CarritoPage() {
     setStep("pago");
   };
 
-  // Función para generar el payload de productos (con id y nombre)
   const getProductosPayload = () => {
     return carrito.map((p) => ({ id: p.id, nombre: p.nombre }));
   };
@@ -168,10 +179,10 @@ function CarritoPage() {
 
             <div style={{ background: "#1e293b", padding: 20, borderRadius: 14, marginBottom: 24 }}>
               <p style={{ fontSize: 18, marginBottom: 8 }}>
-                Total: <strong style={{ color: "#22c55e" }}>Bs {total.toFixed(2)}</strong>
+                Total: <strong style={{ color: "#22c55e" }}>Bs {Math.round(total)}</strong>
               </p>
               <p style={{ color: "#60a5fa", fontSize: 14 }}>
-                Adelanto sugerido (30%): <strong>Bs {adelanto.toFixed(2)}</strong>
+                Adelanto sugerido (30%): <strong>Bs {adelanto}</strong>
               </p>
             </div>
 
@@ -251,7 +262,7 @@ function CarritoPage() {
 
                 <div style={{ background: "#1e3a5f", padding: 14, borderRadius: 8, marginBottom: 20, textAlign: "center" }}>
                   <p style={{ color: "#93c5fd", fontSize: 15, margin: 0 }}>
-                    Paga <strong style={{ color: "white" }}>Bs {adelanto.toFixed(2)}</strong> (adelanto del 30%) y la asociación se comunicará contigo después de realizado el pago.
+                    Paga <strong style={{ color: "white" }}>Bs {adelanto}</strong> (adelanto del 30%) y la asociación se comunicará contigo después de realizado el pago.
                   </p>
                   <p style={{ color: "#64748b", fontSize: 12, marginTop: 6 }}>
                     📞 Te contactaremos al <strong style={{ color: "white" }}>{celular}</strong> y con CI <strong style={{ color: "white" }}>{ci}</strong>
