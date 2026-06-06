@@ -31,14 +31,13 @@ const upload = multer({
 const subirImagen = async (
   buffer: Buffer,
   carpeta: string,
-  tipo: "image" | "raw" | "auto" = "image",
-  ext?: string
+  tipo: "image" | "raw" | "auto" = "image"
 ): Promise<string | null> => {
   try {
     const result = await new Promise<any>((resolve, reject) => {
       cloudinary.uploader
         .upload_stream(
-          { folder: carpeta, resource_type: tipo, format: ext },
+          { folder: carpeta, resource_type: tipo },
           (error, result) => {
             if (error || !result) return reject(error);
             resolve(result);
@@ -48,7 +47,7 @@ const subirImagen = async (
     });
     return result.secure_url;
   } catch (error) {
-    console.error(`❌ Error al subir archivo a Cloudinary (carpeta ${carpeta}):`, error);
+    console.error(`❌ Cloudinary error (${carpeta}):`, error);
     return null;
   }
 };
@@ -384,18 +383,22 @@ app.get("/productos", async (req, res) => {
 app.get("/productos/admin", auth, async (req, res) => {
   res.json(await prisma.producto.findMany({ orderBy: { creadoEn: "desc" } }));
 });
-
 app.post("/productos", auth, upload.single("imagen"), async (req, res) => {
   const { nombre, descripcion, precio, descuento } = req.body;
   let imagenUrl: string | undefined = undefined;
-  // Comentar toda la lógica de subida por ahora
-  // if (req.file) {
-  //   try {
-  //     imagenUrl = await subirImagen(req.file.buffer, "productos", "image");
-  //   } catch (err) {
-  //     console.error("Error subiendo imagen:", err);
-  //   }
-  // }
+  
+  console.log("📸 req.file:", req.file ? req.file.originalname : "ningún archivo");
+  
+  if (req.file) {
+    try {
+      imagenUrl = await subirImagen(req.file.buffer, "productos", "image");
+      console.log("✅ Imagen subida a Cloudinary:", imagenUrl);
+    } catch (err) {
+      console.error("❌ Error subiendo imagen:", err);
+      // No interrumpimos la creación del producto, solo logueamos
+    }
+  }
+  
   const producto = await prisma.producto.create({
     data: {
       nombre,
@@ -407,6 +410,7 @@ app.post("/productos", auth, upload.single("imagen"), async (req, res) => {
   });
   res.json(producto);
 });
+
 
 app.put("/productos/:id", auth, upload.single("imagen"), async (req, res) => {
   const id = Number(req.params.id);
