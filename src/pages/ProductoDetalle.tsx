@@ -58,43 +58,6 @@ function ProductoDetalle() {
     setTimeout(() => setAgregado(false), 2000);
   };
 
-  const formatearDescripcion = (texto: string) => {
-    if (!texto) return "";
-    let html = texto
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-    html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-    html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
-    const lineas = html.split("\n");
-    let enLista = false;
-    let resultado = "";
-    for (let i = 0; i < lineas.length; i++) {
-      let linea = lineas[i];
-      const esViñeta = /^[-•*]\s+/.test(linea);
-      if (esViñeta) {
-        if (!enLista) {
-          resultado += '<ul style="margin-top:0; margin-bottom:12px; padding-left:20px;">';
-          enLista = true;
-        }
-        const contenido = linea.replace(/^[-•*]\s+/, "");
-        resultado += `<li style="margin-bottom:4px;">${contenido}</li>`;
-      } else {
-        if (enLista) {
-          resultado += "</ul>";
-          enLista = false;
-        }
-        if (linea.trim() === "") {
-          resultado += "<br/>";
-        } else {
-          resultado += `<p style="margin:0 0 8px 0;">${linea}</p>`;
-        }
-      }
-    }
-    if (enLista) resultado += "</ul>";
-    return resultado;
-  };
-
   if (loading) return (
     <div style={{ background: "#000", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <p style={{ color: "#94a3b8" }}>Cargando producto...</p>
@@ -114,32 +77,77 @@ function ProductoDetalle() {
     ? producto.precio - (producto.precio * producto.descuento / 100)
     : producto.precio;
 
+  const descripcionLimpia = (desc: string) => {
+    if (!desc) return "";
+    if (desc.includes("const options") || desc.includes("format:")) {
+      return "Descripción no disponible. Por favor, contacta al administrador.";
+    }
+    return desc;
+  };
+
   return (
     <div style={{ background: "#000", color: "white", minHeight: "100vh", paddingTop: 80 }}>
 
-      {/* Modal para ver imagen completa con scroll */}
+      {/* Modal para ver imagen en grande */}
       {showImageModal && (
         <div
           onClick={() => setShowImageModal(false)}
           style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)",
-            display: "flex", justifyContent: "center", alignItems: "flex-start",
-            zIndex: 1000, cursor: "pointer", overflowY: "auto", padding: "40px 20px",
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.9)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "flex-start",
+            zIndex: 1000,
+            cursor: "pointer",
+            overflowY: "auto",
+            overflowX: "hidden",
+            padding: "40px 20px",
+            boxSizing: "border-box"
           }}
         >
-          <div style={{ position: "relative", maxWidth: "100%", margin: "auto" }}>
+          <div
+            style={{
+              position: "relative",
+              maxWidth: "100%",
+              margin: "auto"
+            }}
+          >
             <img
               src={producto.imagenUrl}
               alt={producto.nombre}
-              style={{ width: "100%", height: "auto", maxWidth: "100%", objectFit: "contain", borderRadius: 8 }}
+              style={{
+                width: "100%",
+                height: "auto",
+                maxWidth: "100%",
+                objectFit: "contain",
+                display: "block",
+                borderRadius: 8
+              }}
             />
             <button
-              onClick={(e) => { e.stopPropagation(); setShowImageModal(false); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowImageModal(false);
+              }}
               style={{
-                position: "fixed", top: "20px", right: "20px",
-                background: "rgba(0,0,0,0.6)", border: "none", color: "white", fontSize: 28,
-                cursor: "pointer", borderRadius: "50%", width: 44, height: 44,
-                display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)",
+                position: "fixed",
+                top: "20px",
+                right: "20px",
+                background: "rgba(0,0,0,0.6)",
+                border: "none",
+                color: "white",
+                fontSize: 28,
+                cursor: "pointer",
+                borderRadius: "50%",
+                width: 44,
+                height: 44,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backdropFilter: "blur(4px)",
+                zIndex: 1001
               }}
             >
               ✕
@@ -148,14 +156,14 @@ function ProductoDetalle() {
         </div>
       )}
 
-      {/* Breadcrumb */}
+      {/* BREADCRUMB */}
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: isMobile ? "16px 20px" : "16px 40px" }}>
         <span onClick={() => navigate("/")} style={{ color: "#3b82f6", cursor: "pointer", fontSize: 14 }}>
           ← Volver al catálogo
         </span>
       </div>
 
-      {/* Detalle principal */}
+      {/* DETALLE PRINCIPAL */}
       <div style={{
         maxWidth: 1100, margin: "0 auto",
         padding: isMobile ? "0 20px" : "0 40px",
@@ -163,13 +171,18 @@ function ProductoDetalle() {
         gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
         gap: 40,
       }}>
-        {/* Imagen clickeable con contenedor flexible */}
+
+        {/* IMAGEN CLICKEABLE - sin fondo grande, se adapta a la imagen */}
         <div
           onClick={() => producto.imagenUrl && setShowImageModal(true)}
           style={{
-            background: "#0f172a", borderRadius: 20, display: "flex", alignItems: "center",
-            justifyContent: "center", padding: "20px", minHeight: 300, cursor: "pointer",
-            width: "100%", boxSizing: "border-box",
+            borderRadius: 20,
+            cursor: "pointer",
+            width: "100%",
+            boxSizing: "border-box",
+            overflow: "hidden",
+            alignSelf: "start",
+            background: producto.imagenUrl ? "transparent" : "#0f172a",
           }}
         >
           {producto.imagenUrl ? (
@@ -177,20 +190,26 @@ function ProductoDetalle() {
               src={producto.imagenUrl}
               alt={producto.nombre}
               style={{
-                maxWidth: "100%", maxHeight: "400px", width: "auto", height: "auto",
-                objectFit: "contain", borderRadius: "12px", display: "block",
+                width: "100%",
+                height: "auto",
+                display: "block",
+                borderRadius: 20,
               }}
             />
           ) : (
-            <div style={{ fontSize: "80px", opacity: 0.4 }}>📦</div>
+            <div style={{
+              minHeight: 300, display: "flex", alignItems: "center",
+              justifyContent: "center", fontSize: "80px", opacity: 0.4,
+            }}>📦</div>
           )}
         </div>
 
-        {/* Información del producto */}
+        {/* INFO */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <h1 style={{ fontSize: isMobile ? 22 : 30, fontWeight: 700, color: "#f1f5f9", margin: 0 }}>
             {producto.nombre}
           </h1>
+
           <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
             {producto.descuento > 0 && (
               <span style={{ color: "#ef4444", fontSize: 18, textDecoration: "line-through" }}>
@@ -207,11 +226,9 @@ function ProductoDetalle() {
             )}
           </div>
 
-          {/* Descripción formateada */}
-          <div
-            style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.8 }}
-            dangerouslySetInnerHTML={{ __html: formatearDescripcion(producto.descripcion) }}
-          />
+          <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
+            {descripcionLimpia(producto.descripcion)}
+          </p>
 
           <button
             onClick={() => agregarAlCarrito(producto)}
@@ -239,7 +256,7 @@ function ProductoDetalle() {
         </div>
       </div>
 
-      {/* Todos los productos */}
+      {/* TODOS LOS PRODUCTOS */}
       {todosLosProductos.length > 0 && (
         <div style={{ maxWidth: 1100, margin: "40px auto 0", padding: isMobile ? "0 20px 60px" : "0 40px 60px" }}>
           <div style={{ borderTop: "1px solid #1e293b", paddingTop: 40 }}>
