@@ -10,12 +10,15 @@ function ProductoDetalle() {
   const [todosLosProductos, setTodosLosProductos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [agregado, setAgregado] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false); // Nuevo estado
 
   const [carrito, setCarrito] = useState<any[]>(() => {
     const saved = localStorage.getItem("carrito");
     return saved ? JSON.parse(saved) : [];
   });
 
+  // ... resto de funciones (getCategoria, useEffect, agregarAlCarrito, etc.) igual que antes ...
+  // Mantén exactamente las mismas funciones que ya tenías (no las cambio)
   const getCategoria = (nombre: string): string => {
     const n = nombre.toLowerCase();
     if (n.includes("categoría a") || n.includes("categoria a")) return "libroA";
@@ -76,10 +79,8 @@ function ProductoDetalle() {
     ? producto.precio - (producto.precio * producto.descuento / 100)
     : producto.precio;
 
-  // Función para limpiar descripciones que contengan código (ej: opciones del PDF)
   const descripcionLimpia = (desc: string) => {
     if (!desc) return "";
-    // Si la descripción parece código JavaScript (contiene "const" o "format:"), mostrar mensaje
     if (desc.includes("const options") || desc.includes("format:")) {
       return "Descripción no disponible. Por favor, contacta al administrador.";
     }
@@ -88,6 +89,36 @@ function ProductoDetalle() {
 
   return (
     <div style={{ background: "#000", color: "white", minHeight: "100vh", paddingTop: 80 }}>
+
+      {/* Modal para ver imagen en grande */}
+      {showImageModal && (
+        <div
+          onClick={() => setShowImageModal(false)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)",
+            display: "flex", justifyContent: "center", alignItems: "center",
+            zIndex: 1000, cursor: "pointer"
+          }}
+        >
+          <div style={{ maxWidth: "90vw", maxHeight: "90vh", position: "relative" }}>
+            <img
+              src={producto.imagenUrl}
+              alt={producto.nombre}
+              style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            />
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowImageModal(false); }}
+              style={{
+                position: "absolute", top: -40, right: 0,
+                background: "none", border: "none", color: "white",
+                fontSize: 30, cursor: "pointer"
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* BREADCRUMB */}
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: isMobile ? "16px 20px" : "16px 40px" }}>
@@ -104,29 +135,35 @@ function ProductoDetalle() {
         gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
         gap: 40,
       }}>
-        {/* IMAGEN */}
-        <div style={{
-          background: "#0f172a", borderRadius: 20,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          padding: 24, minHeight: 350,
-        }}>
+        {/* IMAGEN (ahora clickeable) */}
+        <div
+          style={{
+            background: "#0f172a", borderRadius: 20,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 24, minHeight: 350, cursor: "pointer"
+          }}
+          onClick={() => producto.imagenUrl && setShowImageModal(true)}
+        >
           {producto.imagenUrl ? (
-            <img src={producto.imagenUrl} alt={producto.nombre} style={{
-              width: "100%", height: "auto", maxHeight: "60vh",
-              objectFit: "contain", borderRadius: 14,
-            }} />
+            <img
+              src={producto.imagenUrl}
+              alt={producto.nombre}
+              style={{
+                width: "100%", height: "auto", maxHeight: "60vh",
+                objectFit: "contain", borderRadius: 14,
+              }}
+            />
           ) : (
             <div style={{ fontSize: 100, opacity: 0.4 }}>📦</div>
           )}
         </div>
 
-        {/* INFO */}
+        {/* INFO (sin cambios) */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <h1 style={{ fontSize: isMobile ? 22 : 30, fontWeight: 700, color: "#f1f5f9", margin: 0 }}>
             {producto.nombre}
           </h1>
 
-          {/* PRECIO */}
           <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
             {producto.descuento > 0 && (
               <span style={{ color: "#ef4444", fontSize: 18, textDecoration: "line-through" }}>
@@ -143,12 +180,10 @@ function ProductoDetalle() {
             )}
           </div>
 
-          {/* DESCRIPCIÓN ÚNICA (sin duplicación) */}
           <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
-  {descripcionLimpia(producto.descripcion)}
-</p>
+            {descripcionLimpia(producto.descripcion)}
+          </p>
 
-          {/* BOTONES */}
           <button
             onClick={() => agregarAlCarrito(producto)}
             style={{
@@ -175,7 +210,7 @@ function ProductoDetalle() {
         </div>
       </div>
 
-      {/* TODOS LOS PRODUCTOS (sin "similares") */}
+      {/* TODOS LOS PRODUCTOS (sin cambios) */}
       {todosLosProductos.length > 0 && (
         <div style={{ maxWidth: 1100, margin: "40px auto 0", padding: isMobile ? "0 20px 60px" : "0 40px 60px" }}>
           <div style={{ borderTop: "1px solid #1e293b", paddingTop: 40 }}>
@@ -213,7 +248,6 @@ function ProductoDetalle() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
