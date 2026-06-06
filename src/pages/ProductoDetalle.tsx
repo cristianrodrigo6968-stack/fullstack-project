@@ -91,27 +91,66 @@ function ProductoDetalle() {
     <div style={{ background: "#000", color: "white", minHeight: "100vh", paddingTop: 80 }}>
 
       {/* Modal para ver imagen en grande */}
+    {/* Modal para ver imagen en grande (con scroll) */}
       {showImageModal && (
         <div
           onClick={() => setShowImageModal(false)}
           style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)",
-            display: "flex", justifyContent: "center", alignItems: "center",
-            zIndex: 1000, cursor: "pointer"
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.9)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "flex-start", // Cambiado a flex-start para permitir scroll
+            zIndex: 1000,
+            cursor: "pointer",
+            overflowY: "auto", // Habilita scroll vertical
+            overflowX: "hidden",
+            padding: "40px 20px",
+            boxSizing: "border-box"
           }}
         >
-          <div style={{ maxWidth: "90vw", maxHeight: "90vh", position: "relative" }}>
+          <div
+            style={{
+              position: "relative",
+              maxWidth: "100%",
+              margin: "auto"
+            }}
+          >
             <img
               src={producto.imagenUrl}
               alt={producto.nombre}
-              style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              style={{
+                width: "100%",
+                height: "auto",
+                maxWidth: "100%",
+                objectFit: "contain",
+                display: "block",
+                borderRadius: 8
+              }}
             />
             <button
-              onClick={(e) => { e.stopPropagation(); setShowImageModal(false); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowImageModal(false);
+              }}
               style={{
-                position: "absolute", top: -40, right: 0,
-                background: "none", border: "none", color: "white",
-                fontSize: 30, cursor: "pointer"
+                position: "fixed",
+                top: "20px",
+                right: "20px",
+                background: "rgba(0,0,0,0.6)",
+                border: "none",
+                color: "white",
+                fontSize: 28,
+                cursor: "pointer",
+                borderRadius: "50%",
+                width: 44,
+                height: 44,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backdropFilter: "blur(4px)",
+                zIndex: 1001
               }}
             >
               ✕
