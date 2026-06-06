@@ -760,28 +760,43 @@ app.post(
     { name: "fotoCarnet2", maxCount: 1 },
   ]),
   async (req: any, res) => {
-    const client = await prisma.client.findUnique({ where: { token: req.params.token } });
-    if (!client) return res.status(404).json({ error: "Link no válido" });
-    if (new Date() > client.expiresAt) return res.status(410).json({ error: "Link expirado" });
+    try {
+      const client = await prisma.client.findUnique({ where: { token: req.params.token } });
+      if (!client) return res.status(404).json({ error: "Link no válido" });
+      if (new Date() > client.expiresAt) return res.status(410).json({ error: "Link expirado" });
 
-    const files = req.files as Record<string, Express.Multer.File[]>;
-    const data: any = {};
+      const files = req.files as Record<string, Express.Multer.File[]>;
+      const data: any = {};
 
-    if (files?.fotografia?.[0]) {
-      data.fotografia = await subirImagen(files.fotografia[0].buffer, "clientes/fotografias");
-    }
-    if (files?.fotoCarnet?.[0]) {
-      data.fotoCarnet = await subirImagen(files.fotoCarnet[0].buffer, "clientes/carnets");
-    }
-    if (files?.fotoCarnet2?.[0]) {
-      data.fotoCarnet2 = await subirImagen(files.fotoCarnet2[0].buffer, "clientes/carnets");
-    }
+      console.log("📸 Archivos recibidos:", Object.keys(files || {}));
 
-    const updated = await prisma.client.update({ where: { token: req.params.token }, data });
-    res.json(updated);
+      if (files?.fotografia?.[0]) {
+        console.log("Subiendo fotografia...");
+        data.fotografia = await subirImagen(files.fotografia[0].buffer, "clientes/fotografias");
+        if (!data.fotografia) throw new Error("Error al subir fotografía personal");
+      }
+      if (files?.fotoCarnet?.[0]) {
+        console.log("Subiendo fotoCarnet...");
+        data.fotoCarnet = await subirImagen(files.fotoCarnet[0].buffer, "clientes/carnets");
+        if (!data.fotoCarnet) throw new Error("Error al subir carnet (frente)");
+      }
+      if (files?.fotoCarnet2?.[0]) {
+        console.log("Subiendo fotoCarnet2...");
+        data.fotoCarnet2 = await subirImagen(files.fotoCarnet2[0].buffer, "clientes/carnets");
+        if (!data.fotoCarnet2) throw new Error("Error al subir carnet (reverso)");
+      }
+
+      const updated = await prisma.client.update({
+        where: { token: req.params.token },
+        data,
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("❌ Error en /clients/form/:token/fotos:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Error al subir las imágenes" });
+    }
   }
 );
-
 // ===================== ACTUALIZACIÓN FORMULARIO CLIENTE =====================
 app.put("/clients/form/:token", async (req, res) => {
   const client = await prisma.client.findUnique({ where: { token: req.params.token } });

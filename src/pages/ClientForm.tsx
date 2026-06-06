@@ -56,11 +56,9 @@ function ClientForm() {
   // — Fotos y documentos —
   const [fotografia, setFotografia]         = useState<File | null>(null);
   const [fotoPreview, setFotoPreview]       = useState<string>("");
-  // Carnet: puede ser imagen O documento (PDF/Word)
   const [fotoCarnet, setFotoCarnet]         = useState<File | null>(null);
   const [carnetPreview, setCarnetPreview]   = useState<string>("");
   const [carnetEsImagen, setCarnetEsImagen] = useState(true);
-  // Segunda foto de carnet (opcional)
   const [fotoCarnet2, setFotoCarnet2]       = useState<File | null>(null);
   const [carnetPreview2, setCarnetPreview2] = useState<string>("");
 
@@ -115,7 +113,6 @@ function ClientForm() {
       setFotoCarnet(file);
       setCarnetPreview(file.name);
       setCarnetEsImagen(false);
-      // Si cambia a documento, limpia la segunda foto
       setFotoCarnet2(null);
       setCarnetPreview2("");
     }
@@ -160,19 +157,34 @@ function ClientForm() {
     if (!validate()) return;
     setSaving(true);
     setSaveError("");
+    setSubiendoFotos(true);
     try {
-      // 1. Subir fotos/documentos
-      if (fotografia || fotoCarnet || fotoCarnet2) {
-        setSubiendoFotos(true);
-        const formData = new FormData();
-        if (fotografia)  formData.append("fotografia", fotografia);
-        if (fotoCarnet)  formData.append("fotoCarnet", fotoCarnet);
-        if (fotoCarnet2) formData.append("fotoCarnet2", fotoCarnet2);
-        await fetch(`${API_URL}/clients/form/${token}/fotos`, { method: "POST", body: formData });
-        setSubiendoFotos(false);
-      }
+      // 1. Subir fotos/documentos si hay cambios
+      const formData = new FormData();
+      if (fotografia)  formData.append("fotografia", fotografia);
+      if (fotoCarnet)  formData.append("fotoCarnet", fotoCarnet);
+      if (fotoCarnet2) formData.append("fotoCarnet2", fotoCarnet2);
 
-      // 2. Guardar datos personales
+      let fotosOk = true;
+      if (formData.has("fotografia") || formData.has("fotoCarnet") || formData.has("fotoCarnet2")) {
+        const fotosRes = await fetch(`${API_URL}/clients/form/${token}/fotos`, {
+          method: "POST",
+          body: formData,
+        });
+        if (!fotosRes.ok) {
+          const errData = await fotosRes.json();
+          setSaveError(errData.error || "Error al subir las imágenes. Intenta de nuevo.");
+          fotosOk = false;
+        }
+      }
+      if (!fotosOk) {
+        setSaving(false);
+        setSubiendoFotos(false);
+        return;
+      }
+      setSubiendoFotos(false);
+
+      // 2. Guardar datos personales (sin las fotos, ya se guardaron en el paso anterior)
       const nombreCompleto = `${nombres} ${apellidoPaterno} ${apellidoMaterno}`.trim();
       const res = await fetch(`${API_URL}/clients/form/${token}`, {
         method: "PUT",
@@ -181,7 +193,6 @@ function ClientForm() {
           ci, nombres, apellidoPaterno, apellidoMaterno, nombreCompleto,
           sexo, ciudad, direccion, fechaNacimiento, extension,
           profesion, celular, email,
-          // Servicios vacíos — se gestionan desde el portal
           pideLibros: false, cantLibros: 0,
           pideArticulos: false, cantArticulos: 0,
           pideDirector: false, pideFundador: false,
@@ -191,12 +202,15 @@ function ClientForm() {
 
       if (!res.ok) {
         const data = await res.json();
-        setSaveError(data.error || "Error al guardar");
+        setSaveError(data.error || "Error al guardar los datos personales");
         return;
       }
+
+      // Si llegamos aquí, todo fue bien
       setSuccess(true);
-    } catch {
-      setSaveError("Error al conectar con el servidor");
+    } catch (err) {
+      console.error("Error en save:", err);
+      setSaveError("Error al conectar con el servidor. Revisa tu conexión.");
     } finally {
       setSaving(false);
       setSubiendoFotos(false);
@@ -228,14 +242,10 @@ function ClientForm() {
           <p style={{ color: "#94a3b8", marginBottom: 32, fontSize: 15 }}>
             Tus datos personales han sido registrados correctamente. El equipo los revisará pronto y te contactará.
           </p>
-
-          {/* Resumen */}
           <div style={{ background: "#0f172a", padding: 20, borderRadius: 12, textAlign: "left", marginBottom: 24 }}>
             <p style={{ color: "#64748b", fontSize: 12, marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>
               Resumen de tus datos
             </p>
-
-            {/* Fotos */}
             <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
               {fotoPreview && (
                 <div style={{ textAlign: "center" }}>
@@ -263,8 +273,6 @@ function ClientForm() {
                 </div>
               )}
             </div>
-
-            {/* Campos */}
             {[
               { label: "C.I.",             value: ci },
               { label: "Nombres",          value: nombres },
@@ -285,7 +293,6 @@ function ClientForm() {
               </div>
             ))}
           </div>
-
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <button onClick={() => setSuccess(false)} style={{ background: "#334155", border: "none", padding: "12px 24px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 14 }}>
               ✏️ Editar mis datos
@@ -306,8 +313,6 @@ function ClientForm() {
   return (
     <div style={{ background: "#0f172a", minHeight: "100vh", padding: "40px 20px", color: "white" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
-
-        {/* Header */}
         <div style={{ background: "#1e293b", padding: 28, borderRadius: 16, marginBottom: 24, borderLeft: "4px solid #3b82f6" }}>
           <h1 style={{ marginBottom: 8, fontSize: 24 }}>📋 Formulario de Registro</h1>
           <p style={{ color: "#94a3b8", fontSize: 14 }}>
@@ -329,11 +334,8 @@ function ClientForm() {
           </div>
         )}
 
-        {/* ── SECCIÓN: DATOS PERSONALES ──────────────────────────────────── */}
         <div style={sectionStyle}>
           <h3 style={sectionTitle}>👤 Datos Personales</h3>
-
-          {/* C.I. */}
           <label style={labelStyle}>Cédula de Identidad <Req /></label>
           <input
             placeholder="Ej: 1234567"
@@ -343,7 +345,6 @@ function ClientForm() {
           />
           {errors.ci && <p style={errorText}>{errors.ci}</p>}
 
-          {/* Nombres */}
           <label style={labelStyle}>Nombres <Req /></label>
           <input
             placeholder="Ej: JUAN CARLOS"
@@ -353,7 +354,6 @@ function ClientForm() {
           />
           {errors.nombres && <p style={errorText}>{errors.nombres}</p>}
 
-          {/* Apellidos */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
               <label style={labelStyle}>Apellido Paterno <Req /></label>
@@ -377,7 +377,6 @@ function ClientForm() {
             </div>
           </div>
 
-          {/* Sexo y Ciudad */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
             <div>
               <label style={labelStyle}>Sexo <Req /></label>
@@ -403,7 +402,6 @@ function ClientForm() {
             </div>
           </div>
 
-          {/* Dirección */}
           <label style={labelStyle}>Dirección <Req /></label>
           <input
             placeholder="Ej: AVENIDA BOLIVIA NRO 7"
@@ -413,7 +411,6 @@ function ClientForm() {
           />
           {errors.direccion && <p style={errorText}>{errors.direccion}</p>}
 
-          {/* Fecha Nacimiento y Extensión */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
               <label style={labelStyle}>Fecha de Nacimiento <Req /></label>
@@ -439,7 +436,6 @@ function ClientForm() {
             </div>
           </div>
 
-          {/* Profesión */}
           <label style={labelStyle}>Profesión <Req /></label>
           <input
             placeholder="Ej: MAESTRO DE MATEMÁTICAS"
@@ -449,7 +445,6 @@ function ClientForm() {
           />
           {errors.profesion && <p style={errorText}>{errors.profesion}</p>}
 
-          {/* Celular y Email */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
               <label style={labelStyle}>Celular <Req /></label>
@@ -474,11 +469,9 @@ function ClientForm() {
           </div>
         </div>
 
-        {/* ── SECCIÓN: FOTOGRAFÍAS Y DOCUMENTOS ─────────────────────────── */}
         <div style={sectionStyle}>
           <h3 style={sectionTitle}>📸 Fotografías y Documentos</h3>
 
-          {/* Foto personal */}
           <label style={labelStyle}>Foto Personal <Req /></label>
           <div style={{
             background: errors.fotografia ? "#450a0a" : "#0f172a",
@@ -506,7 +499,6 @@ function ClientForm() {
           </div>
           {errors.fotografia && <p style={errorText}>{errors.fotografia}</p>}
 
-          {/* Carnet */}
           <label style={labelStyle}>Carnet de Identidad <Req /></label>
           <p style={{ color: "#64748b", fontSize: 12, marginBottom: 12 }}>
             Podés subir <strong style={{ color: "#94a3b8" }}>2 fotos</strong> (frente y reverso) o un <strong style={{ color: "#94a3b8" }}>documento PDF/Word</strong>
@@ -517,7 +509,6 @@ function ClientForm() {
             borderRadius: 12, padding: 20,
             border: errors.fotoCarnet ? "1px solid #ef4444" : "1px solid #334155",
           }}>
-            {/* Fila 1: Frente o Documento */}
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
               {carnetPreview && carnetEsImagen ? (
                 <img src={carnetPreview} alt="carnet" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #64748b", flexShrink: 0 }} />
@@ -546,7 +537,6 @@ function ClientForm() {
               </div>
             </div>
 
-            {/* Fila 2: Reverso (solo si el primero es imagen) */}
             {(carnetEsImagen || !fotoCarnet) && (
               <>
                 <div style={{ borderTop: "1px solid #1e293b", marginBottom: 16 }} />
@@ -574,7 +564,6 @@ function ClientForm() {
           </div>
           {errors.fotoCarnet && <p style={errorText}>{errors.fotoCarnet}</p>}
 
-          {/* Info */}
           <div style={{ background: "#1e3a5f", borderRadius: 8, padding: "10px 14px", marginTop: 12, display: "flex", gap: 8, alignItems: "flex-start" }}>
             <span style={{ fontSize: 16, flexShrink: 0 }}>ℹ️</span>
             <p style={{ color: "#93c5fd", fontSize: 12, margin: 0, lineHeight: 1.6 }}>
@@ -583,7 +572,6 @@ function ClientForm() {
           </div>
         </div>
 
-        {/* Botón guardar */}
         <button
           onClick={save}
           disabled={saving}
