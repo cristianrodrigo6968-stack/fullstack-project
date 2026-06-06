@@ -40,6 +40,23 @@ function Home() {
       <style>{`
         @keyframes blink { 50% { border-color: transparent; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes toastUp {
+          0%   { opacity: 0; transform: translateX(-50%) translateY(0px) scale(0.8); }
+          15%  { opacity: 1; transform: translateX(-50%) translateY(-10px) scale(1); }
+          70%  { opacity: 1; transform: translateX(-50%) translateY(-28px) scale(1); }
+          100% { opacity: 0; transform: translateX(-50%) translateY(-44px) scale(0.9); }
+        }
+        @keyframes btnBounce {
+          0%   { transform: scale(1); }
+          40%  { transform: scale(0.94); }
+          70%  { transform: scale(1.04); }
+          100% { transform: scale(1); }
+        }
+        @keyframes badgePop {
+          0%   { transform: scale(0.6); opacity: 0; }
+          60%  { transform: scale(1.2); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
         .social-link:hover { transform: scale(1.2) !important; background: #3b82f6 !important; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #111; }
@@ -178,6 +195,10 @@ function Home() {
 }
 
 // ─── Componente de Catálogo ──────────────────────────────────────────────────
+interface Toast {
+  id: number;
+}
+
 function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
   const navigate = useNavigate();
   const [productos, setProductos] = useState<any[]>([]);
@@ -187,6 +208,10 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
     const saved = localStorage.getItem("carrito");
     return saved ? JSON.parse(saved) : [];
   });
+
+  // Estado de feedback por producto: { [productoId]: { count, toasts, bounce } }
+  const [feedbacks, setFeedbacks] = useState<Record<number, { count: number; toasts: Toast[]; bounce: boolean }>>({});
+  const toastIdRef = useRef(0);
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL}/productos`)
@@ -199,7 +224,8 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
     localStorage.setItem("carrito", JSON.stringify(carrito));
   }, [carrito]);
 
-  const agregarAlCarrito = (producto: any) => {
+  const agregarAlCarrito = (producto: any, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const nombre = producto.nombre.toLowerCase();
     let tipo = "autor";
     if (nombre.includes("categoría a")) tipo = "libroA";
@@ -208,6 +234,38 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
     else if (nombre.includes("director")) tipo = "director";
     else if (nombre.includes("fundador")) tipo = "fundador";
     setCarrito(prev => [...prev, { ...producto, tipo }]);
+
+    // Feedback visual
+    const pid = producto.id;
+    const newToastId = ++toastIdRef.current;
+
+    setFeedbacks(prev => ({
+      ...prev,
+      [pid]: {
+        count: (prev[pid]?.count ?? 0) + 1,
+        toasts: [...(prev[pid]?.toasts ?? []), { id: newToastId }],
+        bounce: true,
+      },
+    }));
+
+    // Quitar bounce
+    setTimeout(() => {
+      setFeedbacks(prev => ({
+        ...prev,
+        [pid]: { ...prev[pid], bounce: false },
+      }));
+    }, 300);
+
+    // Quitar toast
+    setTimeout(() => {
+      setFeedbacks(prev => ({
+        ...prev,
+        [pid]: {
+          ...prev[pid],
+          toasts: (prev[pid]?.toasts ?? []).filter(t => t.id !== newToastId),
+        },
+      }));
+    }, 1800);
   };
 
   const getCategoria = (nombre: string): string => {
@@ -233,6 +291,11 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
     <>
       {productos.map((p: any) => {
         const precioFinal = p.descuento > 0 ? p.precio - (p.precio * p.descuento / 100) : p.precio;
+        const fb = feedbacks[p.id];
+        const count = fb?.count ?? 0;
+        const toasts = fb?.toasts ?? [];
+        const bounce = fb?.bounce ?? false;
+
         return (
           <div key={p.id} style={{
             background: "#111", borderRadius: 14,
@@ -240,6 +303,7 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
             overflow: "hidden", cursor: "pointer",
             display: "flex", flexDirection: "column",
           }}>
+            {/* Imagen — navega al detalle */}
             <div onClick={() => navigate(`/producto/${p.id}`)} style={{ position: "relative", width: "100%", paddingTop: "150%", overflow: "hidden" }}>
               {p.imagenUrl ? (
                 <img src={p.imagenUrl} alt={p.nombre} style={{
@@ -255,6 +319,7 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
                 }}>📦</div>
               )}
             </div>
+
             <div style={{ padding: 20, flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
               <h3 style={{ color: "#3b82f6", fontSize: 18, fontWeight: 700, margin: 0 }}>{p.nombre}</h3>
               <p style={{
@@ -282,16 +347,70 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
                   </span>
                 )}
               </div>
-              <button onClick={(e) => {
-                e.stopPropagation();
-                agregarAlCarrito(p);
-              }} style={{
-                marginTop: 8, width: "100%", padding: 10,
-                background: "#22c55e", border: "none", borderRadius: 8,
-                color: "white", fontWeight: "bold", fontSize: 14, cursor: "pointer",
-              }}>
-                🛒 Comprar
-              </button>
+
+              {/* BOTÓN CON FEEDBACK */}
+              <div style={{ position: "relative", marginTop: 8 }}>
+                {/* Toasts flotantes */}
+                {toasts.map(toast => (
+                  <div
+                    key={toast.id}
+                    style={{
+                      position: "absolute",
+                      bottom: "100%",
+                      left: "50%",
+                      marginBottom: 6,
+                      background: "#16a34a",
+                      color: "white",
+                      padding: "6px 14px",
+                      borderRadius: 99,
+                      fontSize: 13,
+                      fontWeight: "bold",
+                      whiteSpace: "nowrap",
+                      pointerEvents: "none",
+                      animation: "toastUp 1.8s ease forwards",
+                      zIndex: 10,
+                      boxShadow: "0 4px 14px rgba(22,163,74,0.45)",
+                    }}
+                  >
+                    ✅ ¡Agregado!
+                  </div>
+                ))}
+
+                <button
+                  onClick={(e) => agregarAlCarrito(p, e)}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    background: count > 0 ? "#16a34a" : "#22c55e",
+                    border: "none",
+                    borderRadius: 8,
+                    color: "white",
+                    fontWeight: "bold",
+                    fontSize: 14,
+                    cursor: "pointer",
+                    animation: bounce ? "btnBounce 0.3s ease" : "none",
+                    transition: "background 0.3s",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span>🛒 Comprar</span>
+                  {count > 0 && (
+                    <span style={{
+                      background: "rgba(0,0,0,0.25)",
+                      borderRadius: 99,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      padding: "1px 8px",
+                      animation: "badgePop 0.3s ease",
+                    }}>
+                      ×{count}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         );
