@@ -88,71 +88,58 @@ function ProductoDetalle() {
   return (
     <div style={{ background: "#000", color: "white", minHeight: "100vh", paddingTop: 80 }}>
 
-      {/* Modal para ver imagen en grande */}
+      {/* MODAL - imagen siempre completa, sin scroll, centrada en pantalla */}
       {showImageModal && (
         <div
           onClick={() => setShowImageModal(false)}
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.9)",
+            background: "rgba(0,0,0,0.92)",
             display: "flex",
+            alignItems: "center",
             justifyContent: "center",
-            alignItems: "flex-start",
             zIndex: 1000,
-            cursor: "pointer",
-            overflowY: "auto",
-            overflowX: "hidden",
-            padding: "40px 20px",
-            boxSizing: "border-box"
+            cursor: "zoom-out",
+            padding: "60px 24px 24px",
+            boxSizing: "border-box",
           }}
         >
-          <div
+          <img
+            src={producto.imagenUrl}
+            alt={producto.nombre}
             style={{
-              position: "relative",
               maxWidth: "100%",
-              margin: "auto"
+              maxHeight: "100%",
+              objectFit: "contain",
+              borderRadius: 12,
+              display: "block",
+              boxShadow: "0 0 60px rgba(0,0,0,0.8)",
+            }}
+          />
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowImageModal(false); }}
+            style={{
+              position: "fixed",
+              top: 16,
+              right: 16,
+              background: "rgba(255,255,255,0.15)",
+              border: "none",
+              color: "white",
+              fontSize: 22,
+              cursor: "pointer",
+              borderRadius: "50%",
+              width: 40,
+              height: 40,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backdropFilter: "blur(8px)",
+              zIndex: 1001,
             }}
           >
-            <img
-              src={producto.imagenUrl}
-              alt={producto.nombre}
-              style={{
-                width: "100%",
-                height: "auto",
-                maxWidth: "100%",
-                objectFit: "contain",
-                display: "block",
-                borderRadius: 8
-              }}
-            />
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowImageModal(false);
-              }}
-              style={{
-                position: "fixed",
-                top: "20px",
-                right: "20px",
-                background: "rgba(0,0,0,0.6)",
-                border: "none",
-                color: "white",
-                fontSize: 28,
-                cursor: "pointer",
-                borderRadius: "50%",
-                width: 44,
-                height: 44,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backdropFilter: "blur(4px)",
-                zIndex: 1001
-              }}
-            >
-              ✕
-            </button>
-          </div>
+            ✕
+          </button>
         </div>
       )}
 
@@ -163,25 +150,47 @@ function ProductoDetalle() {
         </span>
       </div>
 
-      {/* DETALLE PRINCIPAL */}
+      {/* TÍTULO Y PRECIO — arriba, ancho completo */}
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: isMobile ? "0 20px 24px" : "0 40px 24px" }}>
+        <h1 style={{ fontSize: isMobile ? 22 : 32, fontWeight: 700, color: "#f1f5f9", margin: "0 0 12px 0" }}>
+          {producto.nombre}
+        </h1>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+          {producto.descuento > 0 && (
+            <span style={{ color: "#ef4444", fontSize: 18, textDecoration: "line-through" }}>
+              Bs {producto.precio.toFixed(2)}
+            </span>
+          )}
+          <span style={{ color: "#22c55e", fontSize: 36, fontWeight: "bold" }}>
+            Bs {precioFinal.toFixed(2)}
+          </span>
+          {producto.descuento > 0 && (
+            <span style={{ background: "#ef4444", color: "white", padding: "3px 14px", borderRadius: 99, fontSize: 14, fontWeight: "bold" }}>
+              -{producto.descuento}%
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* IMAGEN (izq) + DESCRIPCIÓN Y BOTONES (der) */}
       <div style={{
         maxWidth: 1100, margin: "0 auto",
         padding: isMobile ? "0 20px" : "0 40px",
         display: "grid",
         gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
         gap: 40,
+        alignItems: "start",
       }}>
 
-        {/* IMAGEN CLICKEABLE - sin fondo grande, se adapta a la imagen */}
+        {/* IMAGEN */}
         <div
           onClick={() => producto.imagenUrl && setShowImageModal(true)}
           style={{
             borderRadius: 20,
-            cursor: "pointer",
+            cursor: producto.imagenUrl ? "zoom-in" : "default",
             width: "100%",
             boxSizing: "border-box",
             overflow: "hidden",
-            alignSelf: "start",
             background: producto.imagenUrl ? "transparent" : "#0f172a",
           }}
         >
@@ -189,44 +198,18 @@ function ProductoDetalle() {
             <img
               src={producto.imagenUrl}
               alt={producto.nombre}
-              style={{
-                width: "100%",
-                height: "auto",
-                display: "block",
-                borderRadius: 20,
-              }}
+              style={{ width: "100%", height: "auto", display: "block", borderRadius: 20 }}
             />
           ) : (
-            <div style={{
-              minHeight: 300, display: "flex", alignItems: "center",
-              justifyContent: "center", fontSize: "80px", opacity: 0.4,
-            }}>📦</div>
+            <div style={{ minHeight: 300, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px", opacity: 0.4 }}>
+              📦
+            </div>
           )}
         </div>
 
-        {/* INFO */}
+        {/* DESCRIPCIÓN Y BOTONES */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <h1 style={{ fontSize: isMobile ? 22 : 30, fontWeight: 700, color: "#f1f5f9", margin: 0 }}>
-            {producto.nombre}
-          </h1>
-
-          <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-            {producto.descuento > 0 && (
-              <span style={{ color: "#ef4444", fontSize: 18, textDecoration: "line-through" }}>
-                Bs {producto.precio.toFixed(2)}
-              </span>
-            )}
-            <span style={{ color: "#22c55e", fontSize: 34, fontWeight: "bold" }}>
-              Bs {precioFinal.toFixed(2)}
-            </span>
-            {producto.descuento > 0 && (
-              <span style={{ background: "#ef4444", color: "white", padding: "3px 14px", borderRadius: 99, fontSize: 14, fontWeight: "bold" }}>
-                -{producto.descuento}%
-              </span>
-            )}
-          </div>
-
-          <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
+          <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.8, whiteSpace: "pre-wrap", margin: 0 }}>
             {descripcionLimpia(producto.descripcion)}
           </p>
 
