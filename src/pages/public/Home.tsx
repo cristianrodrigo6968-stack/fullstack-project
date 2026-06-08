@@ -389,7 +389,7 @@ function Home() {
         </p>
       </footer>
 
-      {/* ── REDES SOCIALES FLOTANTES ── */}
+      {/* ── REDES SOCIALES FLOTANTES (corregidas) ── */}
       <div style={{
         position: "fixed", right: 20, bottom: 20,
         display: "flex", flexDirection: "column", gap: 10, zIndex: 999,
@@ -411,8 +411,10 @@ function Home() {
             >
               {s.label}
             </span>
-            
-              href={s.href} target="_blank" rel="noopener noreferrer"
+            <a
+              href={s.href}
+              target="_blank"
+              rel="noopener noreferrer"
               className="social-link"
               onMouseEnter={e => {
                 const tip = e.currentTarget.parentElement?.querySelector(`.tooltip-${i}`) as HTMLElement;
