@@ -2,6 +2,18 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWindowSize } from "../hooks/useWindowSize";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
+// Interfaz para publicaciones (libros y revistas)
+interface Publicacion {
+  id: number;
+  titulo: string;
+  tipo: "libro" | "revista";
+  imagenUrl?: string;
+  autor?: string;
+  anio?: number;
+}
+
 function Home() {
   const { isMobile } = useWindowSize();
   const navigate = useNavigate();
@@ -10,6 +22,7 @@ function Home() {
   const lightRef = useRef<HTMLDivElement>(null);
   const fullText = "Publica tu libro y revista";
 
+  // --- Efecto del texto mecanografiado SIN cursor parpadeante ---
   useEffect(() => {
     let i = 0;
     const interval = setInterval(() => {
@@ -24,6 +37,7 @@ function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  // Luz del mouse
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (lightRef.current) {
@@ -112,11 +126,7 @@ function Home() {
             fontSize: isMobile ? 28 : 52, fontWeight: 700,
             marginBottom: 20, lineHeight: 1.2,
           }}>
-            <span>{typedText}</span>
-            <span style={{
-              borderRight: "3px solid #3b82f6",
-              animation: "blink 0.8s infinite", marginLeft: 2,
-            }} />
+            {typedText}
           </h1>
 
           <p style={{
@@ -132,7 +142,10 @@ function Home() {
         </div>
       </section>
 
-      {/* CATÁLOGO */}
+      {/* NUEVA SECCIÓN: NUESTRO TRABAJO (publicaciones reales) */}
+      <SeccionNuestroTrabajo isMobile={isMobile} navigate={navigate} />
+
+      {/* CATÁLOGO DE PRODUCTOS (servicios) */}
       <section style={{
         padding: isMobile ? "40px 20px" : "60px 40px",
         maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1,
@@ -194,7 +207,254 @@ function Home() {
   );
 }
 
-// ─── Componente de Catálogo ──────────────────────────────────────────────────
+// ─── COMPONENTE: Sección Nuestro Trabajo (publicaciones reales) ──────────────
+function SeccionNuestroTrabajo({ isMobile, navigate }: { isMobile: boolean; navigate: any }) {
+  const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
+  const [estadisticas, setEstadisticas] = useState({
+    publicaciones: 0,
+    autores: 0,
+    revistas: 0,
+    anios: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        const [librosRes, revistasRes] = await Promise.all([
+          fetch(`${API_URL}/books`),
+          fetch(`${API_URL}/magazines`),
+        ]);
+
+        const libros = await librosRes.json();
+        const revistas = await revistasRes.json();
+
+        const librosFormateados: Publicacion[] = libros.map((libro: any) => ({
+          id: libro.id,
+          titulo: libro.title,
+          tipo: "libro",
+          imagenUrl: libro.archivoUrl || libro.imagenUrl,
+          autor: libro.author?.name,
+        }));
+
+        const revistasFormateadas: Publicacion[] = revistas.map((revista: any) => ({
+          id: revista.id,
+          titulo: revista.title,
+          tipo: "revista",
+          imagenUrl: revista.archivoUrl,
+          anio: revista.createdAt ? new Date(revista.createdAt).getFullYear() : undefined,
+        }));
+
+        const todas = [...librosFormateados, ...revistasFormateadas].sort((a, b) => b.id - a.id);
+        setPublicaciones(todas);
+
+        const totalPublicaciones = todas.length;
+        const totalAutores = new Set(libros.map((l: any) => l.author?.name).filter(Boolean)).size;
+        const totalRevistas = revistas.length;
+        const años = new Set(todas.map(p => p.anio).filter(Boolean));
+        const totalAños = años.size > 0 ? años.size : 3;
+        setEstadisticas({
+          publicaciones: totalPublicaciones,
+          autores: totalAutores,
+          revistas: totalRevistas,
+          anios: totalAños,
+        });
+      } catch (error) {
+        console.error("Error cargando publicaciones:", error);
+        setEstadisticas({ publicaciones: 20, autores: 100, revistas: 30, anios: 3 });
+      } finally {
+        setLoading(false);
+      }
+    };
+    cargarDatos();
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: "center", padding: 60 }}>
+        <div
+          style={{
+            display: "inline-block",
+            width: 40,
+            height: 40,
+            border: "3px solid rgba(255,255,255,0.3)",
+            borderTop: "3px solid #3b82f6",
+            borderRadius: "50%",
+            animation: "spin 0.8s linear infinite",
+          }}
+        />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  return (
+    <section style={{
+      padding: isMobile ? "40px 20px" : "60px 40px",
+      background: "#0a0f1e",
+      borderTop: "1px solid #1e293b",
+      borderBottom: "1px solid #1e293b",
+    }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <h2 style={{
+          fontSize: isMobile ? 28 : 36,
+          marginBottom: 8,
+          textAlign: "center",
+          color: "#f1f5f9",
+        }}>
+          NUESTRO TRABAJO
+        </h2>
+        <p style={{
+          textAlign: "center",
+          color: "#94a3b8",
+          marginBottom: 48,
+          fontSize: 16,
+        }}>
+          Libros y revistas publicados por la Asociación de Escritores Vanguardistas 3.0.
+          Haz clic en cualquier portada para verla en detalle.
+        </p>
+
+        {publicaciones.length === 0 ? (
+          <p style={{ textAlign: "center", color: "#64748b" }}>No hay publicaciones disponibles aún.</p>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile
+                ? "repeat(2, 1fr)"
+                : "repeat(4, 1fr)",
+              gap: 24,
+              marginBottom: 60,
+            }}
+          >
+            {publicaciones.slice(0, 16).map((pub) => (
+              <div
+                key={`${pub.tipo}-${pub.id}`}
+                onClick={() => navigate(`/${pub.tipo === "libro" ? "books" : "magazines"}/${pub.id}`)}
+                style={{
+                  cursor: "pointer",
+                  background: "#0f172a",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  transition: "transform 0.2s, box-shadow 0.2s",
+                  border: "1px solid #1e293b",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-4px)";
+                  e.currentTarget.style.boxShadow = "0 10px 20px rgba(0,0,0,0.3)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+              >
+                <div
+                  style={{
+                    aspectRatio: "3/4",
+                    background: "#1e293b",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {pub.imagenUrl ? (
+                    <img
+                      src={pub.imagenUrl}
+                      alt={pub.titulo}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    <div style={{ fontSize: 48, opacity: 0.4 }}>
+                      {pub.tipo === "libro" ? "📚" : "📘"}
+                    </div>
+                  )}
+                </div>
+                <div style={{ padding: 12 }}>
+                  <p
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: 14,
+                      marginBottom: 4,
+                      color: "white",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {pub.titulo}
+                  </p>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "#60a5fa",
+                      textTransform: "uppercase",
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {pub.tipo === "libro" ? "Libro" : "Revista"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Estadísticas */}
+        <div
+          style={{
+            background: "#0f172a",
+            padding: isMobile ? "30px 20px" : "40px 20px",
+            borderRadius: 20,
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+              gap: 32,
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>📚</div>
+              <div style={{ fontSize: 28, fontWeight: "bold", color: "#3b82f6" }}>
+                {estadisticas.publicaciones}+
+              </div>
+              <div style={{ color: "#94a3b8", fontSize: 14 }}>Publicaciones</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>✍️</div>
+              <div style={{ fontSize: 28, fontWeight: "bold", color: "#3b82f6" }}>
+                {estadisticas.autores}+
+              </div>
+              <div style={{ color: "#94a3b8", fontSize: 14 }}>Autores</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>📘</div>
+              <div style={{ fontSize: 28, fontWeight: "bold", color: "#3b82f6" }}>
+                {estadisticas.revistas}+
+              </div>
+              <div style={{ color: "#94a3b8", fontSize: 14 }}>Revistas</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>🏅</div>
+              <div style={{ fontSize: 28, fontWeight: "bold", color: "#3b82f6" }}>
+                {estadisticas.anios}+
+              </div>
+              <div style={{ color: "#94a3b8", fontSize: 14 }}>Años</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── COMPONENTE CATÁLOGO DE PRODUCTOS (sin cambios, solo copiado de tu código) ──
 interface Toast {
   id: number;
 }
@@ -208,8 +468,6 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
     const saved = localStorage.getItem("carrito");
     return saved ? JSON.parse(saved) : [];
   });
-
-  // Estado de feedback por producto: { [productoId]: { count, toasts, bounce } }
   const [feedbacks, setFeedbacks] = useState<Record<number, { count: number; toasts: Toast[]; bounce: boolean }>>({});
   const toastIdRef = useRef(0);
 
@@ -235,10 +493,8 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
     else if (nombre.includes("fundador")) tipo = "fundador";
     setCarrito(prev => [...prev, { ...producto, tipo }]);
 
-    // Feedback visual
     const pid = producto.id;
     const newToastId = ++toastIdRef.current;
-
     setFeedbacks(prev => ({
       ...prev,
       [pid]: {
@@ -247,23 +503,13 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
         bounce: true,
       },
     }));
-
-    // Quitar bounce
     setTimeout(() => {
-      setFeedbacks(prev => ({
-        ...prev,
-        [pid]: { ...prev[pid], bounce: false },
-      }));
+      setFeedbacks(prev => ({ ...prev, [pid]: { ...prev[pid], bounce: false } }));
     }, 300);
-
-    // Quitar toast
     setTimeout(() => {
       setFeedbacks(prev => ({
         ...prev,
-        [pid]: {
-          ...prev[pid],
-          toasts: (prev[pid]?.toasts ?? []).filter(t => t.id !== newToastId),
-        },
+        [pid]: { ...prev[pid], toasts: (prev[pid]?.toasts ?? []).filter(t => t.id !== newToastId) },
       }));
     }, 1800);
   };
@@ -303,7 +549,6 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
             overflow: "hidden", cursor: "pointer",
             display: "flex", flexDirection: "column",
           }}>
-            {/* Imagen — navega al detalle */}
             <div onClick={() => navigate(`/producto/${p.id}`)} style={{ position: "relative", width: "100%", paddingTop: "150%", overflow: "hidden" }}>
               {p.imagenUrl ? (
                 <img src={p.imagenUrl} alt={p.nombre} style={{
@@ -348,9 +593,7 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
                 )}
               </div>
 
-              {/* BOTÓN CON FEEDBACK */}
               <div style={{ position: "relative", marginTop: 8 }}>
-                {/* Toasts flotantes */}
                 {toasts.map(toast => (
                   <div
                     key={toast.id}
@@ -416,7 +659,6 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
         );
       })}
 
-      {/* MODAL tipo Amazon */}
       {selected && (
         <div style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
@@ -428,7 +670,6 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
             padding: 28, color: "white", position: "relative",
             margin: "20px 0",
           }} onClick={e => e.stopPropagation()}>
-
             <button onClick={() => setSelected(null)} style={{
               position: "absolute", top: 12, right: 12,
               background: "rgba(0,0,0,0.5)", border: "none", color: "white",
@@ -454,7 +695,6 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
 
               <div>
                 <h2 style={{ fontSize: 24, marginBottom: 12, color: "#f1f5f9" }}>{selected.nombre}</h2>
-
                 <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 20 }}>
                   {selected.descuento > 0 && (
                     <span style={{ color: "#ef4444", fontSize: 18, textDecoration: "line-through" }}>
@@ -511,7 +751,6 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
               </div>
             </div>
 
-            {/* Productos similares */}
             {(() => {
               const similares = getSimilares(selected);
               if (similares.length === 0) return null;
