@@ -19,7 +19,7 @@ import AdminProductos from "./pages/admin/AdminProductos";
 import AdminMensajes from "./pages/admin/AdminMensajes";
 import Clients from "./pages/admin/Clients";
 import Entregas from "./pages/admin/Entregas";
-import Tasks from "./pages/admin/Tasks";
+
 import Magazines from "./pages/admin/Magazines";
 import Books from "./pages/admin/Books";
 import Articles from "./pages/admin/Articles";
@@ -60,7 +60,7 @@ function App() {
         <Route path="/admin/mensajes" element={<ProtectedRoute><AdminMensajes /></ProtectedRoute>} />
         <Route path="/admin/clientes" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
         <Route path="/admin/entregas" element={<ProtectedRoute><Entregas /></ProtectedRoute>} />
-        <Route path="/admin/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
+   
         <Route path="/admin/revistas" element={<ProtectedRoute><Magazines /></ProtectedRoute>} />
         <Route path="/admin/libros" element={<ProtectedRoute><Books /></ProtectedRoute>} />
         <Route path="/admin/articulos" element={<ProtectedRoute><Articles /></ProtectedRoute>} />
