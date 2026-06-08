@@ -46,22 +46,23 @@ function ClientForm() {
   const [subiendoFotos, setSubiendoFotos] = useState(false);
 
   // refs para scroll al primer error (tipado indexable)
-  const refs: { [key: string]: React.RefObject<HTMLDivElement> } = {
-    ci:              useRef<HTMLDivElement>(null),
-    nombres:         useRef<HTMLDivElement>(null),
-    apellidoPaterno: useRef<HTMLDivElement>(null),
-    apellidoMaterno: useRef<HTMLDivElement>(null),
-    sexo:            useRef<HTMLDivElement>(null),
-    ciudad:          useRef<HTMLDivElement>(null),
-    direccion:       useRef<HTMLDivElement>(null),
-    fechaNacimiento: useRef<HTMLDivElement>(null),
-    extension:       useRef<HTMLDivElement>(null),
-    profesion:       useRef<HTMLDivElement>(null),
-    celular:         useRef<HTMLDivElement>(null),
-    email:           useRef<HTMLDivElement>(null),
-    fotografia:      useRef<HTMLDivElement>(null),
-    fotoCarnet:      useRef<HTMLDivElement>(null),
-  };
+ // refs para scroll al primer error (sin anotación forzada)
+const refs: Record<string, React.RefObject<HTMLDivElement | null>> = {
+  ci: useRef<HTMLDivElement>(null),
+  nombres: useRef<HTMLDivElement>(null),
+  apellidoPaterno: useRef<HTMLDivElement>(null),
+  apellidoMaterno: useRef<HTMLDivElement>(null),
+  sexo: useRef<HTMLDivElement>(null),
+  ciudad: useRef<HTMLDivElement>(null),
+  direccion: useRef<HTMLDivElement>(null),
+  fechaNacimiento: useRef<HTMLDivElement>(null),
+  extension: useRef<HTMLDivElement>(null),
+  profesion: useRef<HTMLDivElement>(null),
+  celular: useRef<HTMLDivElement>(null),
+  email: useRef<HTMLDivElement>(null),
+  fotografia: useRef<HTMLDivElement>(null),
+  fotoCarnet: useRef<HTMLDivElement>(null),
+};
 
   // — Datos personales —
   const [ci, setCi]                           = useState("");
