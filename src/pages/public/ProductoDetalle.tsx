@@ -35,7 +35,7 @@ function ProductoDetalle() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`${import.meta.env.VITE_API_URL}/productos`)
+   fetch(`https://taskmanager-backend-ewud.onrender.com/productos`)
       .then(r => r.json())
       .then((data: any[]) => {
         const encontrado = data.find(p => String(p.id) === String(id));
