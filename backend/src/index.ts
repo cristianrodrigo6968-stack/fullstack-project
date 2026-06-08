@@ -15,30 +15,40 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.JWT_SECRET || "secret123";
 
-// ─── CORS CONFIGURATION (simplificada) ──────────────────────────────────────
+// ─── CORS CONFIGURATION (simplificada y robusta) ─────────────────────────────
 const allowedOrigins = [
   "https://fullstack-project-blond.vercel.app",
   "http://localhost:5173",
 ];
+
+// Usar cors con opciones explícitas (funciona para preflight)
 app.use(
   cors({
     origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    optionsSuccessStatus: 200,
   })
 );
 
+// Opcional: agregar middleware manual para logging y cabeceras extra (por si acaso)
+app.use((req, res, next) => {
+  // Registrar el origen de cada petición (útil para logs de Render)
+  console.log(`[${req.method}] ${req.originalUrl} - Origin: ${req.headers.origin || "no origin"}`);
+  next();
+});
+
+// Middlewares estándar
 app.use(express.json());
 app.use(express.static("public"));
 
+// Configuración de multer
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
 });
 
-// ─── Extender Express Request ──────────────────────────────────────────────
+// ─── Extender Express Request para incluir `user` ──────────────────────────
 declare global {
   namespace Express {
     interface Request {
@@ -73,7 +83,7 @@ const subirImagen = async (
   }
 };
 
-// Middleware de autenticación
+// ===================== MIDDLEWARES DE AUTENTICACIÓN =====================
 const auth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ error: "No token" });
