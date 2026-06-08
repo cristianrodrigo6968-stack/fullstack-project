@@ -2,17 +2,13 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWindowSize } from "../hooks/useWindowSize";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
-// Interfaz para publicaciones (libros y revistas)
-interface Publicacion {
-  id: number;
-  titulo: string;
-  tipo: "libro" | "revista";
-  imagenUrl?: string;
-  autor?: string;
-  anio?: number;
-}
+// --- Configuración del carrusel ---
+const TOTAL_IMAGENES = 20;
+const imagenes = Array.from({ length: TOTAL_IMAGENES }, (_, i) => ({
+  id: i + 1,
+  src: `/portadas/${i + 1}.jpg`,
+  alt: `Publicación ${i + 1}`,
+}));
 
 function Home() {
   const { isMobile } = useWindowSize();
@@ -22,7 +18,16 @@ function Home() {
   const lightRef = useRef<HTMLDivElement>(null);
   const fullText = "Publica tu libro y revista";
 
-  // --- Efecto del texto mecanografiado SIN cursor parpadeante ---
+  // --- Estado del carrusel ---
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const offsetRef = useRef(0);
+  const animRef = useRef<number>(0);
+  const speedRef = useRef(0.5);
+  const todasLasImagenes = [...imagenes, ...imagenes, ...imagenes];
+  const [selectedImg, setSelectedImg] = useState<string | null>(null);
+
+  // --- Hero: texto mecanografiado sin cursor ---
   useEffect(() => {
     let i = 0;
     const interval = setInterval(() => {
@@ -37,7 +42,7 @@ function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Luz del mouse
+  // --- Luz del mouse ---
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (lightRef.current) {
@@ -49,10 +54,37 @@ function Home() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
+  // --- Animación del carrusel ---
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+
+    const cardWidth = isMobile ? 180 : 260;
+    const gap = 20;
+    const totalWidth = imagenes.length * (cardWidth + gap);
+
+    const animate = () => {
+      if (!isPaused) {
+        offsetRef.current += speedRef.current;
+        if (offsetRef.current >= totalWidth) {
+          offsetRef.current = 0;
+        }
+        if (track) {
+          track.style.transform = `translateX(-${offsetRef.current}px)`;
+        }
+      }
+      animRef.current = requestAnimationFrame(animate);
+    };
+
+    animRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+    };
+  }, [isPaused, isMobile]);
+
   return (
     <div style={{ background: "#000", color: "white", overflowX: "hidden", minHeight: "100vh" }}>
       <style>{`
-        @keyframes blink { 50% { border-color: transparent; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes toastUp {
           0%   { opacity: 0; transform: translateX(-50%) translateY(0px) scale(0.8); }
@@ -71,11 +103,57 @@ function Home() {
           60%  { transform: scale(1.2); opacity: 1; }
           100% { transform: scale(1); opacity: 1; }
         }
+        @keyframes fadeInModal {
+          from { opacity: 0; transform: scale(0.9); }
+          to { opacity: 1; transform: scale(1); }
+        }
         .social-link:hover { transform: scale(1.2) !important; background: #3b82f6 !important; }
+        .pub-img:hover {
+          transform: scale(1.05) !important;
+          box-shadow: 0 0 30px rgba(59,130,246,0.5) !important;
+          border-color: #3b82f6 !important;
+          cursor: pointer;
+        }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #111; }
         ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
       `}</style>
+
+      {/* Modal para ver imagen en grande */}
+      {selectedImg && (
+        <div
+          onClick={() => setSelectedImg(null)}
+          style={{
+            position: "fixed", inset: 0,
+            background: "rgba(0,0,0,0.9)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 9999, padding: 20,
+          }}
+        >
+          <img
+            src={selectedImg}
+            alt="portada"
+            style={{
+              maxWidth: "90vw", maxHeight: "90vh",
+              borderRadius: 16, objectFit: "contain",
+              animation: "fadeInModal 0.3s ease",
+              boxShadow: "0 0 60px rgba(59,130,246,0.4)",
+            }}
+          />
+          <button
+            onClick={() => setSelectedImg(null)}
+            style={{
+              position: "fixed", top: 20, right: 20,
+              background: "#ef4444", border: "none",
+              borderRadius: "50%", width: 40, height: 40,
+              color: "white", fontSize: 18, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* LUZ DEL MOUSE */}
       <div ref={lightRef} style={{
@@ -142,8 +220,80 @@ function Home() {
         </div>
       </section>
 
-      {/* NUEVA SECCIÓN: NUESTRO TRABAJO (publicaciones reales) */}
-      <SeccionNuestroTrabajo isMobile={isMobile} navigate={navigate} />
+      {/* CARRUSEL DE PUBLICACIONES (local) */}
+      <div style={{ marginTop: -40, marginBottom: 40 }}>
+        <p style={{
+          color: "#3b82f6", fontSize: 12, textTransform: "uppercase",
+          letterSpacing: 3, marginBottom: 16, paddingLeft: isMobile ? 20 : 40,
+        }}>
+          📚 Publicaciones destacadas
+        </p>
+        <div
+          style={{ overflow: "hidden", width: "100%", position: "relative" }}
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+        >
+          {/* Gradientes laterales */}
+          <div style={{
+            position: "absolute", left: 0, top: 0, bottom: 0, width: 80,
+            background: "linear-gradient(to right, #000, transparent)",
+            zIndex: 2, pointerEvents: "none",
+          }} />
+          <div style={{
+            position: "absolute", right: 0, top: 0, bottom: 0, width: 80,
+            background: "linear-gradient(to left, #000, transparent)",
+            zIndex: 2, pointerEvents: "none",
+          }} />
+
+          <div
+            ref={trackRef}
+            style={{
+              display: "flex", gap: 20,
+              padding: "10px 0 20px",
+              willChange: "transform",
+            }}
+          >
+            {todasLasImagenes.map((img, idx) => (
+              <div
+                key={idx}
+                className="pub-img"
+                onClick={() => setSelectedImg(img.src)}
+                style={{
+                  flexShrink: 0,
+                  width: isMobile ? 180 : 260,
+                  height: isMobile ? 250 : 360,
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  border: "1px solid #222",
+                  transition: "all 0.3s ease",
+                  background: "#111",
+                }}
+              >
+                <img
+                  src={img.src}
+                  alt={img.alt}
+                  style={{
+                    width: "100%", height: "100%",
+                    objectFit: "cover",
+                  }}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                    const parent = target.parentElement;
+                    if (parent) {
+                      parent.style.background = "linear-gradient(135deg, #1e3a5f, #0f172a)";
+                      parent.style.display = "flex";
+                      parent.style.alignItems = "center";
+                      parent.style.justifyContent = "center";
+                      parent.innerHTML = `<span style="font-size: 60px">📚</span>`;
+                    }
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* CATÁLOGO DE PRODUCTOS (servicios) */}
       <section style={{
@@ -207,254 +357,7 @@ function Home() {
   );
 }
 
-// ─── COMPONENTE: Sección Nuestro Trabajo (publicaciones reales) ──────────────
-function SeccionNuestroTrabajo({ isMobile, navigate }: { isMobile: boolean; navigate: any }) {
-  const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
-  const [estadisticas, setEstadisticas] = useState({
-    publicaciones: 0,
-    autores: 0,
-    revistas: 0,
-    anios: 0,
-  });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const cargarDatos = async () => {
-      try {
-        const [librosRes, revistasRes] = await Promise.all([
-          fetch(`${API_URL}/books`),
-          fetch(`${API_URL}/magazines`),
-        ]);
-
-        const libros = await librosRes.json();
-        const revistas = await revistasRes.json();
-
-        const librosFormateados: Publicacion[] = libros.map((libro: any) => ({
-          id: libro.id,
-          titulo: libro.title,
-          tipo: "libro",
-          imagenUrl: libro.archivoUrl || libro.imagenUrl,
-          autor: libro.author?.name,
-        }));
-
-        const revistasFormateadas: Publicacion[] = revistas.map((revista: any) => ({
-          id: revista.id,
-          titulo: revista.title,
-          tipo: "revista",
-          imagenUrl: revista.archivoUrl,
-          anio: revista.createdAt ? new Date(revista.createdAt).getFullYear() : undefined,
-        }));
-
-        const todas = [...librosFormateados, ...revistasFormateadas].sort((a, b) => b.id - a.id);
-        setPublicaciones(todas);
-
-        const totalPublicaciones = todas.length;
-        const totalAutores = new Set(libros.map((l: any) => l.author?.name).filter(Boolean)).size;
-        const totalRevistas = revistas.length;
-        const años = new Set(todas.map(p => p.anio).filter(Boolean));
-        const totalAños = años.size > 0 ? años.size : 3;
-        setEstadisticas({
-          publicaciones: totalPublicaciones,
-          autores: totalAutores,
-          revistas: totalRevistas,
-          anios: totalAños,
-        });
-      } catch (error) {
-        console.error("Error cargando publicaciones:", error);
-        setEstadisticas({ publicaciones: 20, autores: 100, revistas: 30, anios: 3 });
-      } finally {
-        setLoading(false);
-      }
-    };
-    cargarDatos();
-  }, []);
-
-  if (loading) {
-    return (
-      <div style={{ textAlign: "center", padding: 60 }}>
-        <div
-          style={{
-            display: "inline-block",
-            width: 40,
-            height: 40,
-            border: "3px solid rgba(255,255,255,0.3)",
-            borderTop: "3px solid #3b82f6",
-            borderRadius: "50%",
-            animation: "spin 0.8s linear infinite",
-          }}
-        />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
-
-  return (
-    <section style={{
-      padding: isMobile ? "40px 20px" : "60px 40px",
-      background: "#0a0f1e",
-      borderTop: "1px solid #1e293b",
-      borderBottom: "1px solid #1e293b",
-    }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <h2 style={{
-          fontSize: isMobile ? 28 : 36,
-          marginBottom: 8,
-          textAlign: "center",
-          color: "#f1f5f9",
-        }}>
-          NUESTRO TRABAJO
-        </h2>
-        <p style={{
-          textAlign: "center",
-          color: "#94a3b8",
-          marginBottom: 48,
-          fontSize: 16,
-        }}>
-          Libros y revistas publicados por la Asociación de Escritores Vanguardistas 3.0.
-          Haz clic en cualquier portada para verla en detalle.
-        </p>
-
-        {publicaciones.length === 0 ? (
-          <p style={{ textAlign: "center", color: "#64748b" }}>No hay publicaciones disponibles aún.</p>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: isMobile
-                ? "repeat(2, 1fr)"
-                : "repeat(4, 1fr)",
-              gap: 24,
-              marginBottom: 60,
-            }}
-          >
-            {publicaciones.slice(0, 16).map((pub) => (
-              <div
-                key={`${pub.tipo}-${pub.id}`}
-                onClick={() => navigate(`/${pub.tipo === "libro" ? "books" : "magazines"}/${pub.id}`)}
-                style={{
-                  cursor: "pointer",
-                  background: "#0f172a",
-                  borderRadius: 12,
-                  overflow: "hidden",
-                  transition: "transform 0.2s, box-shadow 0.2s",
-                  border: "1px solid #1e293b",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-4px)";
-                  e.currentTarget.style.boxShadow = "0 10px 20px rgba(0,0,0,0.3)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "none";
-                }}
-              >
-                <div
-                  style={{
-                    aspectRatio: "3/4",
-                    background: "#1e293b",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {pub.imagenUrl ? (
-                    <img
-                      src={pub.imagenUrl}
-                      alt={pub.titulo}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  ) : (
-                    <div style={{ fontSize: 48, opacity: 0.4 }}>
-                      {pub.tipo === "libro" ? "📚" : "📘"}
-                    </div>
-                  )}
-                </div>
-                <div style={{ padding: 12 }}>
-                  <p
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: 14,
-                      marginBottom: 4,
-                      color: "white",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {pub.titulo}
-                  </p>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: "#60a5fa",
-                      textTransform: "uppercase",
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    {pub.tipo === "libro" ? "Libro" : "Revista"}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Estadísticas */}
-        <div
-          style={{
-            background: "#0f172a",
-            padding: isMobile ? "30px 20px" : "40px 20px",
-            borderRadius: 20,
-            textAlign: "center",
-          }}
-        >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
-              gap: 32,
-            }}
-          >
-            <div>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>📚</div>
-              <div style={{ fontSize: 28, fontWeight: "bold", color: "#3b82f6" }}>
-                {estadisticas.publicaciones}+
-              </div>
-              <div style={{ color: "#94a3b8", fontSize: 14 }}>Publicaciones</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>✍️</div>
-              <div style={{ fontSize: 28, fontWeight: "bold", color: "#3b82f6" }}>
-                {estadisticas.autores}+
-              </div>
-              <div style={{ color: "#94a3b8", fontSize: 14 }}>Autores</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>📘</div>
-              <div style={{ fontSize: 28, fontWeight: "bold", color: "#3b82f6" }}>
-                {estadisticas.revistas}+
-              </div>
-              <div style={{ color: "#94a3b8", fontSize: 14 }}>Revistas</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>🏅</div>
-              <div style={{ fontSize: 28, fontWeight: "bold", color: "#3b82f6" }}>
-                {estadisticas.anios}+
-              </div>
-              <div style={{ color: "#94a3b8", fontSize: 14 }}>Años</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── COMPONENTE CATÁLOGO DE PRODUCTOS (sin cambios, solo copiado de tu código) ──
+// ─── COMPONENTE CATÁLOGO DE PRODUCTOS (sin cambios, es el mismo que tenías) ──
 interface Toast {
   id: number;
 }
