@@ -457,38 +457,47 @@ function AdminPagos() {
       />
 
       {/* Filtros */}
-      <div style={{ display: "flex", gap: 6, margin: "16px 0", flexWrap: "wrap" }}>
-        {(["todos", "pendiente", "verificado", "rechazado"] as const).map(f => {
-          const counts = {
-            todos: pagosMes.length,
-            pendiente: pendientesMes.length,
-            verificado: verificadosMes.length,
-            rechazado: rechazadosMes.length,
-          };
-          return (
-            <button
-              key={f}
-              onClick={() => setFiltro(f)}
-              style={{
-                padding: "6px 14px", borderRadius: 99, border: "none",
-                background: filtro === f ? "#3b82f6" : "#1e293b",
-                color: filtro === f ? "white" : "#64748b",
-                fontWeight: "bold", fontSize: 12, cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 6,
-                border: filtro === f ? "none" : "1px solid #334155",
-              } as any}
-            >
-              {f === "todos" ? "Todos" : f.charAt(0).toUpperCase() + f.slice(1)}
-              <span style={{
-                background: filtro === f ? "rgba(255,255,255,0.2)" : "#334155",
-                borderRadius: 99, padding: "1px 7px", fontSize: 11,
-              }}>
-                {counts[f]}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+     {/* Filtros */}
+<div style={{ display: "flex", gap: 6, margin: "16px 0", flexWrap: "wrap" }}>
+  {(["todos", "pendiente", "verificado", "rechazado"] as const).map(f => {
+    const counts = {
+      todos: pagosMes.length,
+      pendiente: pendientesMes.length,
+      verificado: verificadosMes.length,
+      rechazado: rechazadosMes.length,
+    };
+    const isActive = filtro === f;
+    const buttonStyles: React.CSSProperties = {
+      padding: "6px 14px",
+      borderRadius: 99,
+      background: isActive ? "#3b82f6" : "#1e293b",
+      color: isActive ? "white" : "#64748b",
+      fontWeight: "bold",
+      fontSize: 12,
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      border: isActive ? "none" : "1px solid #334155",
+    };
+    return (
+      <button key={f} onClick={() => setFiltro(f)} style={buttonStyles}>
+        {f === "todos" ? "Todos" : f.charAt(0).toUpperCase() + f.slice(1)}
+        <span
+          style={{
+            background: isActive ? "rgba(255,255,255,0.2)" : "#334155",
+            borderRadius: 99,
+            padding: "1px 7px",
+            fontSize: 11,
+          }}
+        >
+          {counts[f]}
+        </span>
+      </button>
+    );
+  })}
+</div>
+    
 
       {/* Lista de pagos */}
       {loading ? (
