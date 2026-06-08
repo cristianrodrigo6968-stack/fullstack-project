@@ -7,7 +7,6 @@ import ClientForm from "./pages/ClientForm";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Servicios from "./pages/Servicios";
 import Acerca from "./pages/Acerca";
-
 import ClientProtectedRoute from "./components/ClientProtectedRoute";
 import ClientePanel from "./pages/ClientePanel";
 import CarritoPage from "./pages/CarritoPage";
