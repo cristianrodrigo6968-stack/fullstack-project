@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useWindowSize } from "../hooks/useWindowSize";
-import Tasks from "./Tasks";
 import Magazines from "./Magazines";
 import Books from "./Books";
 import Notes from "./Notes";
@@ -58,7 +57,7 @@ function Admin() {
   const menuItems = [
     { key: "panel", label: "🏠 Panel" },
     { key: "notes", label: "📌 Notas" },
-    { key: "tasks", label: "✅ Tareas" },
+   
     { key: "magazines", label: "📘 Revistas" },
     { key: "books", label: "📚 Libros" },
     { key: "clients", label: "👥 Clientes" },
@@ -374,7 +373,7 @@ const res = await fetch(`${import.meta.env.VITE_API_URL}/stats`, {
         )}
 
         {section === "notes" && <Notes />}
-        {section === "tasks" && <Tasks />}
+       
         {section === "magazines" && <Magazines />}
         {section === "books" && <Books />}
         {section === "clients" && <Clients />}
