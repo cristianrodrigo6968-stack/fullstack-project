@@ -441,17 +441,18 @@ function CarritoPage() {
                     }}
                   />
                   
-                    href="/qr-pago.jpeg" download="QR_Pago_Vanguardistas.jpg"
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 6,
-                      marginTop: 12, color: "#818cf8", fontSize: 13,
-                      textDecoration: "none", transition: "color .2s",
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.color = "#a5b4fc")}
-                    onMouseLeave={e => (e.currentTarget.style.color = "#818cf8")}
-                  >
-                    📥 Descargar QR
-                  </a>
+                    <a
+  href="/qr-pago.jpeg" download="QR_Pago_Vanguardistas.jpg"
+  style={{
+    display: "inline-flex", alignItems: "center", gap: 6,
+    marginTop: 12, color: "#818cf8", fontSize: 13,
+    textDecoration: "none", transition: "color .2s",
+  }}
+  onMouseEnter={e => (e.currentTarget.style.color = "#a5b4fc")}
+  onMouseLeave={e => (e.currentTarget.style.color = "#818cf8")}
+>
+  📥 Descargar QR
+</a>
                   <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 4 }}>
                     <p style={{ color: "#475569", fontSize: 12, margin: 0 }}>Banco Unión · Cuenta: 123456789</p>
                     <p style={{ color: "#475569", fontSize: 12, margin: 0 }}>Titular: Asociación Vanguardistas 3.0</p>

@@ -11,7 +11,7 @@ import ClienteMensajes from "./ClienteMensajes";
 import ClientePassword from "./ClientePassword";
 import ClienteHacerPedido from "./ClienteHacerPedido";
 import ClienteMisPedidos from "./ClienteMisPedidos";
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = "https://taskmanager-backend-ewud.onrender.com";
 
 function ClientePanel() {
   const { token, username, logout, clienteId } = useAuth();

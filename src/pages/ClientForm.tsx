@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
-const API_URL = import.meta.env.VITE_API_URL;
 
+const API_URL = "https://taskmanager-backend-ewud.onrender.com";
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 function Spinner() {
   return (
@@ -29,10 +29,6 @@ const MAX_FILE_SIZE_MB    = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 // ─── Pantallas posibles ───────────────────────────────────────────────────────
-// "form"     → formulario editable
-// "review"   → resumen para confirmar (NUEVO)
-// "success"  → datos guardados exitosamente (NUEVO)
-
 type Screen = "form" | "review" | "success";
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -49,8 +45,8 @@ function ClientForm() {
   const [daysLeft, setDaysLeft]       = useState(0);
   const [subiendoFotos, setSubiendoFotos] = useState(false);
 
-  // refs para scroll al primer error
-  const refs: Record<string, React.RefObject<HTMLDivElement>> = {
+  // refs para scroll al primer error (tipado indexable)
+  const refs: { [key: string]: React.RefObject<HTMLDivElement> } = {
     ci:              useRef<HTMLDivElement>(null),
     nombres:         useRef<HTMLDivElement>(null),
     apellidoPaterno: useRef<HTMLDivElement>(null),
@@ -329,13 +325,12 @@ function ClientForm() {
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PANTALLA 2: REVISIÓN — el cliente verifica sus datos antes de guardar
+  // PANTALLA 2: REVISIÓN
   // ═══════════════════════════════════════════════════════════════════════════
   if (screen === "review") return (
     <div lang="es" translate="no" style={{ background: "#0f172a", minHeight: "100vh", padding: "40px 20px", color: "white" }}>
       <div style={{ maxWidth: 520, margin: "0 auto" }}>
 
-        {/* Encabezado */}
         <div style={{ background: "#1e293b", padding: 28, borderRadius: 16, marginBottom: 20, borderLeft: "4px solid #f59e0b" }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>🔍</div>
           <h2 style={{ marginBottom: 6, fontSize: 22 }}>Revisá tus datos</h2>
@@ -344,14 +339,12 @@ function ClientForm() {
           </p>
         </div>
 
-        {/* Error de guardado (si viene de un intento fallido) */}
         {saveError && (
           <div style={{ background: "#7f1d1d", padding: 16, borderRadius: 10, marginBottom: 20, color: "#fca5a5", fontWeight: "bold", fontSize: 14 }}>
             ⚠️ {saveError}
           </div>
         )}
 
-        {/* Resumen */}
         <div style={{ background: "#1e293b", borderRadius: 14, padding: 20, marginBottom: 20 }}>
           <p style={{ color: "#64748b", fontSize: 12, marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>
             Resumen de tus datos
@@ -359,9 +352,7 @@ function ClientForm() {
           <ResumenDatos />
         </div>
 
-        {/* Botones */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {/* Confirmar → guarda de verdad */}
           <button
             onClick={confirmarYGuardar}
             disabled={saving}
@@ -380,7 +371,6 @@ function ClientForm() {
             }
           </button>
 
-          {/* Editar → vuelve al formulario */}
           <button
             onClick={() => { setSaveError(""); setScreen("form"); setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50); }}
             disabled={saving}
@@ -404,13 +394,11 @@ function ClientForm() {
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PANTALLA 3: ÉXITO — datos guardados correctamente
+  // PANTALLA 3: ÉXITO
   // ═══════════════════════════════════════════════════════════════════════════
   if (screen === "success") return (
     <div lang="es" translate="no" style={{ background: "#0f172a", minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "40px 20px", color: "white" }}>
       <div style={{ maxWidth: 480, width: "100%", textAlign: "center" }}>
-
-        {/* Ícono animado */}
         <style>{`
           @keyframes popIn {
             0%   { transform: scale(0.5); opacity: 0; }
@@ -420,20 +408,17 @@ function ClientForm() {
           .success-icon { animation: popIn 0.5s ease forwards; display: inline-block; }
         `}</style>
         <div className="success-icon" style={{ fontSize: 80, marginBottom: 20 }}>🎉</div>
-
         <div style={{ background: "#1e293b", padding: 36, borderRadius: 20, borderTop: "4px solid #22c55e" }}>
           <h2 style={{ marginBottom: 10, fontSize: 26, color: "#22c55e" }}>¡Datos guardados exitosamente!</h2>
           <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.6, marginBottom: 28 }}>
             Tu registro fue recibido correctamente. El equipo revisará tu información y se pondrá en contacto con vos a la brevedad.
           </p>
-
           <div style={{ background: "#0f172a", borderRadius: 10, padding: "12px 16px", marginBottom: 28, display: "flex", gap: 10, alignItems: "center" }}>
             <span style={{ fontSize: 20 }}>📬</span>
             <p style={{ color: "#60a5fa", fontSize: 13, margin: 0, textAlign: "left" }}>
               Te contactaremos al número <strong>{celular}</strong> o al correo <strong>{email}</strong>.
             </p>
           </div>
-
           <button
             onClick={() => window.location.href = "/"}
             style={{
@@ -445,7 +430,6 @@ function ClientForm() {
           >
             🏠 Volver al inicio
           </button>
-
           <p style={{ color: "#475569", fontSize: 12, marginTop: 16 }}>
             Si necesitás corregir algo, podés reingresar con el mismo link antes de que expire.
           </p>
@@ -681,7 +665,6 @@ function ClientForm() {
           </div>
         </div>
 
-        {/* Botón que lleva a revisión (NO guarda todavía) */}
         <button
           onClick={irARevisar}
           style={{

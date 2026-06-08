@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
-const API_URL = import.meta.env.VITE_API_URL;
 
+const API_URL = "https://taskmanager-backend-ewud.onrender.com";
 function ClienteEntregas() {
   const { token } = useAuth();
   const [entregas, setEntregas] = useState<any[]>([]);
