@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useWindowSize } from "../hooks/useWindowSize";
+import { useWindowSize } from "../../hooks/useWindowSize";
 
 const redondearAdelanto = (valor: number): number => {
   if (valor < 100) return Math.ceil(valor / 10) * 10;

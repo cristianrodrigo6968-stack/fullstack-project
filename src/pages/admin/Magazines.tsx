@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import { useWindowSize } from "../hooks/useWindowSize";
-import { useMesActual } from "../hooks/useMesActual";
-import NavegadorMes from "../components/NavegadorMes";
-
+import { useAuth } from "../../context/AuthContext";
+import { useWindowSize } from "../../hooks/useWindowSize";
+import { useMesActual } from "../../hooks/useMesActual";
+import NavegadorMes from "../../components/NavegadorMes";
 
 const API_URL = "https://taskmanager-backend-ewud.onrender.com";
 interface Person { id: number; name: string; }

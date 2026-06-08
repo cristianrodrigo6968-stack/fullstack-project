@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { useWindowSize } from "../hooks/useWindowSize";
+import { useWindowSize } from "../../hooks/useWindowSize";
 import Magazines from "./Magazines";
 import Books from "./Books";
 import Notes from "./Notes";
 import Clients from "./Clients";
 import Entregas from "./Entregas";
-import GlobalSearch from "../components/GlobalSearch";
+import GlobalSearch from "../../components/GlobalSearch";
 import AdminMensajes from "./AdminMensajes";
 import AdminPagos from "./AdminPagos";
 import AdminProductos from "./AdminProductos";

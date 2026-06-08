@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useWindowSize } from "../hooks/useWindowSize";
+import { useWindowSize } from "../../hooks/useWindowSize";
 
 interface Toast { id: number; y: number; }
 

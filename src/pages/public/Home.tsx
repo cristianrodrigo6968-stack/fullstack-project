@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useWindowSize } from "../hooks/useWindowSize";
+import { useWindowSize } from "../../hooks/useWindowSize";
 
 const TOTAL_IMAGENES = 20;
 const imagenes = Array.from({ length: TOTAL_IMAGENES }, (_, i) => ({

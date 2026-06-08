@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useWindowSize } from "../hooks/useWindowSize";
+import { useWindowSize } from "../../hooks/useWindowSize";
 
 function Servicios() {
   const { isMobile } = useWindowSize();

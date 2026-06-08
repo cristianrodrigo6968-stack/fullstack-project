@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { useWindowSize } from "../hooks/useWindowSize";
+import { useWindowSize } from "../../hooks/useWindowSize";
 import ClienteInicio from "./ClienteInicio";
 import ClienteProgreso from "./ClienteProgreso";
 import ClienteEntregas from "./ClienteEntregas";

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import { useWindowSize } from "../hooks/useWindowSize";
+import { useAuth } from "../../context/AuthContext";
+import { useWindowSize } from "../../hooks/useWindowSize";
 
 
 const API_URL = "https://taskmanager-backend-ewud.onrender.com";
