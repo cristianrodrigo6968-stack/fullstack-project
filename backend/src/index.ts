@@ -15,26 +15,20 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.JWT_SECRET || "secret123";
 
-// ─── CORS CONFIGURATION ─────────────────────────────────────────────────────
+// ─── CORS CONFIGURATION (simplificada) ──────────────────────────────────────
 const allowedOrigins = [
-  "https://fullstack-project-blond.vercel.app", // frontend producción
-  "http://localhost:5173", // desarrollo local
+  "https://fullstack-project-blond.vercel.app",
+  "http://localhost:5173",
 ];
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 200,
   })
 );
-app.options("*", cors()); // preflight
 
 app.use(express.json());
 app.use(express.static("public"));
@@ -44,7 +38,7 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
 });
 
-// ─── Extender Express Request para incluir `user` ──────────────────────────
+// ─── Extender Express Request ──────────────────────────────────────────────
 declare global {
   namespace Express {
     interface Request {
