@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -19,11 +19,28 @@ function Spinner() {
 }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-const EXTENSIONES = ["LP", "CB", "SC", "OR", "PT", "CH", "TJ", "BN", "PD", "QR"] as const;
-type Extension = typeof EXTENSIONES[number];
+// Guardamos la sigla como value (lo que va al backend) y el nombre completo como label
+// para que el traductor automático del navegador no confunda SC=South Carolina, OR=Oregon, etc.
+const EXTENSIONES: { value: string; label: string }[] = [
+  { value: "LP", label: "LP — La Paz" },
+  { value: "CB", label: "CB — Cochabamba" },
+  { value: "SC", label: "SC — Santa Cruz" },
+  { value: "OR", label: "OR — Oruro" },
+  { value: "PT", label: "PT — Potosí" },
+  { value: "CH", label: "CH — Chuquisaca" },
+  { value: "TJ", label: "TJ — Tarija" },
+  { value: "BN", label: "BN — Beni" },
+  { value: "PD", label: "PD — Pando" },
+  { value: "QR", label: "QR — (sin extensión)" },
+];
+type Extension = string;
 
 const SEXOS = ["Masculino", "Femenino"] as const;
 type Sexo = typeof SEXOS[number];
+
+// Límite de tamaño de archivos: 10 MB
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 function ClientForm() {
@@ -61,6 +78,25 @@ function ClientForm() {
   const [carnetEsImagen, setCarnetEsImagen] = useState(true);
   const [fotoCarnet2, setFotoCarnet2]       = useState<File | null>(null);
   const [carnetPreview2, setCarnetPreview2] = useState<string>("");
+
+  // ── Refs para scroll a errores ─────────────────────────────────────────────
+  // El orden importa: es el mismo orden visual de los campos en el formulario
+  const errorRefs: Record<string, React.RefObject<HTMLDivElement>> = {
+    ci:               useRef<HTMLDivElement>(null),
+    nombres:          useRef<HTMLDivElement>(null),
+    apellidoPaterno:  useRef<HTMLDivElement>(null),
+    apellidoMaterno:  useRef<HTMLDivElement>(null),
+    sexo:             useRef<HTMLDivElement>(null),
+    ciudad:           useRef<HTMLDivElement>(null),
+    direccion:        useRef<HTMLDivElement>(null),
+    fechaNacimiento:  useRef<HTMLDivElement>(null),
+    extension:        useRef<HTMLDivElement>(null),
+    profesion:        useRef<HTMLDivElement>(null),
+    celular:          useRef<HTMLDivElement>(null),
+    email:            useRef<HTMLDivElement>(null),
+    fotografia:       useRef<HTMLDivElement>(null),
+    fotoCarnet:       useRef<HTMLDivElement>(null),
+  };
 
   // ── Carga inicial ──────────────────────────────────────────────────────────
   const load = async () => {
@@ -104,7 +140,32 @@ function ClientForm() {
     file.type === "application/msword" ||
     file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
+  // Valida tamaño y retorna mensaje de error o null si está bien
+  const validarTamano = (file: File): string | null => {
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      return `El archivo pesa ${sizeMB} MB. El máximo permitido es ${MAX_FILE_SIZE_MB} MB.`;
+    }
+    return null;
+  };
+
+  const handleFotografia = (file: File) => {
+    const error = validarTamano(file);
+    if (error) {
+      setErrors(prev => ({ ...prev, fotografia: error }));
+      return;
+    }
+    setFotografia(file);
+    setFotoPreview(URL.createObjectURL(file));
+    setErrors(prev => { const e = { ...prev }; delete e.fotografia; return e; });
+  };
+
   const handleCarnet1 = (file: File) => {
+    const error = validarTamano(file);
+    if (error) {
+      setErrors(prev => ({ ...prev, fotoCarnet: error }));
+      return;
+    }
     if (esImagen(file)) {
       setFotoCarnet(file);
       setCarnetPreview(URL.createObjectURL(file));
@@ -116,9 +177,16 @@ function ClientForm() {
       setFotoCarnet2(null);
       setCarnetPreview2("");
     }
+    setErrors(prev => { const e = { ...prev }; delete e.fotoCarnet; return e; });
   };
 
   const handleCarnet2 = (file: File) => {
+    const error = validarTamano(file);
+    if (error) {
+      // El reverso es opcional, pero igual avisamos
+      alert(error);
+      return;
+    }
     if (esImagen(file)) {
       setFotoCarnet2(file);
       setCarnetPreview2(URL.createObjectURL(file));
@@ -149,6 +217,22 @@ function ClientForm() {
     if (!fotografia && !fotoPreview)         e.fotografia = "La foto personal es obligatoria";
     if (!fotoCarnet && !carnetPreview)       e.fotoCarnet = "El documento/foto del carnet es obligatorio";
     setErrors(e);
+
+    // ── Scroll al primer campo con error ─────────────────────────────────────
+    // Recorremos en orden visual para encontrar el primero
+    const camposOrden = [
+      "ci", "nombres", "apellidoPaterno", "apellidoMaterno",
+      "sexo", "ciudad", "direccion", "fechaNacimiento",
+      "extension", "profesion", "celular", "email",
+      "fotografia", "fotoCarnet",
+    ];
+    for (const campo of camposOrden) {
+      if (e[campo] && errorRefs[campo]?.current) {
+        errorRefs[campo].current.scrollIntoView({ behavior: "smooth", block: "center" });
+        break;
+      }
+    }
+
     return Object.keys(e).length === 0;
   };
 
@@ -173,7 +257,14 @@ function ClientForm() {
         });
         if (!fotosRes.ok) {
           const errData = await fotosRes.json();
-          setSaveError(errData.error || "Error al subir las imágenes. Intenta de nuevo.");
+          // Intentamos dar un mensaje más útil según el código de error
+          let msg = errData.error || "Error al subir las imágenes. Intenta de nuevo.";
+          if (fotosRes.status === 413) {
+            msg = "El archivo es demasiado pesado para el servidor. Intentá con una imagen más pequeña.";
+          } else if (fotosRes.status === 415) {
+            msg = "Tipo de archivo no permitido. Usá JPG, PNG, PDF o DOCX.";
+          }
+          setSaveError(msg);
           fotosOk = false;
         }
       }
@@ -184,7 +275,7 @@ function ClientForm() {
       }
       setSubiendoFotos(false);
 
-      // 2. Guardar datos personales (sin las fotos, ya se guardaron en el paso anterior)
+      // 2. Guardar datos personales
       const nombreCompleto = `${nombres} ${apellidoPaterno} ${apellidoMaterno}`.trim();
       const res = await fetch(`${API_URL}/clients/form/${token}`, {
         method: "PUT",
@@ -206,7 +297,6 @@ function ClientForm() {
         return;
       }
 
-      // Si llegamos aquí, todo fue bien
       setSuccess(true);
     } catch (err) {
       console.error("Error en save:", err);
@@ -336,26 +426,31 @@ function ClientForm() {
 
         <div style={sectionStyle}>
           <h3 style={sectionTitle}>👤 Datos Personales</h3>
-          <label style={labelStyle}>Cédula de Identidad <Req /></label>
-          <input
-            placeholder="Ej: 1234567"
-            value={ci}
-            onChange={e => setCi(e.target.value.replace(/\D/g, ""))}
-            style={errors.ci ? inputError : inputStyle}
-          />
-          {errors.ci && <p style={errorText}>{errors.ci}</p>}
 
-          <label style={labelStyle}>Nombres <Req /></label>
-          <input
-            placeholder="Ej: JUAN CARLOS"
-            value={nombres}
-            onChange={e => setNombres(soloLetras(e.target.value))}
-            style={errors.nombres ? inputError : inputStyle}
-          />
-          {errors.nombres && <p style={errorText}>{errors.nombres}</p>}
+          <div ref={errorRefs.ci}>
+            <label style={labelStyle}>Cédula de Identidad <Req /></label>
+            <input
+              placeholder="Ej: 1234567"
+              value={ci}
+              onChange={e => setCi(e.target.value.replace(/\D/g, ""))}
+              style={errors.ci ? inputError : inputStyle}
+            />
+            {errors.ci && <p style={errorText}>{errors.ci}</p>}
+          </div>
+
+          <div ref={errorRefs.nombres}>
+            <label style={labelStyle}>Nombres <Req /></label>
+            <input
+              placeholder="Ej: JUAN CARLOS"
+              value={nombres}
+              onChange={e => setNombres(soloLetras(e.target.value))}
+              style={errors.nombres ? inputError : inputStyle}
+            />
+            {errors.nombres && <p style={errorText}>{errors.nombres}</p>}
+          </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
+            <div ref={errorRefs.apellidoPaterno}>
               <label style={labelStyle}>Apellido Paterno <Req /></label>
               <input
                 placeholder="Ej: FERNÁNDEZ"
@@ -365,7 +460,7 @@ function ClientForm() {
               />
               {errors.apellidoPaterno && <p style={errorText}>{errors.apellidoPaterno}</p>}
             </div>
-            <div>
+            <div ref={errorRefs.apellidoMaterno}>
               <label style={labelStyle}>Apellido Materno</label>
               <input
                 placeholder="Ej: MAMANI"
@@ -378,7 +473,7 @@ function ClientForm() {
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-            <div>
+            <div ref={errorRefs.sexo}>
               <label style={labelStyle}>Sexo <Req /></label>
               <select
                 value={sexo}
@@ -390,7 +485,7 @@ function ClientForm() {
               </select>
               {errors.sexo && <p style={errorText}>{errors.sexo}</p>}
             </div>
-            <div>
+            <div ref={errorRefs.ciudad}>
               <label style={labelStyle}>Ciudad <Req /></label>
               <input
                 placeholder="Ej: LA PAZ"
@@ -402,17 +497,19 @@ function ClientForm() {
             </div>
           </div>
 
-          <label style={labelStyle}>Dirección <Req /></label>
-          <input
-            placeholder="Ej: AVENIDA BOLIVIA NRO 7"
-            value={direccion}
-            onChange={e => setDireccion(e.target.value.toUpperCase())}
-            style={errors.direccion ? inputError : inputStyle}
-          />
-          {errors.direccion && <p style={errorText}>{errors.direccion}</p>}
+          <div ref={errorRefs.direccion}>
+            <label style={labelStyle}>Dirección <Req /></label>
+            <input
+              placeholder="Ej: AVENIDA BOLIVIA NRO 7"
+              value={direccion}
+              onChange={e => setDireccion(e.target.value.toUpperCase())}
+              style={errors.direccion ? inputError : inputStyle}
+            />
+            {errors.direccion && <p style={errorText}>{errors.direccion}</p>}
+          </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
+            <div ref={errorRefs.fechaNacimiento}>
               <label style={labelStyle}>Fecha de Nacimiento <Req /></label>
               <input
                 type="date"
@@ -422,7 +519,7 @@ function ClientForm() {
               />
               {errors.fechaNacimiento && <p style={errorText}>{errors.fechaNacimiento}</p>}
             </div>
-            <div>
+            <div ref={errorRefs.extension}>
               <label style={labelStyle}>Extensión (Depto. C.I.) <Req /></label>
               <select
                 value={extension}
@@ -430,23 +527,25 @@ function ClientForm() {
                 style={errors.extension ? { ...inputError, cursor: "pointer" } : { ...inputStyle, cursor: "pointer" }}
               >
                 <option value="">-- Seleccionar --</option>
-                {EXTENSIONES.map(ext => <option key={ext} value={ext}>{ext}</option>)}
+                {EXTENSIONES.map(ext => <option key={ext.value} value={ext.value}>{ext.label}</option>)}
               </select>
               {errors.extension && <p style={errorText}>{errors.extension}</p>}
             </div>
           </div>
 
-          <label style={labelStyle}>Profesión <Req /></label>
-          <input
-            placeholder="Ej: MAESTRO DE MATEMÁTICAS"
-            value={profesion}
-            onChange={e => setProfesion(soloLetras(e.target.value))}
-            style={errors.profesion ? inputError : inputStyle}
-          />
-          {errors.profesion && <p style={errorText}>{errors.profesion}</p>}
+          <div ref={errorRefs.profesion}>
+            <label style={labelStyle}>Profesión <Req /></label>
+            <input
+              placeholder="Ej: MAESTRO DE MATEMÁTICAS"
+              value={profesion}
+              onChange={e => setProfesion(soloLetras(e.target.value))}
+              style={errors.profesion ? inputError : inputStyle}
+            />
+            {errors.profesion && <p style={errorText}>{errors.profesion}</p>}
+          </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
+            <div ref={errorRefs.celular}>
               <label style={labelStyle}>Celular <Req /></label>
               <input
                 placeholder="Ej: 70012345"
@@ -456,7 +555,7 @@ function ClientForm() {
               />
               {errors.celular && <p style={errorText}>{errors.celular}</p>}
             </div>
-            <div>
+            <div ref={errorRefs.email}>
               <label style={labelStyle}>Email <Req /></label>
               <input
                 placeholder="Ej: juan@gmail.com"
@@ -472,97 +571,112 @@ function ClientForm() {
         <div style={sectionStyle}>
           <h3 style={sectionTitle}>📸 Fotografías y Documentos</h3>
 
-          <label style={labelStyle}>Foto Personal <Req /></label>
-          <div style={{
-            background: errors.fotografia ? "#450a0a" : "#0f172a",
-            borderRadius: 12, padding: 20, marginBottom: 16,
-            border: errors.fotografia ? "1px solid #ef4444" : "1px solid #334155",
-            display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
-          }}>
-            {fotoPreview ? (
-              <img src={fotoPreview} alt="preview" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #3b82f6", flexShrink: 0 }} />
-            ) : (
-              <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>🤳</div>
-            )}
-            <div style={{ flex: 1 }}>
-              <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 8 }}>Foto clara de tu rostro</p>
-              <label style={btnUpload}>
-                {fotoPreview ? "🔄 Cambiar foto" : "📤 Subir foto"}
-                <input type="file" accept="image/*" style={{ display: "none" }}
-                  onChange={e => {
-                    const file = e.target.files?.[0];
-                    if (file) { setFotografia(file); setFotoPreview(URL.createObjectURL(file)); }
-                  }}
-                />
-              </label>
-            </div>
-          </div>
-          {errors.fotografia && <p style={errorText}>{errors.fotografia}</p>}
-
-          <label style={labelStyle}>Carnet de Identidad <Req /></label>
-          <p style={{ color: "#64748b", fontSize: 12, marginBottom: 12 }}>
-            Podés subir <strong style={{ color: "#94a3b8" }}>2 fotos</strong> (frente y reverso) o un <strong style={{ color: "#94a3b8" }}>documento PDF/Word</strong>
-          </p>
-
-          <div style={{
-            background: errors.fotoCarnet ? "#450a0a" : "#0f172a",
-            borderRadius: 12, padding: 20,
-            border: errors.fotoCarnet ? "1px solid #ef4444" : "1px solid #334155",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
-              {carnetPreview && carnetEsImagen ? (
-                <img src={carnetPreview} alt="carnet" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #64748b", flexShrink: 0 }} />
-              ) : carnetPreview && !carnetEsImagen ? (
-                <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0 }}>
-                  <span style={{ fontSize: 32 }}>📄</span>
-                  <span style={{ color: "#60a5fa", fontSize: 9, textAlign: "center", padding: "0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 82 }}>{carnetPreview}</span>
-                </div>
+          <div ref={errorRefs.fotografia}>
+            <label style={labelStyle}>Foto Personal <Req /></label>
+            <div style={{
+              background: errors.fotografia ? "#450a0a" : "#0f172a",
+              borderRadius: 12, padding: 20, marginBottom: 8,
+              border: errors.fotografia ? "1px solid #ef4444" : "1px solid #334155",
+              display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+            }}>
+              {fotoPreview ? (
+                <img src={fotoPreview} alt="preview" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #3b82f6", flexShrink: 0 }} />
               ) : (
-                <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>🪪</div>
+                <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>🤳</div>
               )}
               <div style={{ flex: 1 }}>
-                <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 8 }}>
-                  {carnetEsImagen ? "Frente del carnet" : "Documento subido"}
-                </p>
+                <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>Foto clara de tu rostro</p>
+                <p style={{ color: "#475569", fontSize: 11, marginBottom: 8 }}>Máximo {MAX_FILE_SIZE_MB} MB · JPG, PNG</p>
                 <label style={btnUpload}>
-                  {carnetPreview ? "🔄 Cambiar" : "📤 Subir frente o documento"}
-                  <input
-                    type="file"
-                    accept="image/*,.pdf,.doc,.docx"
-                    style={{ display: "none" }}
-                    onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet1(file); }}
+                  {fotoPreview ? "🔄 Cambiar foto" : "📤 Subir foto"}
+                  <input type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFotografia(file);
+                      // Limpiar el input para permitir re-subir el mismo archivo
+                      e.target.value = "";
+                    }}
                   />
                 </label>
-                <p style={{ color: "#475569", fontSize: 11, marginTop: 6 }}>JPG, PNG, PDF, DOC, DOCX</p>
               </div>
             </div>
-
-            {(carnetEsImagen || !fotoCarnet) && (
-              <>
-                <div style={{ borderTop: "1px solid #1e293b", marginBottom: 16 }} />
-                <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                  {carnetPreview2 ? (
-                    <img src={carnetPreview2} alt="carnet2" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #64748b", flexShrink: 0 }} />
-                  ) : (
-                    <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0, opacity: 0.5 }}>🔄</div>
-                  )}
-                  <div style={{ flex: 1 }}>
-                    <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>Reverso del carnet <span style={{ color: "#475569", fontSize: 11 }}>(opcional)</span></p>
-                    <label style={{ ...btnUpload, background: "#1e293b" }}>
-                      {carnetPreview2 ? "🔄 Cambiar reverso" : "📤 Subir reverso"}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        style={{ display: "none" }}
-                        onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet2(file); }}
-                      />
-                    </label>
-                  </div>
-                </div>
-              </>
-            )}
+            {errors.fotografia && <p style={errorText}>{errors.fotografia}</p>}
           </div>
-          {errors.fotoCarnet && <p style={errorText}>{errors.fotoCarnet}</p>}
+
+          <div ref={errorRefs.fotoCarnet} style={{ marginTop: 16 }}>
+            <label style={labelStyle}>Carnet de Identidad <Req /></label>
+            <p style={{ color: "#64748b", fontSize: 12, marginBottom: 12 }}>
+              Podés subir <strong style={{ color: "#94a3b8" }}>2 fotos</strong> (frente y reverso) o un <strong style={{ color: "#94a3b8" }}>documento PDF/Word</strong>
+            </p>
+
+            <div style={{
+              background: errors.fotoCarnet ? "#450a0a" : "#0f172a",
+              borderRadius: 12, padding: 20,
+              border: errors.fotoCarnet ? "1px solid #ef4444" : "1px solid #334155",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+                {carnetPreview && carnetEsImagen ? (
+                  <img src={carnetPreview} alt="carnet" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #64748b", flexShrink: 0 }} />
+                ) : carnetPreview && !carnetEsImagen ? (
+                  <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0 }}>
+                    <span style={{ fontSize: 32 }}>📄</span>
+                    <span style={{ color: "#60a5fa", fontSize: 9, textAlign: "center", padding: "0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 82 }}>{carnetPreview}</span>
+                  </div>
+                ) : (
+                  <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>🪪</div>
+                )}
+                <div style={{ flex: 1 }}>
+                  <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>
+                    {carnetEsImagen ? "Frente del carnet" : "Documento subido"}
+                  </p>
+                  <p style={{ color: "#475569", fontSize: 11, marginBottom: 8 }}>Máximo {MAX_FILE_SIZE_MB} MB · JPG, PNG, PDF, DOC, DOCX</p>
+                  <label style={btnUpload}>
+                    {carnetPreview ? "🔄 Cambiar" : "📤 Subir frente o documento"}
+                    <input
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx"
+                      style={{ display: "none" }}
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleCarnet1(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {(carnetEsImagen || !fotoCarnet) && (
+                <>
+                  <div style={{ borderTop: "1px solid #1e293b", marginBottom: 16 }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                    {carnetPreview2 ? (
+                      <img src={carnetPreview2} alt="carnet2" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #64748b", flexShrink: 0 }} />
+                    ) : (
+                      <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0, opacity: 0.5 }}>🔄</div>
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>Reverso del carnet <span style={{ color: "#475569", fontSize: 11 }}>(opcional)</span></p>
+                      <label style={{ ...btnUpload, background: "#1e293b" }}>
+                        {carnetPreview2 ? "🔄 Cambiar reverso" : "📤 Subir reverso"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: "none" }}
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) handleCarnet2(file);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            {errors.fotoCarnet && <p style={errorText}>{errors.fotoCarnet}</p>}
+          </div>
 
           <div style={{ background: "#1e3a5f", borderRadius: 8, padding: "10px 14px", marginTop: 12, display: "flex", gap: 8, alignItems: "flex-start" }}>
             <span style={{ fontSize: 16, flexShrink: 0 }}>ℹ️</span>
