@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-// ─── Spinner ─────────────────────────────────────────────────────────────────
+// ─── Spinner ──────────────────────────────────────────────────────────────────
 function Spinner() {
   return (
     <>
@@ -25,25 +25,31 @@ type Extension = typeof EXTENSIONES[number];
 const SEXOS = ["Masculino", "Femenino"] as const;
 type Sexo = typeof SEXOS[number];
 
-// FIX 1: Límite de tamaño de archivo (10 MB)
-const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_MB    = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+// ─── Pantallas posibles ───────────────────────────────────────────────────────
+// "form"     → formulario editable
+// "review"   → resumen para confirmar (NUEVO)
+// "success"  → datos guardados exitosamente (NUEVO)
+
+type Screen = "form" | "review" | "success";
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 function ClientForm() {
   const { token } = useParams();
 
   // — UI state —
+  const [screen, setScreen]           = useState<Screen>("form");
   const [loading, setLoading]         = useState(true);
   const [saving, setSaving]           = useState(false);
   const [linkError, setLinkError]     = useState("");
   const [saveError, setSaveError]     = useState("");
   const [errors, setErrors]           = useState<Record<string, string>>({});
-  const [success, setSuccess]         = useState(false);
   const [daysLeft, setDaysLeft]       = useState(0);
   const [subiendoFotos, setSubiendoFotos] = useState(false);
 
-  // FIX 2: refs para hacer scroll al primer campo con error
+  // refs para scroll al primer error
   const refs: Record<string, React.RefObject<HTMLDivElement>> = {
     ci:              useRef<HTMLDivElement>(null),
     nombres:         useRef<HTMLDivElement>(null),
@@ -108,8 +114,8 @@ function ClientForm() {
       setProfesion(data.profesion || "");
       setCelular(data.celular || "");
       setEmail(data.email || "");
-      if (data.fotografia)  setFotoPreview(data.fotografia);
-      if (data.fotoCarnet)  setCarnetPreview(data.fotoCarnet);
+      if (data.fotografia) setFotoPreview(data.fotografia);
+      if (data.fotoCarnet) setCarnetPreview(data.fotoCarnet);
     } catch {
       setLinkError("Error al conectar con el servidor");
     } finally {
@@ -119,47 +125,38 @@ function ClientForm() {
 
   useEffect(() => { load(); }, []);
 
-  // ── Helpers de archivo ────────────────────────────────────────────────────
-  const esImagen = (file: File) => file.type.startsWith("image/");
+  // ── Helpers de archivo ─────────────────────────────────────────────────────
+  const esImagen    = (file: File) => file.type.startsWith("image/");
   const esDocumento = (file: File) =>
     file.type === "application/pdf" ||
     file.type === "application/msword" ||
     file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-  // FIX 1: Validar tamaño antes de aceptar el archivo
   const validarTamano = (file: File): boolean => {
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      alert(`El archivo "${file.name}" es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)} MB). El máximo permitido es ${MAX_FILE_SIZE_MB} MB. Por favor comprimí la imagen o usá una de menor tamaño.`);
+      alert(`El archivo "${file.name}" es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)} MB). El máximo permitido es ${MAX_FILE_SIZE_MB} MB.`);
       return false;
     }
     return true;
   };
 
   const handleCarnet1 = (file: File) => {
-    if (!validarTamano(file)) return; // FIX 1
+    if (!validarTamano(file)) return;
     if (esImagen(file)) {
-      setFotoCarnet(file);
-      setCarnetPreview(URL.createObjectURL(file));
-      setCarnetEsImagen(true);
+      setFotoCarnet(file); setCarnetPreview(URL.createObjectURL(file)); setCarnetEsImagen(true);
     } else if (esDocumento(file)) {
-      setFotoCarnet(file);
-      setCarnetPreview(file.name);
-      setCarnetEsImagen(false);
-      setFotoCarnet2(null);
-      setCarnetPreview2("");
+      setFotoCarnet(file); setCarnetPreview(file.name); setCarnetEsImagen(false);
+      setFotoCarnet2(null); setCarnetPreview2("");
     }
   };
 
   const handleCarnet2 = (file: File) => {
-    if (!validarTamano(file)) return; // FIX 1
-    if (esImagen(file)) {
-      setFotoCarnet2(file);
-      setCarnetPreview2(URL.createObjectURL(file));
-    }
+    if (!validarTamano(file)) return;
+    if (esImagen(file)) { setFotoCarnet2(file); setCarnetPreview2(URL.createObjectURL(file)); }
   };
 
-  // ── Validación ─────────────────────────────────────────────────────────────
-  const validate = (): boolean => {
+  // ── Validación + ir a revisión ─────────────────────────────────────────────
+  const irARevisar = () => {
     const e: Record<string, string> = {};
     if (!ci.trim())                          e.ci = "La cédula es obligatoria";
     else if (!/^\d+$/.test(ci.trim()))       e.ci = "Solo puede contener números";
@@ -183,25 +180,26 @@ function ClientForm() {
     if (!fotoCarnet && !carnetPreview)       e.fotoCarnet = "El documento/foto del carnet es obligatorio";
     setErrors(e);
 
-    // FIX 2: Scroll al primer campo con error
+    // Scroll al primer error
     const orden = ["ci","nombres","apellidoPaterno","apellidoMaterno","sexo","ciudad","direccion","fechaNacimiento","extension","profesion","celular","email","fotografia","fotoCarnet"];
     const primerError = orden.find(k => e[k]);
     if (primerError && refs[primerError]?.current) {
-      setTimeout(() => {
-        refs[primerError].current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 50);
+      setTimeout(() => refs[primerError].current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+      return;
     }
 
-    return Object.keys(e).length === 0;
+    // Sin errores → ir a pantalla de revisión
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => setScreen("review"), 100);
   };
 
-  // ── Guardar ────────────────────────────────────────────────────────────────
-  const save = async () => {
-    if (!validate()) return;
+  // ── Guardar definitivo (llamado desde la pantalla de revisión) ─────────────
+  const confirmarYGuardar = async () => {
     setSaving(true);
     setSaveError("");
     setSubiendoFotos(true);
     try {
+      // 1. Subir fotos/documentos
       const formData = new FormData();
       if (fotografia)  formData.append("fotografia", fotografia);
       if (fotoCarnet)  formData.append("fotoCarnet", fotoCarnet);
@@ -215,23 +213,19 @@ function ClientForm() {
         });
         if (!fotosRes.ok) {
           const errData = await fotosRes.json();
-          // FIX 1: Mensaje de error más claro para archivos grandes
           const msg = errData.error || "";
-          if (fotosRes.status === 413 || msg.toLowerCase().includes("size") || msg.toLowerCase().includes("large") || msg.toLowerCase().includes("limit")) {
-            setSaveError("El archivo es demasiado grande para el servidor. Por favor usá una imagen más pequeña o comprimila antes de subir.");
-          } else {
-            setSaveError(msg || "Error al subir las imágenes. Intenta de nuevo.");
-          }
+          setSaveError(
+            fotosRes.status === 413 || msg.toLowerCase().includes("size") || msg.toLowerCase().includes("large")
+              ? "El archivo es demasiado grande. Usá una imagen más pequeña o comprimila antes de subir."
+              : msg || "Error al subir las imágenes. Intenta de nuevo."
+          );
           fotosOk = false;
         }
       }
-      if (!fotosOk) {
-        setSaving(false);
-        setSubiendoFotos(false);
-        return;
-      }
+      if (!fotosOk) { setSaving(false); setSubiendoFotos(false); return; }
       setSubiendoFotos(false);
 
+      // 2. Guardar datos personales
       const nombreCompleto = `${nombres} ${apellidoPaterno} ${apellidoMaterno}`.trim();
       const res = await fetch(`${API_URL}/clients/form/${token}`, {
         method: "PUT",
@@ -253,7 +247,9 @@ function ClientForm() {
         return;
       }
 
-      setSuccess(true);
+      // ¡Éxito!
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setTimeout(() => setScreen("success"), 100);
     } catch (err) {
       console.error("Error en save:", err);
       setSaveError("Error al conectar con el servidor. Revisa tu conexión.");
@@ -262,6 +258,60 @@ function ClientForm() {
       setSubiendoFotos(false);
     }
   };
+
+  // ── Resumen de datos (reutilizado en revisión y éxito) ─────────────────────
+  const ResumenDatos = () => (
+    <div style={{ background: "#0f172a", padding: 20, borderRadius: 12 }}>
+      {/* Fotos */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+        {fotoPreview && (
+          <div style={{ textAlign: "center" }}>
+            <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4 }}>FOTO PERSONAL</p>
+            <img src={fotoPreview} alt="foto" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "2px solid #334155" }} />
+          </div>
+        )}
+        {carnetPreview && carnetEsImagen && (
+          <div style={{ textAlign: "center" }}>
+            <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4 }}>CARNET (FRENTE)</p>
+            <img src={carnetPreview} alt="carnet" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "2px solid #334155" }} />
+          </div>
+        )}
+        {carnetPreview2 && (
+          <div style={{ textAlign: "center" }}>
+            <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4 }}>CARNET (REVERSO)</p>
+            <img src={carnetPreview2} alt="carnet2" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "2px solid #334155" }} />
+          </div>
+        )}
+        {carnetPreview && !carnetEsImagen && (
+          <div style={{ textAlign: "center" }}>
+            <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4 }}>DOCUMENTO CARNET</p>
+            <div style={{ width: 80, height: 80, background: "#1e293b", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>📄</div>
+            <p style={{ color: "#60a5fa", fontSize: 10, marginTop: 4, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carnetPreview}</p>
+          </div>
+        )}
+      </div>
+      {/* Datos en lista */}
+      {[
+        { label: "C.I.",             value: ci },
+        { label: "Nombres",          value: nombres },
+        { label: "Apellido Paterno", value: apellidoPaterno },
+        { label: "Apellido Materno", value: apellidoMaterno },
+        { label: "Sexo",             value: sexo },
+        { label: "Ciudad",           value: ciudad },
+        { label: "Dirección",        value: direccion },
+        { label: "Fecha Nacimiento", value: fechaNacimiento },
+        { label: "Extensión",        value: extension },
+        { label: "Profesión",        value: profesion },
+        { label: "Celular",          value: celular },
+        { label: "Email",            value: email },
+      ].filter(item => item.value).map(item => (
+        <div key={item.label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1e293b" }}>
+          <span style={{ color: "#64748b", fontSize: 13 }}>{item.label}</span>
+          <span style={{ color: "white", fontSize: 13, textAlign: "right", maxWidth: "60%" }}>{item.value}</span>
+        </div>
+      ))}
+    </div>
+  );
 
   // ── Estados de carga / error ───────────────────────────────────────────────
   if (loading) return (
@@ -278,89 +328,139 @@ function ClientForm() {
     </div>
   );
 
-  // ── Pantalla de éxito ──────────────────────────────────────────────────────
-  if (success) return (
-    // FIX 3: translate="no" en el wrapper principal para evitar traducción del navegador
-    <div lang="es" translate="no" style={{ background: "#0f172a", minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "40px 20px", color: "white" }}>
-      <div style={{ maxWidth: 520, width: "100%" }}>
-        <div style={{ background: "#1e293b", padding: 36, borderRadius: 20, textAlign: "center", borderTop: "4px solid #22c55e" }}>
-          <div style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
-          <h2 style={{ marginBottom: 8, fontSize: 24 }}>¡Datos guardados!</h2>
-          <p style={{ color: "#94a3b8", marginBottom: 32, fontSize: 15 }}>
-            Tus datos personales han sido registrados correctamente. El equipo los revisará pronto y te contactará.
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PANTALLA 2: REVISIÓN — el cliente verifica sus datos antes de guardar
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (screen === "review") return (
+    <div lang="es" translate="no" style={{ background: "#0f172a", minHeight: "100vh", padding: "40px 20px", color: "white" }}>
+      <div style={{ maxWidth: 520, margin: "0 auto" }}>
+
+        {/* Encabezado */}
+        <div style={{ background: "#1e293b", padding: 28, borderRadius: 16, marginBottom: 20, borderLeft: "4px solid #f59e0b" }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>🔍</div>
+          <h2 style={{ marginBottom: 6, fontSize: 22 }}>Revisá tus datos</h2>
+          <p style={{ color: "#94a3b8", fontSize: 14, margin: 0 }}>
+            Verificá que todo esté correcto antes de confirmar. Una vez guardado, el equipo procesará tu registro.
           </p>
-          <div style={{ background: "#0f172a", padding: 20, borderRadius: 12, textAlign: "left", marginBottom: 24 }}>
-            <p style={{ color: "#64748b", fontSize: 12, marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>
-              Resumen de tus datos
+        </div>
+
+        {/* Error de guardado (si viene de un intento fallido) */}
+        {saveError && (
+          <div style={{ background: "#7f1d1d", padding: 16, borderRadius: 10, marginBottom: 20, color: "#fca5a5", fontWeight: "bold", fontSize: 14 }}>
+            ⚠️ {saveError}
+          </div>
+        )}
+
+        {/* Resumen */}
+        <div style={{ background: "#1e293b", borderRadius: 14, padding: 20, marginBottom: 20 }}>
+          <p style={{ color: "#64748b", fontSize: 12, marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>
+            Resumen de tus datos
+          </p>
+          <ResumenDatos />
+        </div>
+
+        {/* Botones */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* Confirmar → guarda de verdad */}
+          <button
+            onClick={confirmarYGuardar}
+            disabled={saving}
+            style={{
+              width: "100%", padding: 16,
+              background: saving ? "#334155" : "#22c55e",
+              border: "none", borderRadius: 12, color: "white",
+              fontSize: 16, fontWeight: "bold",
+              cursor: saving ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+            }}
+          >
+            {saving
+              ? (subiendoFotos ? "📤 Subiendo archivos..." : <><Spinner /> Guardando...</>)
+              : "✅ Confirmar y guardar mis datos"
+            }
+          </button>
+
+          {/* Editar → vuelve al formulario */}
+          <button
+            onClick={() => { setSaveError(""); setScreen("form"); setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50); }}
+            disabled={saving}
+            style={{
+              width: "100%", padding: 14,
+              background: "transparent",
+              border: "2px solid #334155", borderRadius: 12, color: "#94a3b8",
+              fontSize: 15, fontWeight: "bold",
+              cursor: saving ? "not-allowed" : "pointer",
+            }}
+          >
+            ✏️ Editar mis datos
+          </button>
+        </div>
+
+        <p style={{ textAlign: "center", color: "#475569", fontSize: 12, marginTop: 16 }}>
+          Podés volver al formulario y editar cuantas veces necesites.
+        </p>
+      </div>
+    </div>
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PANTALLA 3: ÉXITO — datos guardados correctamente
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (screen === "success") return (
+    <div lang="es" translate="no" style={{ background: "#0f172a", minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "40px 20px", color: "white" }}>
+      <div style={{ maxWidth: 480, width: "100%", textAlign: "center" }}>
+
+        {/* Ícono animado */}
+        <style>{`
+          @keyframes popIn {
+            0%   { transform: scale(0.5); opacity: 0; }
+            70%  { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(1); }
+          }
+          .success-icon { animation: popIn 0.5s ease forwards; display: inline-block; }
+        `}</style>
+        <div className="success-icon" style={{ fontSize: 80, marginBottom: 20 }}>🎉</div>
+
+        <div style={{ background: "#1e293b", padding: 36, borderRadius: 20, borderTop: "4px solid #22c55e" }}>
+          <h2 style={{ marginBottom: 10, fontSize: 26, color: "#22c55e" }}>¡Datos guardados exitosamente!</h2>
+          <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.6, marginBottom: 28 }}>
+            Tu registro fue recibido correctamente. El equipo revisará tu información y se pondrá en contacto con vos a la brevedad.
+          </p>
+
+          <div style={{ background: "#0f172a", borderRadius: 10, padding: "12px 16px", marginBottom: 28, display: "flex", gap: 10, alignItems: "center" }}>
+            <span style={{ fontSize: 20 }}>📬</span>
+            <p style={{ color: "#60a5fa", fontSize: 13, margin: 0, textAlign: "left" }}>
+              Te contactaremos al número <strong>{celular}</strong> o al correo <strong>{email}</strong>.
             </p>
-            <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-              {fotoPreview && (
-                <div style={{ textAlign: "center" }}>
-                  <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4 }}>FOTO PERSONAL</p>
-                  <img src={fotoPreview} alt="foto" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "2px solid #334155" }} />
-                </div>
-              )}
-              {carnetPreview && carnetEsImagen && (
-                <div style={{ textAlign: "center" }}>
-                  <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4 }}>CARNET (FRENTE)</p>
-                  <img src={carnetPreview} alt="carnet" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "2px solid #334155" }} />
-                </div>
-              )}
-              {carnetPreview2 && (
-                <div style={{ textAlign: "center" }}>
-                  <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4 }}>CARNET (REVERSO)</p>
-                  <img src={carnetPreview2} alt="carnet2" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "2px solid #334155" }} />
-                </div>
-              )}
-              {carnetPreview && !carnetEsImagen && (
-                <div style={{ textAlign: "center" }}>
-                  <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4 }}>DOCUMENTO CARNET</p>
-                  <div style={{ width: 80, height: 80, background: "#1e293b", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>📄</div>
-                  <p style={{ color: "#60a5fa", fontSize: 10, marginTop: 4, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carnetPreview}</p>
-                </div>
-              )}
-            </div>
-            {[
-              { label: "C.I.",             value: ci },
-              { label: "Nombres",          value: nombres },
-              { label: "Apellido Paterno", value: apellidoPaterno },
-              { label: "Apellido Materno", value: apellidoMaterno },
-              { label: "Sexo",             value: sexo },
-              { label: "Ciudad",           value: ciudad },
-              { label: "Dirección",        value: direccion },
-              { label: "Fecha Nacimiento", value: fechaNacimiento },
-              { label: "Extensión",        value: extension },
-              { label: "Profesión",        value: profesion },
-              { label: "Celular",          value: celular },
-              { label: "Email",            value: email },
-            ].filter(item => item.value).map(item => (
-              <div key={item.label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1e293b" }}>
-                <span style={{ color: "#64748b", fontSize: 13 }}>{item.label}</span>
-                <span style={{ color: "white", fontSize: 13 }}>{item.value}</span>
-              </div>
-            ))}
           </div>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={() => setSuccess(false)} style={{ background: "#334155", border: "none", padding: "12px 24px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 14 }}>
-              ✏️ Editar mis datos
-            </button>
-            <button onClick={() => window.location.href = "/"} style={{ background: "#3b82f6", border: "none", padding: "12px 24px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 14 }}>
-              🏠 Ir al inicio
-            </button>
-          </div>
-          <p style={{ color: "#64748b", fontSize: 13, marginTop: 20 }}>
-            Podés volver al formulario usando el mismo link antes de que expire.
+
+          <button
+            onClick={() => window.location.href = "/"}
+            style={{
+              width: "100%", padding: 14,
+              background: "#3b82f6",
+              border: "none", borderRadius: 12, color: "white",
+              fontSize: 15, fontWeight: "bold", cursor: "pointer",
+            }}
+          >
+            🏠 Volver al inicio
+          </button>
+
+          <p style={{ color: "#475569", fontSize: 12, marginTop: 16 }}>
+            Si necesitás corregir algo, podés reingresar con el mismo link antes de que expire.
           </p>
         </div>
       </div>
     </div>
   );
 
-  // ── Formulario principal ───────────────────────────────────────────────────
-  // FIX 3: lang="es" y translate="no" en el wrapper del formulario
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PANTALLA 1: FORMULARIO
+  // ═══════════════════════════════════════════════════════════════════════════
   return (
     <div lang="es" translate="no" style={{ background: "#0f172a", minHeight: "100vh", padding: "40px 20px", color: "white" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
+
         <div style={{ background: "#1e293b", padding: 28, borderRadius: 16, marginBottom: 24, borderLeft: "4px solid #3b82f6" }}>
           <h1 style={{ marginBottom: 8, fontSize: 24 }}>📋 Formulario de Registro</h1>
           <p style={{ color: "#94a3b8", fontSize: 14 }}>
@@ -376,57 +476,39 @@ function ClientForm() {
           </div>
         </div>
 
-        {saveError && (
-          <div style={{ background: "#7f1d1d", padding: 16, borderRadius: 10, marginBottom: 20, color: "#fca5a5", textAlign: "center", fontWeight: "bold", fontSize: 14 }}>
-            ⚠️ {saveError}
-          </div>
-        )}
-
+        {/* ── Datos Personales ── */}
         <div style={sectionStyle}>
           <h3 style={sectionTitle}>👤 Datos Personales</h3>
 
-          {/* FIX 2: cada campo tiene su ref para scroll */}
           <div ref={refs.ci}>
             <label style={labelStyle}>Cédula de Identidad <Req /></label>
-            <input
-              placeholder="Ej: 1234567"
-              value={ci}
+            <input placeholder="Ej: 1234567" value={ci}
               onChange={e => setCi(e.target.value.replace(/\D/g, ""))}
-              style={errors.ci ? inputError : inputStyle}
-            />
+              style={errors.ci ? inputError : inputStyle} />
             {errors.ci && <p style={errorText}>{errors.ci}</p>}
           </div>
 
           <div ref={refs.nombres}>
             <label style={labelStyle}>Nombres <Req /></label>
-            <input
-              placeholder="Ej: JUAN CARLOS"
-              value={nombres}
+            <input placeholder="Ej: JUAN CARLOS" value={nombres}
               onChange={e => setNombres(soloLetras(e.target.value))}
-              style={errors.nombres ? inputError : inputStyle}
-            />
+              style={errors.nombres ? inputError : inputStyle} />
             {errors.nombres && <p style={errorText}>{errors.nombres}</p>}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div ref={refs.apellidoPaterno}>
               <label style={labelStyle}>Apellido Paterno <Req /></label>
-              <input
-                placeholder="Ej: FERNÁNDEZ"
-                value={apellidoPaterno}
+              <input placeholder="Ej: FERNÁNDEZ" value={apellidoPaterno}
                 onChange={e => setApellidoPaterno(soloLetras(e.target.value))}
-                style={errors.apellidoPaterno ? inputError : inputStyle}
-              />
+                style={errors.apellidoPaterno ? inputError : inputStyle} />
               {errors.apellidoPaterno && <p style={errorText}>{errors.apellidoPaterno}</p>}
             </div>
             <div ref={refs.apellidoMaterno}>
               <label style={labelStyle}>Apellido Materno</label>
-              <input
-                placeholder="Ej: MAMANI"
-                value={apellidoMaterno}
+              <input placeholder="Ej: MAMANI" value={apellidoMaterno}
                 onChange={e => setApellidoMaterno(soloLetras(e.target.value))}
-                style={errors.apellidoMaterno ? inputError : inputStyle}
-              />
+                style={errors.apellidoMaterno ? inputError : inputStyle} />
               {errors.apellidoMaterno && <p style={errorText}>{errors.apellidoMaterno}</p>}
             </div>
           </div>
@@ -434,11 +516,8 @@ function ClientForm() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
             <div ref={refs.sexo}>
               <label style={labelStyle}>Sexo <Req /></label>
-              <select
-                value={sexo}
-                onChange={e => setSexo(e.target.value as Sexo)}
-                style={errors.sexo ? { ...inputError, cursor: "pointer" } : { ...inputStyle, cursor: "pointer" }}
-              >
+              <select value={sexo} onChange={e => setSexo(e.target.value as Sexo)}
+                style={errors.sexo ? { ...inputError, cursor: "pointer" } : { ...inputStyle, cursor: "pointer" }}>
                 <option value="">-- Seleccionar --</option>
                 {SEXOS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
@@ -446,91 +525,67 @@ function ClientForm() {
             </div>
             <div ref={refs.ciudad}>
               <label style={labelStyle}>Ciudad <Req /></label>
-              <input
-                placeholder="Ej: LA PAZ"
-                value={ciudad}
+              <input placeholder="Ej: LA PAZ" value={ciudad}
                 onChange={e => setCiudad(e.target.value.toUpperCase())}
-                style={errors.ciudad ? inputError : inputStyle}
-              />
+                style={errors.ciudad ? inputError : inputStyle} />
               {errors.ciudad && <p style={errorText}>{errors.ciudad}</p>}
             </div>
           </div>
 
-          <div ref={refs.direccion}>
+          <div ref={refs.direccion} style={{ marginTop: 12 }}>
             <label style={labelStyle}>Dirección <Req /></label>
-            <input
-              placeholder="Ej: AVENIDA BOLIVIA NRO 7"
-              value={direccion}
+            <input placeholder="Ej: AVENIDA BOLIVIA NRO 7" value={direccion}
               onChange={e => setDireccion(e.target.value.toUpperCase())}
-              style={errors.direccion ? inputError : inputStyle}
-            />
+              style={errors.direccion ? inputError : inputStyle} />
             {errors.direccion && <p style={errorText}>{errors.direccion}</p>}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div ref={refs.fechaNacimiento}>
               <label style={labelStyle}>Fecha de Nacimiento <Req /></label>
-              <input
-                type="date"
-                value={fechaNacimiento}
+              <input type="date" value={fechaNacimiento}
                 onChange={e => setFechaNacimiento(e.target.value)}
-                style={errors.fechaNacimiento ? inputError : inputStyle}
-              />
+                style={errors.fechaNacimiento ? inputError : inputStyle} />
               {errors.fechaNacimiento && <p style={errorText}>{errors.fechaNacimiento}</p>}
             </div>
             <div ref={refs.extension}>
               <label style={labelStyle}>Extensión (Depto. C.I.) <Req /></label>
-              {/* FIX 3: translate="no" específicamente en el select de extensiones para las siglas */}
-              <select
-                translate="no"
-                value={extension}
-                onChange={e => setExtension(e.target.value as Extension)}
-                style={errors.extension ? { ...inputError, cursor: "pointer" } : { ...inputStyle, cursor: "pointer" }}
-              >
+              <select translate="no" value={extension} onChange={e => setExtension(e.target.value as Extension)}
+                style={errors.extension ? { ...inputError, cursor: "pointer" } : { ...inputStyle, cursor: "pointer" }}>
                 <option value="">-- Seleccionar --</option>
-                {EXTENSIONES.map(ext => (
-                  <option key={ext} value={ext} translate="no">{ext}</option>
-                ))}
+                {EXTENSIONES.map(ext => <option key={ext} value={ext} translate="no">{ext}</option>)}
               </select>
               {errors.extension && <p style={errorText}>{errors.extension}</p>}
             </div>
           </div>
 
-          <div ref={refs.profesion}>
+          <div ref={refs.profesion} style={{ marginTop: 12 }}>
             <label style={labelStyle}>Profesión <Req /></label>
-            <input
-              placeholder="Ej: MAESTRO DE MATEMÁTICAS"
-              value={profesion}
+            <input placeholder="Ej: MAESTRO DE MATEMÁTICAS" value={profesion}
               onChange={e => setProfesion(soloLetras(e.target.value))}
-              style={errors.profesion ? inputError : inputStyle}
-            />
+              style={errors.profesion ? inputError : inputStyle} />
             {errors.profesion && <p style={errorText}>{errors.profesion}</p>}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div ref={refs.celular}>
               <label style={labelStyle}>Celular <Req /></label>
-              <input
-                placeholder="Ej: 70012345"
-                value={celular}
+              <input placeholder="Ej: 70012345" value={celular}
                 onChange={e => setCelular(e.target.value.replace(/\D/g, ""))}
-                style={errors.celular ? inputError : inputStyle}
-              />
+                style={errors.celular ? inputError : inputStyle} />
               {errors.celular && <p style={errorText}>{errors.celular}</p>}
             </div>
             <div ref={refs.email}>
               <label style={labelStyle}>Email <Req /></label>
-              <input
-                placeholder="Ej: juan@gmail.com"
-                value={email}
+              <input placeholder="Ej: juan@gmail.com" value={email}
                 onChange={e => setEmail(e.target.value.toLowerCase())}
-                style={errors.email ? inputError : inputStyle}
-              />
+                style={errors.email ? inputError : inputStyle} />
               {errors.email && <p style={errorText}>{errors.email}</p>}
             </div>
           </div>
         </div>
 
+        {/* ── Fotografías ── */}
         <div style={sectionStyle}>
           <h3 style={sectionTitle}>📸 Fotografías y Documentos</h3>
 
@@ -542,13 +597,11 @@ function ClientForm() {
               border: errors.fotografia ? "1px solid #ef4444" : "1px solid #334155",
               display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
             }}>
-              {fotoPreview ? (
-                <img src={fotoPreview} alt="preview" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #3b82f6", flexShrink: 0 }} />
-              ) : (
-                <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>🤳</div>
-              )}
+              {fotoPreview
+                ? <img src={fotoPreview} alt="preview" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #3b82f6", flexShrink: 0 }} />
+                : <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>🤳</div>
+              }
               <div style={{ flex: 1 }}>
-                {/* FIX 1: indicar tamaño máximo al usuario */}
                 <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>Foto clara de tu rostro</p>
                 <p style={{ color: "#475569", fontSize: 11, marginBottom: 8 }}>Máximo {MAX_FILE_SIZE_MB} MB · JPG, PNG</p>
                 <label style={btnUpload}>
@@ -556,13 +609,8 @@ function ClientForm() {
                   <input type="file" accept="image/*" style={{ display: "none" }}
                     onChange={e => {
                       const file = e.target.files?.[0];
-                      if (file) {
-                        if (!validarTamano(file)) return; // FIX 1
-                        setFotografia(file);
-                        setFotoPreview(URL.createObjectURL(file));
-                      }
-                    }}
-                  />
+                      if (file && validarTamano(file)) { setFotografia(file); setFotoPreview(URL.createObjectURL(file)); }
+                    }} />
                 </label>
               </div>
             </div>
@@ -574,37 +622,30 @@ function ClientForm() {
             <p style={{ color: "#64748b", fontSize: 12, marginBottom: 12 }}>
               Podés subir <strong style={{ color: "#94a3b8" }}>2 fotos</strong> (frente y reverso) o un <strong style={{ color: "#94a3b8" }}>documento PDF/Word</strong>
             </p>
-
             <div style={{
               background: errors.fotoCarnet ? "#450a0a" : "#0f172a",
               borderRadius: 12, padding: 20,
               border: errors.fotoCarnet ? "1px solid #ef4444" : "1px solid #334155",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
-                {carnetPreview && carnetEsImagen ? (
-                  <img src={carnetPreview} alt="carnet" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #64748b", flexShrink: 0 }} />
-                ) : carnetPreview && !carnetEsImagen ? (
-                  <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0 }}>
-                    <span style={{ fontSize: 32 }}>📄</span>
-                    <span style={{ color: "#60a5fa", fontSize: 9, textAlign: "center", padding: "0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 82 }}>{carnetPreview}</span>
-                  </div>
-                ) : (
-                  <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>🪪</div>
-                )}
+                {carnetPreview && carnetEsImagen
+                  ? <img src={carnetPreview} alt="carnet" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #64748b", flexShrink: 0 }} />
+                  : carnetPreview && !carnetEsImagen
+                    ? <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0 }}>
+                        <span style={{ fontSize: 32 }}>📄</span>
+                        <span style={{ color: "#60a5fa", fontSize: 9, textAlign: "center", padding: "0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 82 }}>{carnetPreview}</span>
+                      </div>
+                    : <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>🪪</div>
+                }
                 <div style={{ flex: 1 }}>
                   <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>
                     {carnetEsImagen ? "Frente del carnet" : "Documento subido"}
                   </p>
-                  {/* FIX 1: indicar tamaño máximo */}
                   <p style={{ color: "#475569", fontSize: 11, marginBottom: 8 }}>Máximo {MAX_FILE_SIZE_MB} MB · JPG, PNG, PDF, DOC, DOCX</p>
                   <label style={btnUpload}>
                     {carnetPreview ? "🔄 Cambiar" : "📤 Subir frente o documento"}
-                    <input
-                      type="file"
-                      accept="image/*,.pdf,.doc,.docx"
-                      style={{ display: "none" }}
-                      onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet1(file); }}
-                    />
+                    <input type="file" accept="image/*,.pdf,.doc,.docx" style={{ display: "none" }}
+                      onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet1(file); }} />
                   </label>
                 </div>
               </div>
@@ -613,21 +654,16 @@ function ClientForm() {
                 <>
                   <div style={{ borderTop: "1px solid #1e293b", marginBottom: 16 }} />
                   <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                    {carnetPreview2 ? (
-                      <img src={carnetPreview2} alt="carnet2" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #64748b", flexShrink: 0 }} />
-                    ) : (
-                      <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0, opacity: 0.5 }}>🔄</div>
-                    )}
+                    {carnetPreview2
+                      ? <img src={carnetPreview2} alt="carnet2" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #64748b", flexShrink: 0 }} />
+                      : <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0, opacity: 0.5 }}>🔄</div>
+                    }
                     <div style={{ flex: 1 }}>
                       <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>Reverso del carnet <span style={{ color: "#475569", fontSize: 11 }}>(opcional)</span></p>
                       <label style={{ ...btnUpload, background: "#1e293b" }}>
                         {carnetPreview2 ? "🔄 Cambiar reverso" : "📤 Subir reverso"}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: "none" }}
-                          onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet2(file); }}
-                        />
+                        <input type="file" accept="image/*" style={{ display: "none" }}
+                          onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet2(file); }} />
                       </label>
                     </div>
                   </div>
@@ -645,26 +681,22 @@ function ClientForm() {
           </div>
         </div>
 
+        {/* Botón que lleva a revisión (NO guarda todavía) */}
         <button
-          onClick={save}
-          disabled={saving}
+          onClick={irARevisar}
           style={{
             width: "100%", padding: 16,
-            background: saving ? "#334155" : "#3b82f6",
+            background: "#3b82f6",
             border: "none", borderRadius: 12, color: "white",
-            fontSize: 16, fontWeight: "bold",
-            cursor: saving ? "not-allowed" : "pointer",
+            fontSize: 16, fontWeight: "bold", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
           }}
         >
-          {saving
-            ? (subiendoFotos ? "📤 Subiendo archivos..." : <><Spinner /> Guardando...</>)
-            : "💾 Guardar mis datos"
-          }
+          Revisar mis datos →
         </button>
 
         <p style={{ textAlign: "center", color: "#64748b", fontSize: 13, marginTop: 16 }}>
-          Podés editar y guardar tus datos las veces que necesites antes de que expire el link.
+          Podrás confirmar tus datos antes de enviarlos definitivamente.
         </p>
       </div>
     </div>
@@ -681,12 +713,12 @@ function Req() {
 }
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
-const sectionStyle: React.CSSProperties  = { background: "#1e293b", padding: 24, borderRadius: 14, marginBottom: 20 };
-const sectionTitle: React.CSSProperties  = { fontSize: 16, fontWeight: "bold", marginBottom: 20, paddingBottom: 12, borderBottom: "1px solid #334155" };
-const labelStyle: React.CSSProperties   = { display: "block", color: "#94a3b8", fontSize: 12, marginBottom: 6, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 0.5 };
-const inputStyle: React.CSSProperties   = { width: "100%", padding: 10, marginBottom: 4, borderRadius: 8, border: "none", background: "#334155", color: "white", fontSize: 14, boxSizing: "border-box" };
-const inputError: React.CSSProperties   = { ...inputStyle, border: "1px solid #ef4444" };
-const errorText: React.CSSProperties    = { color: "#ef4444", fontSize: 12, marginBottom: 10, marginTop: 2 };
-const btnUpload: React.CSSProperties    = { display: "inline-block", background: "#334155", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 13 };
+const sectionStyle: React.CSSProperties = { background: "#1e293b", padding: 24, borderRadius: 14, marginBottom: 20 };
+const sectionTitle: React.CSSProperties = { fontSize: 16, fontWeight: "bold", marginBottom: 20, paddingBottom: 12, borderBottom: "1px solid #334155" };
+const labelStyle: React.CSSProperties  = { display: "block", color: "#94a3b8", fontSize: 12, marginBottom: 6, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 0.5 };
+const inputStyle: React.CSSProperties  = { width: "100%", padding: 10, marginBottom: 4, borderRadius: 8, border: "none", background: "#334155", color: "white", fontSize: 14, boxSizing: "border-box" };
+const inputError: React.CSSProperties  = { ...inputStyle, border: "1px solid #ef4444" };
+const errorText: React.CSSProperties   = { color: "#ef4444", fontSize: 12, marginBottom: 10, marginTop: 2 };
+const btnUpload: React.CSSProperties   = { display: "inline-block", background: "#334155", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 13 };
 
 export default ClientForm;
