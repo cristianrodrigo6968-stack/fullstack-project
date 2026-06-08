@@ -21,7 +21,7 @@ function Navbar() {
     { label: "Inicio", path: "/" },
     { label: "Servicios", path: "/servicios" },
     { label: "Acerca de", path: "/acerca" },
-  
+
   ];
 
   const isActive = (path: string) => location.pathname === path;
