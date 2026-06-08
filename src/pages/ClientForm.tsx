@@ -25,13 +25,13 @@ const EXTENSIONES: { value: string; label: string }[] = [
   { value: "LP", label: "LP — La Paz" },
   { value: "CB", label: "CB — Cochabamba" },
   { value: "SC", label: "SC — Santa Cruz" },
-  { value: "OR", label: "OR — Oruro" },
+  { value: "OR", label: "O — Oruro" },
   { value: "PT", label: "PT — Potosí" },
   { value: "CH", label: "CH — Chuquisaca" },
   { value: "TJ", label: "TJ — Tarija" },
   { value: "BN", label: "BN — Beni" },
   { value: "PD", label: "PD — Pando" },
-  { value: "QR", label: "QR — (sin extensión)" },
+  { value: "QR", label: "QR" },
 ];
 type Extension = string;
 
