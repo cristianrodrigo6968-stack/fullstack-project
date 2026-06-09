@@ -22,7 +22,7 @@ const allowedOrigins = [
 ];
 app.use(
   cors({
-    origin: "https://fullstack-project-blond.vercel.app", // Tu dominio de Vercel
+    origin: "https://fullstack-project-blond.vercel.app", // URL de tu frontend en Vercel
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -32,7 +32,6 @@ app.use(
 // Middlewares estándar
 app.use(express.json());
 app.use(express.static("public"));
-
 // Configuración de multer
 const upload = multer({
   storage: multer.memoryStorage(),
