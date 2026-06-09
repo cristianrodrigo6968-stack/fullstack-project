@@ -1,4 +1,4 @@
-// index.ts - Servidor backend completo con corrección para subida de documentos
+// index.ts - Servidor backend completo
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -46,7 +46,7 @@ app.use(express.static("public"));
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB para documentos
 });
 
 declare global {
@@ -75,7 +75,7 @@ const subirImagen = async (
     });
     return result.secure_url;
   } catch (error) {
-    console.error(`❌ Cloudinary error (${carpeta}):`, error);
+    console.error(`❌ Cloudinary error (${carpeta}, tipo=${tipo}):`, error);
     return null;
   }
 };
@@ -626,7 +626,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
   }
 
-  // 🔽 INICIO - Guardar precio unitario real de cada producto
+  // 🔽 Guardar precio unitario real de cada producto
   let montoTotal = 0;
   const itemsParaPedido: any[] = [];
   if (pago.productos) {
@@ -806,9 +806,13 @@ app.post(
       if (files?.fotoCarnet?.[0]) {
         const file = files.fotoCarnet[0];
         const esImagen = file.mimetype.startsWith("image/");
-        const resourceType = esImagen ? "image" : "auto";
+        // Para documentos no imagen, usar "raw"
+        const resourceType = esImagen ? "image" : "raw";
+        console.log(`Subiendo ${file.originalname} como ${resourceType}`);
         data.fotoCarnet = await subirImagen(file.buffer, "clientes/carnets", resourceType as any);
-        if (!data.fotoCarnet) throw new Error("Error al subir carnet (frente)");
+        if (!data.fotoCarnet) {
+          throw new Error(`No se pudo subir el archivo ${file.originalname}. Solo se permiten imágenes (JPG, PNG) o documentos (PDF, DOC, DOCX) de hasta 10MB.`);
+        }
       }
 
       if (files?.fotoCarnet2?.[0]) {

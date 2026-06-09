@@ -1,3 +1,4 @@
+// pdfGenerator.ts
 import pdf from 'html-pdf';
 
 export interface ReciboData {
@@ -52,7 +53,6 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
     const saldoColor = saldo <= 0 ? '#16a34a' : '#dc2626';
     const saldoBorder = saldo <= 0 ? '#bbf7d0' : '#fecaca';
 
-    // Generar filas de items con precio unitario real y fondo alternado
     const itemRows = data.items
       .map(
         (item, idx) => `
