@@ -1,4 +1,3 @@
-// pdfGenerator.ts
 import pdf from 'html-pdf';
 
 export interface ReciboData {

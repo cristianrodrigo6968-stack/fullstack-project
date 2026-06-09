@@ -541,7 +541,7 @@ app.delete("/pagos/:id", auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ===================== VERIFICAR PAGO =====================
+// ===================== VERIFICAR PAGO (CORREGIDO) =====================
 app.put("/pagos/:id/verificar", auth, async (req, res) => {
   const id = Number(req.params.id);
   const pago = await prisma.pago.findUnique({ where: { id } });
@@ -603,27 +603,21 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
   }
 
+  // ✅ Usar los datos del carrito enviados por el frontend (nombres y precios reales)
   let montoTotal = 0;
   const itemsParaPedido: any[] = [];
   if (pago.productos) {
     try {
       const carrito = JSON.parse(pago.productos);
       if (Array.isArray(carrito) && carrito.length > 0) {
-        const ids = carrito.map((item: any) => item.id).filter((id: any) => id != null);
-        const productosBD = await prisma.producto.findMany({ where: { id: { in: ids } } });
-        const productoPorId = new Map(productosBD.map((p) => [p.id, p]));
         for (const item of carrito) {
-          const producto = productoPorId.get(item.id);
-          if (!producto) continue;
-          const precioFinal =
-            producto.descuento > 0
-              ? producto.precio - (producto.precio * producto.descuento) / 100
-              : producto.precio;
+          const precioFinal = item.precioUnitario;
+          if (typeof precioFinal !== "number") continue;
           montoTotal += precioFinal;
           itemsParaPedido.push({
             tipo: "producto",
-            titulo: producto.nombre,
-            notas: `Precio unitario: Bs ${precioFinal}`,
+            titulo: item.nombre,
+            notas: `Precio unitario: Bs ${precioFinal.toFixed(2)}`,
             precioUnitario: precioFinal,
           });
         }
@@ -632,11 +626,19 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
       console.error("Error parseando productos del pago:", err);
     }
   }
+
+  // Fallback por si no hay productos
   if (montoTotal === 0 && itemsParaPedido.length === 0) {
     montoTotal = pago.monto;
-    itemsParaPedido.push({ tipo: "desconocido", titulo: "Pago sin productos específicos", precioUnitario: pago.monto });
+    itemsParaPedido.push({
+      tipo: "desconocido",
+      titulo: "Pago sin productos específicos",
+      precioUnitario: pago.monto,
+      notas: "",
+    });
   }
 
+  // Crear pedido con los ítems (con precios individuales)
   const nuevoPedido = await prisma.pedido.create({
     data: {
       clienteId: cliente.id,
@@ -654,7 +656,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
   });
 
   const itemsParaPDF = itemsParaPedido.map((item) => ({
-    titulo: item.titulo || "Producto",
+    titulo: item.titulo,
     tipo: item.tipo,
     precioUnitario: item.precioUnitario,
   }));
@@ -676,6 +678,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     items: itemsParaPDF,
     credenciales: esClienteNuevo && username && password ? { username: username!, password } : undefined,
   };
+
   let pdfBuffer: Buffer | undefined;
   try {
     pdfBuffer = await generarReciboPDF(reciboData);
@@ -784,7 +787,6 @@ app.post(
         if (esImagen) {
           data.fotoCarnet = await subirImagen(file.buffer, "clientes/carnets", "image");
         } else {
-          // Sanitizar nombre: quitar espacios y caracteres especiales
           const safeOriginalName = file.originalname
             .replace(/\s+/g, "_")
             .replace(/[^a-zA-Z0-9._-]/g, "");

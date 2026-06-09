@@ -64,7 +64,12 @@ function CarritoPage() {
     setStep("pago");
   };
 
-  const getProductosPayload = () => carrito.map(p => ({ id: p.id, nombre: p.nombre }));
+  // ✅ Envía nombre real y precio unitario (con descuento aplicado)
+  const getProductosPayload = () => carrito.map(p => ({
+    id: p.id,
+    nombre: p.nombre,
+    precioUnitario: p.descuento > 0 ? p.precio - (p.precio * p.descuento / 100) : p.precio,
+  }));
 
   const handleSubirComprobante = async () => {
     if (!comprobante || !nombreDeclarado || !monto || !celular || !ci) {
