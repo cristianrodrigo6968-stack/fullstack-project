@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
-
 const API_URL = import.meta.env.VITE_API_URL;
+
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 function Spinner() {
   return (
@@ -45,24 +45,23 @@ function ClientForm() {
   const [daysLeft, setDaysLeft]       = useState(0);
   const [subiendoFotos, setSubiendoFotos] = useState(false);
 
-  // refs para scroll al primer error (tipado indexable)
- // refs para scroll al primer error (sin anotación forzada)
-const refs: Record<string, React.RefObject<HTMLDivElement | null>> = {
-  ci: useRef<HTMLDivElement>(null),
-  nombres: useRef<HTMLDivElement>(null),
-  apellidoPaterno: useRef<HTMLDivElement>(null),
-  apellidoMaterno: useRef<HTMLDivElement>(null),
-  sexo: useRef<HTMLDivElement>(null),
-  ciudad: useRef<HTMLDivElement>(null),
-  direccion: useRef<HTMLDivElement>(null),
-  fechaNacimiento: useRef<HTMLDivElement>(null),
-  extension: useRef<HTMLDivElement>(null),
-  profesion: useRef<HTMLDivElement>(null),
-  celular: useRef<HTMLDivElement>(null),
-  email: useRef<HTMLDivElement>(null),
-  fotografia: useRef<HTMLDivElement>(null),
-  fotoCarnet: useRef<HTMLDivElement>(null),
-};
+  // refs para scroll al primer error
+  const refs: Record<string, React.RefObject<HTMLDivElement | null>> = {
+    ci: useRef<HTMLDivElement>(null),
+    nombres: useRef<HTMLDivElement>(null),
+    apellidoPaterno: useRef<HTMLDivElement>(null),
+    apellidoMaterno: useRef<HTMLDivElement>(null),
+    sexo: useRef<HTMLDivElement>(null),
+    ciudad: useRef<HTMLDivElement>(null),
+    direccion: useRef<HTMLDivElement>(null),
+    fechaNacimiento: useRef<HTMLDivElement>(null),
+    extension: useRef<HTMLDivElement>(null),
+    profesion: useRef<HTMLDivElement>(null),
+    celular: useRef<HTMLDivElement>(null),
+    email: useRef<HTMLDivElement>(null),
+    fotografia: useRef<HTMLDivElement>(null),
+    fotoCarnet: useRef<HTMLDivElement>(null),
+  };
 
   // — Datos personales —
   const [ci, setCi]                           = useState("");
@@ -86,6 +85,10 @@ const refs: Record<string, React.RefObject<HTMLDivElement | null>> = {
   const [carnetEsImagen, setCarnetEsImagen] = useState(true);
   const [fotoCarnet2, setFotoCarnet2]       = useState<File | null>(null);
   const [carnetPreview2, setCarnetPreview2] = useState<string>("");
+
+  // ── Nuevos estados para credenciales y PDF ─────────────────────────────────
+  const [credenciales, setCredenciales] = useState<{ username: string; password: string } | null>(null);
+  const [pdfBase64, setPdfBase64] = useState<string | null>(null);
 
   // ── Carga inicial ──────────────────────────────────────────────────────────
   const load = async () => {
@@ -244,6 +247,14 @@ const refs: Record<string, React.RefObject<HTMLDivElement | null>> = {
         return;
       }
 
+      const data = await res.json();
+      if (data.credentials) {
+        setCredenciales(data.credentials);
+      }
+      if (data.pdfBase64) {
+        setPdfBase64(data.pdfBase64);
+      }
+
       // ¡Éxito!
       window.scrollTo({ top: 0, behavior: "smooth" });
       setTimeout(() => setScreen("success"), 100);
@@ -399,7 +410,7 @@ const refs: Record<string, React.RefObject<HTMLDivElement | null>> = {
   // ═══════════════════════════════════════════════════════════════════════════
   if (screen === "success") return (
     <div lang="es" translate="no" style={{ background: "#0f172a", minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "40px 20px", color: "white" }}>
-      <div style={{ maxWidth: 480, width: "100%", textAlign: "center" }}>
+      <div style={{ maxWidth: 520, width: "100%", textAlign: "center" }}>
         <style>{`
           @keyframes popIn {
             0%   { transform: scale(0.5); opacity: 0; }
@@ -411,8 +422,48 @@ const refs: Record<string, React.RefObject<HTMLDivElement | null>> = {
         <div className="success-icon" style={{ fontSize: 80, marginBottom: 20 }}>🎉</div>
         <div style={{ background: "#1e293b", padding: 36, borderRadius: 20, borderTop: "4px solid #22c55e" }}>
           <h2 style={{ marginBottom: 10, fontSize: 26, color: "#22c55e" }}>¡Datos guardados exitosamente!</h2>
+          
+          {/* Mostrar credenciales si se generaron */}
+          {credenciales && (
+            <div style={{ background: "#0f172a", borderRadius: 10, padding: "16px 20px", marginBottom: 24, textAlign: "left" }}>
+              <p style={{ color: "#60a5fa", fontSize: 13, marginBottom: 8 }}>🔐 Tus credenciales de acceso:</p>
+              <p style={{ color: "white", fontSize: 15, marginBottom: 4 }}>👤 Usuario: <strong>{credenciales.username}</strong></p>
+              <p style={{ color: "white", fontSize: 15, margin: 0 }}>🔑 Contraseña: <strong>{credenciales.password}</strong></p>
+              <p style={{ color: "#94a3b8", fontSize: 12, marginTop: 8 }}>Guarda esta información para ingresar a tu portal.</p>
+            </div>
+          )}
+
+          {/* Botón para descargar el recibo si existe */}
+          {pdfBase64 && (
+            <div style={{ marginBottom: 28 }}>
+              <button
+                onClick={() => {
+                  const link = document.createElement("a");
+                  link.href = `data:application/pdf;base64,${pdfBase64}`;
+                  link.download = "recibo_pedido.pdf";
+                  link.click();
+                }}
+                style={{
+                  background: "#10b981",
+                  border: "none",
+                  padding: "12px 20px",
+                  borderRadius: 8,
+                  color: "white",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                📄 Descargar recibo del pedido
+              </button>
+            </div>
+          )}
+
           <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.6, marginBottom: 28 }}>
-            Tu registro fue recibido correctamente. El equipo revisará tu información y se pondrá en contacto con vos a la brevedad.
+            El equipo revisará tu información y se pondrá en contacto con vos a la brevedad.
           </p>
           <div style={{ background: "#0f172a", borderRadius: 10, padding: "12px 16px", marginBottom: 28, display: "flex", gap: 10, alignItems: "center" }}>
             <span style={{ fontSize: 20 }}>📬</span>
@@ -676,7 +727,7 @@ const refs: Record<string, React.RefObject<HTMLDivElement | null>> = {
             display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
           }}
         >
-          Revisar mis datos →
+          Continuar
         </button>
 
         <p style={{ textAlign: "center", color: "#64748b", fontSize: 13, marginTop: 16 }}>

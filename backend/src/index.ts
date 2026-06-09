@@ -856,11 +856,13 @@ app.put("/clients/form/:token", async (req, res) => {
 
   let username = updated.clientUsername;
   let password = "";
+  let credencialesGeneradas = false;
 
   if (!updated.clientUsername || !updated.clientPassword) {
+    credencialesGeneradas = true;
     const nombresArray = (updated.nombres || "").split(" ");
     const apellidoPaternoRaw = (updated.apellidoPaterno || "").toLowerCase();
-    const baseUsername = `${nombresArray[0] || ""}.${apellidoPaternoRaw}`
+    let baseUsername = `${nombresArray[0] || ""}.${apellidoPaternoRaw}`
       .replace(/\s+/g, "")
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
@@ -884,25 +886,15 @@ app.put("/clients/form/:token", async (req, res) => {
     });
   }
 
-  const LINK_PORTAL = process.env.CLIENT_PORTAL_URL || "https://tudominio.com/cliente";
-  const nombreCompletoEnvio =
-    updated.nombreCompleto ||
-    [updated.nombres, updated.apellidoPaterno, updated.apellidoMaterno].filter(Boolean).join(" ") ||
-    "Cliente";
-  const emailEnvio = updated.email || "";
-  const celularEnvio = updated.celular || "";
-
-  // --- INICIO MEJORA: ENVIAR RECIBO PDF ADICIONALMENTE ---
-  // Buscar el pedido activo más reciente (no completado)
+  // ─── Generar PDF del pedido activo ────────────────────────────────────────
+  let pdfBase64 = null;
   const pedidoActivo = await prisma.pedido.findFirst({
     where: { clienteId: updated.id, estado: { not: "completado" } },
     orderBy: { creadoEn: "desc" },
     include: { items: true },
   });
 
-  let pdfBuffer: Buffer | undefined;
   if (pedidoActivo) {
-    // Preparar datos para el PDF
     const itemsParaPDF = pedidoActivo.items.map((item) => ({
       titulo: item.titulo || "Producto",
       tipo: item.tipo,
@@ -910,10 +902,10 @@ app.put("/clients/form/:token", async (req, res) => {
     }));
     const reciboData = {
       cliente: {
-        nombreCompleto: nombreCompletoEnvio,
+        nombreCompleto: updated.nombreCompleto || [updated.nombres, updated.apellidoPaterno, updated.apellidoMaterno].filter(Boolean).join(" ") || "Cliente",
         ci: updated.ci || "",
-        celular: celularEnvio,
-        email: emailEnvio,
+        celular: updated.celular || "",
+        email: updated.email || "",
       },
       pedido: {
         id: pedidoActivo.id,
@@ -925,52 +917,25 @@ app.put("/clients/form/:token", async (req, res) => {
       items: itemsParaPDF,
     };
     try {
-      pdfBuffer = await generarReciboPDF(reciboData);
-      console.log(`✅ Recibo PDF generado para cliente ${updated.id} (pedido ${pedidoActivo.id})`);
+      const pdfBuffer = await generarReciboPDF(reciboData);
+      pdfBase64 = pdfBuffer.toString("base64");
     } catch (err) {
       console.error("Error generando PDF en formulario:", err);
     }
   }
 
-  setTimeout(() => {
-    enviarCorreo({ email: emailEnvio, nombreCompleto: nombreCompletoEnvio, username: username!, password, linkPortal: LINK_PORTAL })
-      .catch((err) => console.error("Error enviando correo:", err));
+  // ─── Respuesta al frontend ────────────────────────────────────────────────
+  res.json({
+    client: updated,
+    credentials: credencialesGeneradas ? { username, password } : null,
+    pdfBase64,
+  });
 
-    // Enviar WhatsApp con credenciales (si es nuevo) y el recibo (si existe)
-    if (username && password) {
-      // Si se generaron credenciales nuevas, las enviamos junto con el recibo
-      enviarWhatsAppCliente(
-        celularEnvio,
-        nombreCompletoEnvio,
-        username,
-        password,
-        LINK_PORTAL,
-        pdfBuffer,
-        pedidoActivo ? `Recibo_Pedido_${pedidoActivo.id}.pdf` : undefined
-      ).catch((err) => console.error("Error enviando WhatsApp:", err));
-    } else if (pdfBuffer) {
-      // Si ya tenía credenciales, solo enviamos el recibo
-      enviarWhatsAppCliente(
-        celularEnvio,
-        nombreCompletoEnvio,
-        "",
-        "",
-        "",
-        pdfBuffer,
-        pedidoActivo ? `Recibo_Pedido_${pedidoActivo.id}.pdf` : undefined
-      ).catch((err) => console.error("Error enviando WhatsApp:", err));
-    } else {
-      // Si no hay recibo ni nuevas credenciales, solo envía credenciales existentes (esto ya se hace)
-      // Pero como arriba solo llamamos si había username/password, aquí no es necesario repetir
-    }
-  }, 5000);
-  // --- FIN MEJORA ---
-
+  // ─── Continuar con el resto del flujo (tareas, entregas, etc.) ────────────
   await prisma.clienteTask.deleteMany({ where: { clienteId: updated.id } });
   await prisma.entrega.deleteMany({ where: { clienteId: updated.id } });
 
   const tareas: any[] = [];
-
   if (pideDirector) {
     for (let i = 1; i <= 3; i++) {
       tareas.push({ tipo: "edicion_revista", descripcion: `Edición ${i} de revista — ${nombreCompleto} (1 artículo)`, clienteId: updated.id });
@@ -995,8 +960,6 @@ app.put("/clients/form/:token", async (req, res) => {
 
   if (tareas.length > 0) await prisma.clienteTask.createMany({ data: tareas });
   await prisma.entrega.create({ data: { estado: "pendiente", clienteId: updated.id } });
-
-  res.json(updated);
 });
 
 app.put("/clients/:id", auth, async (req, res) => {
@@ -1335,7 +1298,10 @@ app.put("/cliente/password", authCliente, async (req: any, res) => {
 });
 
 app.put("/cliente/datos", authCliente, async (req: any, res) => {
-  const cliente = await prisma.client.findUnique({ where: { id: req.clienteId }, select: { credencialesGeneradaAt: true } });
+  const cliente = await prisma.client.findUnique({
+    where: { id: req.clienteId },
+    select: { credencialesGeneradaAt: true },
+  });
   if (!cliente || !cliente.credencialesGeneradaAt) return res.status(400).json({ error: "No tienes permiso para editar datos" });
   const ahora = new Date();
   const limite = new Date(cliente.credencialesGeneradaAt.getTime() + 10 * 60 * 60 * 1000);
