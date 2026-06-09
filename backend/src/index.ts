@@ -15,10 +15,10 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.JWT_SECRET || "secret123";
 
-// ─── CORS CONFIGURATION ─────────────────────────────────────────────────────
+// ─── CORS CONFIGURATION (corregida, sin app.options) ─────────────────────────
 const allowedOrigins = [
   "https://fullstack-project-blond.vercel.app", // frontend producción
-  "http://localhost:5173", // desarrollo local
+  "http://localhost:5173",                     // desarrollo local
 ];
 app.use(
   cors({
