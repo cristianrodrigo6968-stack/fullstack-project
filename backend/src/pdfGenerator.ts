@@ -27,7 +27,7 @@ export interface ReciboData {
 
 export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const logoUrl = 'http://localhost:3000/logo.jpg';
+    const logoUrl = `${process.env.API_URL || 'http://localhost:3000'}/logo.jpg`;
 
     const fechaFormateada = data.pedido.fecha.toLocaleDateString('es-BO', {
       year: 'numeric',
@@ -85,14 +85,16 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
         </tr>`)
       .join('');
 
-    const credencialesHtml = data.credenciales ? `
-      <div class="credenciales-box" style="margin-top: 30px; background: #eef2ff; border-left: 8px solid #3b82f6; padding: 20px 30px; border-radius: 12px;">
+    const credencialesHtml = data.credenciales
+      ? `
+      <div style="margin-top: 30px; background: #eef2ff; border-left: 8px solid #3b82f6; padding: 20px 30px; border-radius: 12px;">
         <p style="font-size: 24px; font-weight: bold; color: #1e3a5f; margin-bottom: 12px;">🔐 Tus credenciales de acceso</p>
         <p style="font-size: 22px; margin: 8px 0;"><strong>Usuario:</strong> ${data.credenciales.username}</p>
         <p style="font-size: 22px; margin: 8px 0;"><strong>Contraseña:</strong> ${data.credenciales.password}</p>
         <p style="font-size: 18px; color: #4b5563; margin-top: 10px;">Guarda esta información para ingresar a tu portal.</p>
       </div>
-    ` : '';
+    `
+      : '';
 
     const html = `<!DOCTYPE html>
 <html>
@@ -109,7 +111,6 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
       font-size: 28px;
     }
 
-    /* ══ HEADER ══ */
     .header {
       background: #0b3a5e;
       padding: 48px 60px 40px;
@@ -180,7 +181,6 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
       color: ${estadoPago.color};
     }
 
-    /* ══ SECCIÓN TÍTULOS ══ */
     .section-title {
       font-size: 18px;
       letter-spacing: 0.15em;
@@ -191,7 +191,6 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
       margin-top: 40px;
     }
 
-    /* ══ CLIENTE ══ */
     .cliente-box {
       background: #f6f9fc;
       border: 1px solid #e1eaf4;
@@ -235,7 +234,6 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
       line-height: 1.6;
     }
 
-    /* ══ TABLA ITEMS ══ */
     .items-table { width: 100%; border-collapse: collapse; font-size: 28px; }
     .items-table thead tr { background: #0b3a5e; }
     .items-table thead th {
@@ -248,7 +246,6 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
     }
     .items-table thead th.right { text-align: right; }
 
-    /* ══ TOTALES ══ */
     .totales-box {
       background: #f6f9fc;
       border: 1px solid #e1eaf4;
@@ -273,7 +270,6 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
     }
     .tot-table td.right { text-align: right; }
 
-    /* ══ NOTA ══ */
     .nota {
       text-align: center;
       font-size: 22px;
@@ -296,7 +292,6 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
       width: 70%;
     }
 
-    /* ══ FOOTER ══ */
     .footer {
       background: #0b3a5e;
       padding: 30px 60px;
@@ -321,34 +316,10 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
 
     .divider { border: none; border-top: 1px solid #e8eef5; margin: 40px 0 0; }
     .spacer { height: 40px; }
-
-    .credenciales-box {
-      margin-top: 30px;
-      background: #eef2ff;
-      border-left: 8px solid #3b82f6;
-      padding: 20px 30px;
-      border-radius: 12px;
-    }
-    .credenciales-box p {
-      font-size: 22px;
-      margin: 8px 0;
-    }
-    .credenciales-box p:first-child {
-      font-size: 24px;
-      font-weight: bold;
-      color: #1e3a5f;
-      margin-bottom: 12px;
-    }
-    .credenciales-box p:last-child {
-      font-size: 18px;
-      color: #4b5563;
-      margin-top: 10px;
-    }
   </style>
 </head>
 <body>
 
-  <!-- ══ HEADER ══ -->
   <div class="header">
     <table>
       <tr>
@@ -371,10 +342,8 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
     </table>
   </div>
 
-  <!-- ══ BODY ══ -->
   <div style="padding: 10px 60px 0;">
 
-    <!-- Cliente -->
     <div class="section-title">Datos del cliente</div>
     <div class="cliente-box">
       <table>
@@ -395,7 +364,6 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
       </table>
     </div>
 
-    <!-- Detalle -->
     <div class="section-title">Detalle del pedido</div>
     <table class="items-table">
       <thead>
@@ -410,7 +378,6 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
       </tbody>
     </table>
 
-    <!-- Totales -->
     <div class="totales-box">
       <table class="tot-table">
         <tr>
@@ -445,7 +412,6 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
     <div class="spacer"></div>
   </div>
 
-  <!-- ══ FOOTER ══ -->
   <div class="footer">
     <table>
       <tr>
@@ -480,6 +446,7 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
       type: 'pdf' as const,
       quality: '100',
     };
+
     pdf.create(html, options).toBuffer((err, buffer) => {
       if (err) reject(err);
       else resolve(buffer);

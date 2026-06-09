@@ -3,7 +3,6 @@ import { useParams } from "react-router-dom";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-// ─── Spinner ──────────────────────────────────────────────────────────────────
 function Spinner() {
   return (
     <>
@@ -18,7 +17,6 @@ function Spinner() {
   );
 }
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
 const EXTENSIONES = ["LP", "CB", "SC", "OR", "PT", "CH", "TJ", "BN", "PD", "QR"] as const;
 type Extension = typeof EXTENSIONES[number];
 
@@ -28,14 +26,11 @@ type Sexo = typeof SEXOS[number];
 const MAX_FILE_SIZE_MB    = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
-// ─── Pantallas posibles ───────────────────────────────────────────────────────
 type Screen = "form" | "review" | "success";
 
-// ─── Componente principal ─────────────────────────────────────────────────────
 function ClientForm() {
   const { token } = useParams();
 
-  // — UI state —
   const [screen, setScreen]           = useState<Screen>("form");
   const [loading, setLoading]         = useState(true);
   const [saving, setSaving]           = useState(false);
@@ -45,7 +40,6 @@ function ClientForm() {
   const [daysLeft, setDaysLeft]       = useState(0);
   const [subiendoFotos, setSubiendoFotos] = useState(false);
 
-  // refs para scroll al primer error
   const refs: Record<string, React.RefObject<HTMLDivElement | null>> = {
     ci: useRef<HTMLDivElement>(null),
     nombres: useRef<HTMLDivElement>(null),
@@ -63,7 +57,6 @@ function ClientForm() {
     fotoCarnet: useRef<HTMLDivElement>(null),
   };
 
-  // — Datos personales —
   const [ci, setCi]                           = useState("");
   const [nombres, setNombres]                 = useState("");
   const [apellidoPaterno, setApellidoPaterno] = useState("");
@@ -77,7 +70,6 @@ function ClientForm() {
   const [celular, setCelular]                 = useState("");
   const [email, setEmail]                     = useState("");
 
-  // — Fotos y documentos —
   const [fotografia, setFotografia]         = useState<File | null>(null);
   const [fotoPreview, setFotoPreview]       = useState<string>("");
   const [fotoCarnet, setFotoCarnet]         = useState<File | null>(null);
@@ -86,11 +78,9 @@ function ClientForm() {
   const [fotoCarnet2, setFotoCarnet2]       = useState<File | null>(null);
   const [carnetPreview2, setCarnetPreview2] = useState<string>("");
 
-  // ── Nuevos estados para credenciales y PDF ─────────────────────────────────
   const [credenciales, setCredenciales] = useState<{ username: string; password: string } | null>(null);
-  const [pdfBase64, setPdfBase64] = useState<string | null>(null);
+  const [pdfBase64, setPdfBase64]       = useState<string | null>(null);
 
-  // ── Carga inicial ──────────────────────────────────────────────────────────
   const load = async () => {
     setLoading(true);
     try {
@@ -125,7 +115,6 @@ function ClientForm() {
 
   useEffect(() => { load(); }, []);
 
-  // ── Helpers de archivo ─────────────────────────────────────────────────────
   const esImagen    = (file: File) => file.type.startsWith("image/");
   const esDocumento = (file: File) =>
     file.type === "application/pdf" ||
@@ -155,7 +144,6 @@ function ClientForm() {
     if (esImagen(file)) { setFotoCarnet2(file); setCarnetPreview2(URL.createObjectURL(file)); }
   };
 
-  // ── Validación + ir a revisión ─────────────────────────────────────────────
   const irARevisar = () => {
     const e: Record<string, string> = {};
     if (!ci.trim())                          e.ci = "La cédula es obligatoria";
@@ -180,7 +168,6 @@ function ClientForm() {
     if (!fotoCarnet && !carnetPreview)       e.fotoCarnet = "El documento/foto del carnet es obligatorio";
     setErrors(e);
 
-    // Scroll al primer error
     const orden = ["ci","nombres","apellidoPaterno","apellidoMaterno","sexo","ciudad","direccion","fechaNacimiento","extension","profesion","celular","email","fotografia","fotoCarnet"];
     const primerError = orden.find(k => e[k]);
     if (primerError && refs[primerError]?.current) {
@@ -188,18 +175,15 @@ function ClientForm() {
       return;
     }
 
-    // Sin errores → ir a pantalla de revisión
     window.scrollTo({ top: 0, behavior: "smooth" });
     setTimeout(() => setScreen("review"), 100);
   };
 
-  // ── Guardar definitivo (llamado desde la pantalla de revisión) ─────────────
   const confirmarYGuardar = async () => {
     setSaving(true);
     setSaveError("");
     setSubiendoFotos(true);
     try {
-      // 1. Subir fotos/documentos
       const formData = new FormData();
       if (fotografia)  formData.append("fotografia", fotografia);
       if (fotoCarnet)  formData.append("fotoCarnet", fotoCarnet);
@@ -225,7 +209,6 @@ function ClientForm() {
       if (!fotosOk) { setSaving(false); setSubiendoFotos(false); return; }
       setSubiendoFotos(false);
 
-      // 2. Guardar datos personales
       const nombreCompleto = `${nombres} ${apellidoPaterno} ${apellidoMaterno}`.trim();
       const res = await fetch(`${API_URL}/clients/form/${token}`, {
         method: "PUT",
@@ -248,6 +231,8 @@ function ClientForm() {
       }
 
       const data = await res.json();
+
+      // Siempre guardar credenciales y PDF que lleguen del backend
       if (data.credentials) {
         setCredenciales(data.credentials);
       }
@@ -255,7 +240,6 @@ function ClientForm() {
         setPdfBase64(data.pdfBase64);
       }
 
-      // ¡Éxito!
       window.scrollTo({ top: 0, behavior: "smooth" });
       setTimeout(() => setScreen("success"), 100);
     } catch (err) {
@@ -267,10 +251,8 @@ function ClientForm() {
     }
   };
 
-  // ── Resumen de datos (reutilizado en revisión y éxito) ─────────────────────
   const ResumenDatos = () => (
     <div style={{ background: "#0f172a", padding: 20, borderRadius: 12 }}>
-      {/* Fotos */}
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
         {fotoPreview && (
           <div style={{ textAlign: "center" }}>
@@ -298,7 +280,6 @@ function ClientForm() {
           </div>
         )}
       </div>
-      {/* Datos en lista */}
       {[
         { label: "C.I.",             value: ci },
         { label: "Nombres",          value: nombres },
@@ -321,7 +302,6 @@ function ClientForm() {
     </div>
   );
 
-  // ── Estados de carga / error ───────────────────────────────────────────────
   if (loading) return (
     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#0f172a" }}>
       <Spinner />
@@ -421,21 +401,25 @@ function ClientForm() {
         `}</style>
         <div className="success-icon" style={{ fontSize: 80, marginBottom: 20 }}>🎉</div>
         <div style={{ background: "#1e293b", padding: 36, borderRadius: 20, borderTop: "4px solid #22c55e" }}>
-          <h2 style={{ marginBottom: 10, fontSize: 26, color: "#22c55e" }}>¡Datos guardados exitosamente!</h2>
-          
-          {/* Mostrar credenciales si se generaron */}
+          <h2 style={{ marginBottom: 20, fontSize: 26, color: "#22c55e" }}>¡Datos guardados exitosamente!</h2>
+
           {credenciales && (
-            <div style={{ background: "#0f172a", borderRadius: 10, padding: "16px 20px", marginBottom: 24, textAlign: "left" }}>
-              <p style={{ color: "#60a5fa", fontSize: 13, marginBottom: 8 }}>🔐 Tus credenciales de acceso:</p>
-              <p style={{ color: "white", fontSize: 15, marginBottom: 4 }}>👤 Usuario: <strong>{credenciales.username}</strong></p>
-              <p style={{ color: "white", fontSize: 15, margin: 0 }}>🔑 Contraseña: <strong>{credenciales.password}</strong></p>
-              <p style={{ color: "#94a3b8", fontSize: 12, marginTop: 8 }}>Guarda esta información para ingresar a tu portal.</p>
+            <div style={{ background: "#0f172a", borderRadius: 12, padding: "20px 24px", marginBottom: 24, textAlign: "left", border: "1px solid #1e3a5f" }}>
+              <p style={{ color: "#60a5fa", fontSize: 14, fontWeight: "bold", marginBottom: 12 }}>🔐 Tus credenciales de acceso</p>
+              <div style={{ background: "#1e293b", borderRadius: 8, padding: "10px 16px", marginBottom: 8 }}>
+                <p style={{ color: "#94a3b8", fontSize: 11, marginBottom: 2 }}>USUARIO</p>
+                <p style={{ color: "white", fontSize: 18, fontWeight: "bold", letterSpacing: 1 }}>{credenciales.username}</p>
+              </div>
+              <div style={{ background: "#1e293b", borderRadius: 8, padding: "10px 16px", marginBottom: 12 }}>
+                <p style={{ color: "#94a3b8", fontSize: 11, marginBottom: 2 }}>CONTRASEÑA</p>
+                <p style={{ color: "white", fontSize: 18, fontWeight: "bold", letterSpacing: 1 }}>{credenciales.password}</p>
+              </div>
+              <p style={{ color: "#64748b", fontSize: 12 }}>⚠️ Guardá esta información. No se volverá a mostrar.</p>
             </div>
           )}
 
-          {/* Botón para descargar el recibo si existe */}
           {pdfBase64 && (
-            <div style={{ marginBottom: 28 }}>
+            <div style={{ marginBottom: 24 }}>
               <button
                 onClick={() => {
                   const link = document.createElement("a");
@@ -444,33 +428,40 @@ function ClientForm() {
                   link.click();
                 }}
                 style={{
+                  width: "100%",
                   background: "#10b981",
                   border: "none",
-                  padding: "12px 20px",
-                  borderRadius: 8,
+                  padding: "14px 20px",
+                  borderRadius: 10,
                   color: "white",
                   fontWeight: "bold",
                   cursor: "pointer",
-                  fontSize: 14,
-                  display: "inline-flex",
+                  fontSize: 15,
+                  display: "flex",
                   alignItems: "center",
+                  justifyContent: "center",
                   gap: 8,
                 }}
               >
                 📄 Descargar recibo del pedido
               </button>
+              <p style={{ color: "#475569", fontSize: 12, marginTop: 8 }}>
+                El recibo incluye tus credenciales de acceso.
+              </p>
             </div>
           )}
 
-          <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.6, marginBottom: 28 }}>
+          <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.6, marginBottom: 24 }}>
             El equipo revisará tu información y se pondrá en contacto con vos a la brevedad.
           </p>
-          <div style={{ background: "#0f172a", borderRadius: 10, padding: "12px 16px", marginBottom: 28, display: "flex", gap: 10, alignItems: "center" }}>
+
+          <div style={{ background: "#0f172a", borderRadius: 10, padding: "12px 16px", marginBottom: 24, display: "flex", gap: 10, alignItems: "center" }}>
             <span style={{ fontSize: 20 }}>📬</span>
             <p style={{ color: "#60a5fa", fontSize: 13, margin: 0, textAlign: "left" }}>
               Te contactaremos al número <strong>{celular}</strong> o al correo <strong>{email}</strong>.
             </p>
           </div>
+
           <button
             onClick={() => window.location.href = "/"}
             style={{
@@ -512,7 +503,6 @@ function ClientForm() {
           </div>
         </div>
 
-        {/* ── Datos Personales ── */}
         <div style={sectionStyle}>
           <h3 style={sectionTitle}>👤 Datos Personales</h3>
 
@@ -621,7 +611,6 @@ function ClientForm() {
           </div>
         </div>
 
-        {/* ── Fotografías ── */}
         <div style={sectionStyle}>
           <h3 style={sectionTitle}>📸 Fotografías y Documentos</h3>
 
@@ -738,7 +727,6 @@ function ClientForm() {
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function soloLetras(value: string): string {
   return value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "").toUpperCase();
 }
@@ -747,7 +735,6 @@ function Req() {
   return <span style={{ color: "#ef4444" }}>*</span>;
 }
 
-// ─── Estilos ──────────────────────────────────────────────────────────────────
 const sectionStyle: React.CSSProperties = { background: "#1e293b", padding: 24, borderRadius: 14, marginBottom: 20 };
 const sectionTitle: React.CSSProperties = { fontSize: 16, fontWeight: "bold", marginBottom: 20, paddingBottom: 12, borderBottom: "1px solid #334155" };
 const labelStyle: React.CSSProperties  = { display: "block", color: "#94a3b8", fontSize: 12, marginBottom: 6, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 0.5 };
