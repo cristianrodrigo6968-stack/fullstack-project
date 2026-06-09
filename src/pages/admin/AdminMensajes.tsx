@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useWindowSize } from "../../hooks/useWindowSize";
-const API_URL = "${import.meta.env.VITE_API_URL}";
+
+const API_URL = import.meta.env.VITE_API_URL;
 interface UltimoMensaje {
   texto: string;
   emisor: string;

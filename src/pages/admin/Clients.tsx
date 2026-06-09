@@ -5,7 +5,7 @@ import { useMesActual } from "../../hooks/useMesActual";
 import NavegadorMes from "../../components/NavegadorMes";
 
 
-const API_URL = "${import.meta.env.VITE_API_URL}";
+const API_URL = import.meta.env.VITE_API_URL;
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Extension = "LP" | "CB" | "SC" | "OR" | "PT" | "CH" | "TJ" | "BN" | "PD" | "QR";
 type Sexo = "Masculino" | "Femenino";

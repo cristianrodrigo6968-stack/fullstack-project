@@ -4,7 +4,7 @@ import { useWindowSize } from "../../hooks/useWindowSize";
 import { useMesActual } from "../../hooks/useMesActual";
 import NavegadorMes from "../../components/NavegadorMes";
 
-const API_URL = "${import.meta.env.VITE_API_URL}";
+const API_URL = import.meta.env.VITE_API_URL;
 interface Pago {
   id: number;
   nombreDeclarado: string;

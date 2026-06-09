@@ -3,7 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useWindowSize } from "../../hooks/useWindowSize";
 
 
-const API_URL = "${import.meta.env.VITE_API_URL}";
+const API_URL = import.meta.env.VITE_API_URL;
 interface Producto {
   id: number;
   nombre: string;

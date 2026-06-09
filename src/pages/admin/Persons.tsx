@@ -6,7 +6,7 @@ interface Person {
   email?: string;
 }
 
-const API_URL = "${import.meta.env.VITE_API_URL}";
+const API_URL = import.meta.env.VITE_API_URL;
 
 function Persons() {
   const [persons, setPersons] = useState<Person[]>([]);
