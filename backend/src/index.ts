@@ -566,7 +566,6 @@ app.put("/pagos/:id", auth, async (req, res) => {
   if (monto !== undefined) data.monto = Number(monto);
   res.json(await prisma.pago.update({ where: { id }, data }));
 });
-
 app.delete("/pagos/:id", auth, async (req, res) => {
   await prisma.pago.delete({ where: { id: Number(req.params.id) } });
   res.json({ ok: true });
@@ -700,6 +699,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
       fecha: new Date(),
     },
     items: itemsParaPDF,
+    credenciales: esClienteNuevo && username && password ? { username: username!, password } : undefined,
   };
   let pdfBuffer: Buffer | undefined;
   try {
@@ -886,7 +886,7 @@ app.put("/clients/form/:token", async (req, res) => {
     });
   }
 
-  // ─── Generar PDF del pedido activo ────────────────────────────────────────
+  // ─── Generar PDF del pedido activo incluyendo credenciales ─────────────────
   let pdfBase64 = null;
   const pedidoActivo = await prisma.pedido.findFirst({
     where: { clienteId: updated.id, estado: { not: "completado" } },
@@ -915,6 +915,7 @@ app.put("/clients/form/:token", async (req, res) => {
         fecha: pedidoActivo.creadoEn,
       },
       items: itemsParaPDF,
+      credenciales: credencialesGeneradas ? { username: username!, password } : undefined,
     };
     try {
       const pdfBuffer = await generarReciboPDF(reciboData);
@@ -1156,7 +1157,9 @@ app.put("/items/:id/asignar-revista", auth, async (req, res) => {
   const item = await prisma.itemPedido.findUnique({ where: { id: itemId }, include: { pedido: true } });
   if (!item) return res.status(404).json({ error: "Ítem no encontrado" });
   const clienteId = item.pedido.clienteId;
-  const existente = await prisma.itemPedido.findFirst({ where: { edicionId, pedido: { clienteId }, NOT: { id: itemId } } });
+  const existente = await prisma.itemPedido.findFirst({
+    where: { edicionId, pedido: { clienteId }, NOT: { id: itemId } },
+  });
   if (existente) return res.status(400).json({ error: "El autor ya tiene un artículo en esta edición" });
   const updated = await prisma.itemPedido.update({
     where: { id: itemId },

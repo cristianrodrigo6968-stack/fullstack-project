@@ -19,6 +19,10 @@ export interface ReciboData {
     tipo: string;
     precioUnitario: number;
   }>;
+  credenciales?: {
+    username: string;
+    password: string;
+  };
 }
 
 export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
@@ -77,9 +81,18 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
       .map(() => `
         <tr>
           <td style="padding:24px 28px; border-bottom:1px solid #f4f6f9;">&nbsp;</td>
-          <td style="border-bottom:1px solid #f4f6f9;"></td>
+          <td style="border-bottom:1px solid #f4f6f9;">&nbsp;</td>
         </tr>`)
       .join('');
+
+    const credencialesHtml = data.credenciales ? `
+      <div class="credenciales-box" style="margin-top: 30px; background: #eef2ff; border-left: 8px solid #3b82f6; padding: 20px 30px; border-radius: 12px;">
+        <p style="font-size: 24px; font-weight: bold; color: #1e3a5f; margin-bottom: 12px;">🔐 Tus credenciales de acceso</p>
+        <p style="font-size: 22px; margin: 8px 0;"><strong>Usuario:</strong> ${data.credenciales.username}</p>
+        <p style="font-size: 22px; margin: 8px 0;"><strong>Contraseña:</strong> ${data.credenciales.password}</p>
+        <p style="font-size: 18px; color: #4b5563; margin-top: 10px;">Guarda esta información para ingresar a tu portal.</p>
+      </div>
+    ` : '';
 
     const html = `<!DOCTYPE html>
 <html>
@@ -308,6 +321,29 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
 
     .divider { border: none; border-top: 1px solid #e8eef5; margin: 40px 0 0; }
     .spacer { height: 40px; }
+
+    .credenciales-box {
+      margin-top: 30px;
+      background: #eef2ff;
+      border-left: 8px solid #3b82f6;
+      padding: 20px 30px;
+      border-radius: 12px;
+    }
+    .credenciales-box p {
+      font-size: 22px;
+      margin: 8px 0;
+    }
+    .credenciales-box p:first-child {
+      font-size: 24px;
+      font-weight: bold;
+      color: #1e3a5f;
+      margin-bottom: 12px;
+    }
+    .credenciales-box p:last-child {
+      font-size: 18px;
+      color: #4b5563;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -395,6 +431,8 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
         </tr>
       </table>
     </div>
+
+    ${credencialesHtml}
 
     <hr class="divider" />
 
