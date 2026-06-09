@@ -261,6 +261,7 @@ model ItemPedido {
   tipoAutor               String?
   asociacionEncargaTitulo Boolean        @default(false)
   notas                   String?
+   precioUnitario Float? 
   archivoWord             String?
   archivoPdf              String?
   estado                  String         @default("pendiente")
