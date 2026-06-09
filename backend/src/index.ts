@@ -15,28 +15,25 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.JWT_SECRET || "secret123";
 
-// ─── CORS CONFIGURATION (simplificada y robusta) ─────────────────────────────
+// ─── CORS CONFIGURATION ─────────────────────────────────────────────────────
 const allowedOrigins = [
-  "https://fullstack-project-blond.vercel.app",
-  "http://localhost:5173",
+  "https://fullstack-project-blond.vercel.app", // frontend producción
+  "http://localhost:5173", // desarrollo local
 ];
-
-// Usar cors con opciones explícitas (funciona para preflight)
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
-// Opcional: agregar middleware manual para logging y cabeceras extra (por si acaso)
-app.use((req, res, next) => {
-  // Registrar el origen de cada petición (útil para logs de Render)
-  console.log(`[${req.method}] ${req.originalUrl} - Origin: ${req.headers.origin || "no origin"}`);
-  next();
-});
 
 // Middlewares estándar
 app.use(express.json());
@@ -1782,4 +1779,8 @@ app.post("/items-pedido/:id/archivo", auth, upload.single("archivo"), async (req
 });
 
 // ===================== START =====================
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
+  console.log(`🌐 Acceso local: http://localhost:${PORT}`);
+  console.log(`🚀 CORS permitido para: ${allowedOrigins.join(", ")}`);
+});
