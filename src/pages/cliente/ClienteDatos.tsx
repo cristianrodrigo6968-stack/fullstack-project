@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 
 
-const API_URL = "https://taskmanager-backend-ewud.onrender.com";
+const API_URL = "${import.meta.env.VITE_API_URL}";
 function ClienteDatos() {
   const { token } = useAuth();
   const [cliente, setCliente] = useState<any>(null);

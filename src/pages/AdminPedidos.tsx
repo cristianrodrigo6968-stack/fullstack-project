@@ -5,7 +5,7 @@ import { useMesActual } from "../hooks/useMesActual";
 import NavegadorMes from "../components/NavegadorMes";
 
 
-const API_URL = "https://taskmanager-backend-ewud.onrender.com";
+const API_URL = "${import.meta.env.VITE_API_URL}";
 interface Edicion {
   id: number;
   numero: number;

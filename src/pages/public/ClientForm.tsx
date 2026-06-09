@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 
-const API_URL = "https://taskmanager-backend-ewud.onrender.com";
+const API_URL = "${import.meta.env.VITE_API_URL}";
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 function Spinner() {
   return (

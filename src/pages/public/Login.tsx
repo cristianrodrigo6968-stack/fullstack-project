@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useWindowSize } from "../../hooks/useWindowSize";
 
-const API_URL = "https://taskmanager-backend-ewud.onrender.com";
+const API_URL = "${import.meta.env.VITE_API_URL}";
 
 function Spinner() {
   return (

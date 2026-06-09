@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 
 
-const API_URL = "https://taskmanager-backend-ewud.onrender.com";
+const API_URL = "${import.meta.env.VITE_API_URL}";
 function Barra({ label, actual, total, color, icon }: any) {
   const pct = total === 0 ? 0 : Math.round((actual / total) * 100);
   return (

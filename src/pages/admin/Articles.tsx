@@ -18,7 +18,7 @@ interface Article {
 }
 
 
-const API_URL = "https://taskmanager-backend-ewud.onrender.com";
+const API_URL = "${import.meta.env.VITE_API_URL}";
 function Articles() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
