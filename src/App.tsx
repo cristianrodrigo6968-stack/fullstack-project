@@ -60,7 +60,7 @@ function App() {
         <Route path="/admin/mensajes" element={<ProtectedRoute><AdminMensajes /></ProtectedRoute>} />
         <Route path="/admin/clientes" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
         <Route path="/admin/entregas" element={<ProtectedRoute><Entregas /></ProtectedRoute>} />
-   
+   <Route path="/formulario/:token" element={<ClientForm />} />
         <Route path="/admin/revistas" element={<ProtectedRoute><Magazines /></ProtectedRoute>} />
         <Route path="/admin/libros" element={<ProtectedRoute><Books /></ProtectedRoute>} />
         <Route path="/admin/articulos" element={<ProtectedRoute><Articles /></ProtectedRoute>} />
