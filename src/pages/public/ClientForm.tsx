@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -7,28 +9,32 @@ function Spinner() {
   return (
     <>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{
-        display: "inline-block", width: 20, height: 20,
-        border: "3px solid rgba(255,255,255,0.3)",
-        borderTop: "3px solid white", borderRadius: "50%",
-        animation: "spin 0.8s linear infinite",
-      }} />
+      <div
+        style={{
+          display: "inline-block",
+          width: 20,
+          height: 20,
+          border: "3px solid rgba(255,255,255,0.3)",
+          borderTop: "3px solid white",
+          borderRadius: "50%",
+          animation: "spin 0.8s linear infinite",
+        }}
+      />
     </>
   );
 }
 
 const EXTENSIONES = ["LP", "CB", "SC", "OR", "PT", "CH", "TJ", "BN", "PD", "QR"] as const;
-type Extension = typeof EXTENSIONES[number];
+type Extension = (typeof EXTENSIONES)[number];
 
 const SEXOS = ["Masculino", "Femenino"] as const;
-type Sexo = typeof SEXOS[number];
+type Sexo = (typeof SEXOS)[number];
 
-const MAX_FILE_SIZE_MB    = 10;
+const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 type Screen = "form" | "review" | "success";
 
-// Función auxiliar para convertir base64 a Blob
 function base64ToBlob(base64: string, mimeType: string): Blob {
   const byteCharacters = atob(base64);
   const byteNumbers = new Array(byteCharacters.length);
@@ -39,16 +45,62 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
   return new Blob([byteArray], { type: mimeType });
 }
 
+// Función para convertir un archivo (Word, PDF, etc.) a PDF usando jsPDF y html2canvas.
+// NOTA: Esta es una conversión MUY básica. Para documentos reales, se recomienda hacer la conversión en el backend.
+const convertirDocAPDF = async (file: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsArrayBuffer(file);
+    reader.onload = async () => {
+      try {
+        // Creamos un elemento div temporal para renderizar contenido (esto es limitado)
+        const div = document.createElement("div");
+        div.style.position = "absolute";
+        div.style.left = "-9999px";
+        div.style.top = "-9999px";
+        div.style.width = "800px";
+        div.style.background = "white";
+        div.style.color = "black";
+        div.style.padding = "20px";
+        div.style.fontFamily = "Arial";
+        // Intentamos leer el texto del archivo (solo funciona si es un archivo de texto plano)
+        // Para .docx real necesitarías una librería como 'mammoth.js'
+        const text = new TextDecoder().decode(reader.result as ArrayBuffer);
+        div.innerText = text.substring(0, 2000); // limitamos longitud
+        document.body.appendChild(div);
+
+        const canvas = await html2canvas(div, { scale: 2 });
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jsPDF("p", "mm", "a4");
+        const imgWidth = 190;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
+        const pdfBlob = pdf.output("blob");
+        const pdfFile = new File(
+          [pdfBlob],
+          file.name.replace(/\.[^/.]+$/, "") + ".pdf",
+          { type: "application/pdf" }
+        );
+        document.body.removeChild(div);
+        resolve(pdfFile);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = reject;
+  });
+};
+
 function ClientForm() {
   const { token } = useParams();
 
-  const [screen, setScreen]           = useState<Screen>("form");
-  const [loading, setLoading]         = useState(true);
-  const [saving, setSaving]           = useState(false);
-  const [linkError, setLinkError]     = useState("");
-  const [saveError, setSaveError]     = useState("");
-  const [errors, setErrors]           = useState<Record<string, string>>({});
-  const [daysLeft, setDaysLeft]       = useState(0);
+  const [screen, setScreen] = useState<Screen>("form");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [linkError, setLinkError] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [daysLeft, setDaysLeft] = useState(0);
   const [subiendoFotos, setSubiendoFotos] = useState(false);
 
   const refs: Record<string, React.RefObject<HTMLDivElement | null>> = {
@@ -68,39 +120,42 @@ function ClientForm() {
     fotoCarnet: useRef<HTMLDivElement>(null),
   };
 
-  const [ci, setCi]                           = useState("");
-  const [nombres, setNombres]                 = useState("");
+  const [ci, setCi] = useState("");
+  const [nombres, setNombres] = useState("");
   const [apellidoPaterno, setApellidoPaterno] = useState("");
   const [apellidoMaterno, setApellidoMaterno] = useState("");
-  const [sexo, setSexo]                       = useState<Sexo | "">("");
-  const [ciudad, setCiudad]                   = useState("");
-  const [direccion, setDireccion]             = useState("");
+  const [sexo, setSexo] = useState<Sexo | "">("");
+  const [ciudad, setCiudad] = useState("");
+  const [direccion, setDireccion] = useState("");
   const [fechaNacimiento, setFechaNacimiento] = useState("");
-  const [extension, setExtension]             = useState<Extension | "">("");
-  const [profesion, setProfesion]             = useState("");
-  const [celular, setCelular]                 = useState("");
-  const [email, setEmail]                     = useState("");
+  const [extension, setExtension] = useState<Extension | "">("");
+  const [profesion, setProfesion] = useState("");
+  const [celular, setCelular] = useState("");
+  const [email, setEmail] = useState("");
 
-  const [fotografia, setFotografia]         = useState<File | null>(null);
-  const [fotoPreview, setFotoPreview]       = useState<string>("");
-  const [fotoCarnet, setFotoCarnet]         = useState<File | null>(null);
-  const [carnetPreview, setCarnetPreview]   = useState<string>("");
+  const [fotografia, setFotografia] = useState<File | null>(null);
+  const [fotoPreview, setFotoPreview] = useState<string>("");
+  const [fotoCarnet, setFotoCarnet] = useState<File | null>(null);
+  const [carnetPreview, setCarnetPreview] = useState<string>("");
   const [carnetEsImagen, setCarnetEsImagen] = useState(true);
-  const [fotoCarnet2, setFotoCarnet2]       = useState<File | null>(null);
+  const [fotoCarnet2, setFotoCarnet2] = useState<File | null>(null);
   const [carnetPreview2, setCarnetPreview2] = useState<string>("");
 
   const [credenciales, setCredenciales] = useState<{ username: string; password: string } | null>(null);
-  const [pdfBase64, setPdfBase64]       = useState<string | null>(null);
+  const [pdfBase64, setPdfBase64] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
     try {
-      const res  = await fetch(`${API_URL}/clients/form/${token}`);
+      const res = await fetch(`${API_URL}/clients/form/${token}`);
       const data = await res.json();
-      if (!res.ok) { setLinkError(data.error || "Link no válido"); return; }
+      if (!res.ok) {
+        setLinkError(data.error || "Link no válido");
+        return;
+      }
 
       const expires = new Date(data.expiresAt);
-      const diff    = Math.ceil((expires.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      const diff = Math.ceil((expires.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
       setDaysLeft(diff);
 
       setCi(data.ci || "");
@@ -124,9 +179,11 @@ function ClientForm() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
-  const esImagen    = (file: File) => file.type.startsWith("image/");
+  const esImagen = (file: File) => file.type.startsWith("image/");
   const esDocumento = (file: File) =>
     file.type === "application/pdf" ||
     file.type === "application/msword" ||
@@ -134,7 +191,9 @@ function ClientForm() {
 
   const validarTamano = (file: File): boolean => {
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      alert(`El archivo "${file.name}" es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)} MB). El máximo permitido es ${MAX_FILE_SIZE_MB} MB.`);
+      alert(
+        `El archivo "${file.name}" es demasiado grande (${(file.size / 1024 / 1024).toFixed(1)} MB). El máximo permitido es ${MAX_FILE_SIZE_MB} MB.`
+      );
       return false;
     }
     return true;
@@ -143,46 +202,72 @@ function ClientForm() {
   const handleCarnet1 = (file: File) => {
     if (!validarTamano(file)) return;
     if (esImagen(file)) {
-      setFotoCarnet(file); setCarnetPreview(URL.createObjectURL(file)); setCarnetEsImagen(true);
+      setFotoCarnet(file);
+      setCarnetPreview(URL.createObjectURL(file));
+      setCarnetEsImagen(true);
     } else if (esDocumento(file)) {
-      setFotoCarnet(file); setCarnetPreview(file.name); setCarnetEsImagen(false);
-      setFotoCarnet2(null); setCarnetPreview2("");
+      setFotoCarnet(file);
+      setCarnetPreview(file.name);
+      setCarnetEsImagen(false);
+      setFotoCarnet2(null);
+      setCarnetPreview2("");
     }
   };
 
   const handleCarnet2 = (file: File) => {
     if (!validarTamano(file)) return;
-    if (esImagen(file)) { setFotoCarnet2(file); setCarnetPreview2(URL.createObjectURL(file)); }
+    if (esImagen(file)) {
+      setFotoCarnet2(file);
+      setCarnetPreview2(URL.createObjectURL(file));
+    }
   };
 
   const irARevisar = () => {
     const e: Record<string, string> = {};
-    if (!ci.trim())                          e.ci = "La cédula es obligatoria";
-    else if (!/^\d+$/.test(ci.trim()))       e.ci = "Solo puede contener números";
-    if (!nombres.trim())                     e.nombres = "Los nombres son obligatorios";
-    else if (/\d/.test(nombres))             e.nombres = "No puede contener números";
-    if (!apellidoPaterno.trim())             e.apellidoPaterno = "El apellido paterno es obligatorio";
-    else if (/\d/.test(apellidoPaterno))     e.apellidoPaterno = "No puede contener números";
+    if (!ci.trim()) e.ci = "La cédula es obligatoria";
+    else if (!/^\d+$/.test(ci.trim())) e.ci = "Solo puede contener números";
+    if (!nombres.trim()) e.nombres = "Los nombres son obligatorios";
+    else if (/\d/.test(nombres)) e.nombres = "No puede contener números";
+    if (!apellidoPaterno.trim()) e.apellidoPaterno = "El apellido paterno es obligatorio";
+    else if (/\d/.test(apellidoPaterno)) e.apellidoPaterno = "No puede contener números";
     if (apellidoMaterno && /\d/.test(apellidoMaterno)) e.apellidoMaterno = "No puede contener números";
-    if (!sexo)                               e.sexo = "Seleccione un sexo";
-    if (!ciudad.trim())                      e.ciudad = "La ciudad es obligatoria";
-    if (!direccion.trim())                   e.direccion = "La dirección es obligatoria";
-    if (!fechaNacimiento)                    e.fechaNacimiento = "La fecha de nacimiento es obligatoria";
-    if (!extension)                          e.extension = "Selecciona un departamento";
-    if (!profesion.trim())                   e.profesion = "La profesión es obligatoria";
-    else if (/\d/.test(profesion))           e.profesion = "No puede contener números";
-    if (!celular.trim())                     e.celular = "El celular es obligatorio";
-    else if (!/^\d+$/.test(celular.trim()))  e.celular = "Solo puede contener números";
-    if (!email.trim())                       e.email = "El email es obligatorio";
+    if (!sexo) e.sexo = "Seleccione un sexo";
+    if (!ciudad.trim()) e.ciudad = "La ciudad es obligatoria";
+    if (!direccion.trim()) e.direccion = "La dirección es obligatoria";
+    if (!fechaNacimiento) e.fechaNacimiento = "La fecha de nacimiento es obligatoria";
+    if (!extension) e.extension = "Selecciona un departamento";
+    if (!profesion.trim()) e.profesion = "La profesión es obligatoria";
+    else if (/\d/.test(profesion)) e.profesion = "No puede contener números";
+    if (!celular.trim()) e.celular = "El celular es obligatorio";
+    else if (!/^\d+$/.test(celular.trim())) e.celular = "Solo puede contener números";
+    if (!email.trim()) e.email = "El email es obligatorio";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = "Email no válido";
-    if (!fotografia && !fotoPreview)         e.fotografia = "La foto personal es obligatoria";
-    if (!fotoCarnet && !carnetPreview)       e.fotoCarnet = "El documento/foto del carnet es obligatorio";
+    if (!fotografia && !fotoPreview) e.fotografia = "La foto personal es obligatoria";
+    if (!fotoCarnet && !carnetPreview) e.fotoCarnet = "El documento/foto del carnet es obligatorio";
     setErrors(e);
 
-    const orden = ["ci","nombres","apellidoPaterno","apellidoMaterno","sexo","ciudad","direccion","fechaNacimiento","extension","profesion","celular","email","fotografia","fotoCarnet"];
-    const primerError = orden.find(k => e[k]);
+    const orden = [
+      "ci",
+      "nombres",
+      "apellidoPaterno",
+      "apellidoMaterno",
+      "sexo",
+      "ciudad",
+      "direccion",
+      "fechaNacimiento",
+      "extension",
+      "profesion",
+      "celular",
+      "email",
+      "fotografia",
+      "fotoCarnet",
+    ];
+    const primerError = orden.find((k) => e[k]);
     if (primerError && refs[primerError]?.current) {
-      setTimeout(() => refs[primerError].current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+      setTimeout(
+        () => refs[primerError].current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+        50
+      );
       return;
     }
 
@@ -196,8 +281,29 @@ function ClientForm() {
     setSubiendoFotos(true);
     try {
       const formData = new FormData();
-      if (fotografia)  formData.append("fotografia", fotografia);
-      if (fotoCarnet)  formData.append("fotoCarnet", fotoCarnet);
+      if (fotografia) formData.append("fotografia", fotografia);
+
+      // 👇 CONVERSIÓN DE DOCUMENTO A PDF ANTES DE SUBIR
+      if (fotoCarnet) {
+        if (fotoCarnet.type.startsWith("image/")) {
+          formData.append("fotoCarnet", fotoCarnet);
+        } else {
+          // Convertir documento (Word, PDF, etc.) a PDF
+          try {
+            const pdfFile = await convertirDocAPDF(fotoCarnet);
+            formData.append("fotoCarnet", pdfFile);
+          } catch (convError) {
+            console.error("Error al convertir documento a PDF:", convError);
+            setSaveError(
+              "No se pudo convertir el documento a PDF. Intenta subir una imagen o un PDF válido."
+            );
+            setSaving(false);
+            setSubiendoFotos(false);
+            return;
+          }
+        }
+      }
+
       if (fotoCarnet2) formData.append("fotoCarnet2", fotoCarnet2);
 
       let fotosOk = true;
@@ -217,7 +323,11 @@ function ClientForm() {
           fotosOk = false;
         }
       }
-      if (!fotosOk) { setSaving(false); setSubiendoFotos(false); return; }
+      if (!fotosOk) {
+        setSaving(false);
+        setSubiendoFotos(false);
+        return;
+      }
       setSubiendoFotos(false);
 
       const nombreCompleto = `${nombres} ${apellidoPaterno} ${apellidoMaterno}`.trim();
@@ -225,12 +335,25 @@ function ClientForm() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ci, nombres, apellidoPaterno, apellidoMaterno, nombreCompleto,
-          sexo, ciudad, direccion, fechaNacimiento, extension,
-          profesion, celular, email,
-          pideLibros: false, cantLibros: 0,
-          pideArticulos: false, cantArticulos: 0,
-          pideDirector: false, pideFundador: false,
+          ci,
+          nombres,
+          apellidoPaterno,
+          apellidoMaterno,
+          nombreCompleto,
+          sexo,
+          ciudad,
+          direccion,
+          fechaNacimiento,
+          extension,
+          profesion,
+          celular,
+          email,
+          pideLibros: false,
+          cantLibros: 0,
+          pideArticulos: false,
+          cantArticulos: 0,
+          pideDirector: false,
+          pideFundador: false,
           notasServicio: "",
         }),
       });
@@ -267,141 +390,291 @@ function ClientForm() {
         {fotoPreview && (
           <div style={{ textAlign: "center" }}>
             <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4 }}>FOTO PERSONAL</p>
-            <img src={fotoPreview} alt="foto" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "2px solid #334155" }} />
+            <img
+              src={fotoPreview}
+              alt="foto"
+              style={{
+                width: 80,
+                height: 80,
+                objectFit: "cover",
+                borderRadius: 8,
+                border: "2px solid #334155",
+              }}
+            />
           </div>
         )}
         {carnetPreview && carnetEsImagen && (
           <div style={{ textAlign: "center" }}>
             <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4 }}>CARNET (FRENTE)</p>
-            <img src={carnetPreview} alt="carnet" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "2px solid #334155" }} />
+            <img
+              src={carnetPreview}
+              alt="carnet"
+              style={{
+                width: 80,
+                height: 80,
+                objectFit: "cover",
+                borderRadius: 8,
+                border: "2px solid #334155",
+              }}
+            />
           </div>
         )}
         {carnetPreview2 && (
           <div style={{ textAlign: "center" }}>
             <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4 }}>CARNET (REVERSO)</p>
-            <img src={carnetPreview2} alt="carnet2" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "2px solid #334155" }} />
+            <img
+              src={carnetPreview2}
+              alt="carnet2"
+              style={{
+                width: 80,
+                height: 80,
+                objectFit: "cover",
+                borderRadius: 8,
+                border: "2px solid #334155",
+              }}
+            />
           </div>
         )}
         {carnetPreview && !carnetEsImagen && (
           <div style={{ textAlign: "center" }}>
             <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4 }}>DOCUMENTO CARNET</p>
-            <div style={{ width: 80, height: 80, background: "#1e293b", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>📄</div>
-            <p style={{ color: "#60a5fa", fontSize: 10, marginTop: 4, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{carnetPreview}</p>
+            <div
+              style={{
+                width: 80,
+                height: 80,
+                background: "#1e293b",
+                borderRadius: 8,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 28,
+              }}
+            >
+              📄
+            </div>
+            <p
+              style={{
+                color: "#60a5fa",
+                fontSize: 10,
+                marginTop: 4,
+                maxWidth: 80,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {carnetPreview}
+            </p>
           </div>
         )}
       </div>
       {[
-        { label: "C.I.",             value: ci },
-        { label: "Nombres",          value: nombres },
+        { label: "C.I.", value: ci },
+        { label: "Nombres", value: nombres },
         { label: "Apellido Paterno", value: apellidoPaterno },
         { label: "Apellido Materno", value: apellidoMaterno },
-        { label: "Sexo",             value: sexo },
-        { label: "Ciudad",           value: ciudad },
-        { label: "Dirección",        value: direccion },
+        { label: "Sexo", value: sexo },
+        { label: "Ciudad", value: ciudad },
+        { label: "Dirección", value: direccion },
         { label: "Fecha Nacimiento", value: fechaNacimiento },
-        { label: "Extensión",        value: extension },
-        { label: "Profesión",        value: profesion },
-        { label: "Celular",          value: celular },
-        { label: "Email",            value: email },
-      ].filter(item => item.value).map(item => (
-        <div key={item.label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1e293b" }}>
-          <span style={{ color: "#64748b", fontSize: 13 }}>{item.label}</span>
-          <span style={{ color: "white", fontSize: 13, textAlign: "right", maxWidth: "60%" }}>{item.value}</span>
-        </div>
-      ))}
-    </div>
-  );
-
-  if (loading) return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#0f172a" }}>
-      <Spinner />
-    </div>
-  );
-
-  if (linkError) return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#0f172a", color: "white", flexDirection: "column", gap: 16 }}>
-      <div style={{ fontSize: 60 }}>⚠️</div>
-      <h2>{linkError}</h2>
-      <p style={{ color: "#94a3b8" }}>Contacta con la Asociación para obtener un nuevo link.</p>
-    </div>
-  );
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PANTALLA 2: REVISIÓN
-  // ═══════════════════════════════════════════════════════════════════════════
-  if (screen === "review") return (
-    <div lang="es" translate="no" style={{ background: "#0f172a", minHeight: "100vh", padding: "40px 20px", color: "white" }}>
-      <div style={{ maxWidth: 520, margin: "0 auto" }}>
-
-        <div style={{ background: "#1e293b", padding: 28, borderRadius: 16, marginBottom: 20, borderLeft: "4px solid #f59e0b" }}>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>🔍</div>
-          <h2 style={{ marginBottom: 6, fontSize: 22 }}>Revisá tus datos</h2>
-          <p style={{ color: "#94a3b8", fontSize: 14, margin: 0 }}>
-            Verificá que todo esté correcto antes de confirmar. Una vez guardado, el equipo procesará tu registro.
-          </p>
-        </div>
-
-        {saveError && (
-          <div style={{ background: "#7f1d1d", padding: 16, borderRadius: 10, marginBottom: 20, color: "#fca5a5", fontWeight: "bold", fontSize: 14 }}>
-            ⚠️ {saveError}
+        { label: "Extensión", value: extension },
+        { label: "Profesión", value: profesion },
+        { label: "Celular", value: celular },
+        { label: "Email", value: email },
+      ]
+        .filter((item) => item.value)
+        .map((item) => (
+          <div
+            key={item.label}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              padding: "8px 0",
+              borderBottom: "1px solid #1e293b",
+            }}
+          >
+            <span style={{ color: "#64748b", fontSize: 13 }}>{item.label}</span>
+            <span style={{ color: "white", fontSize: 13, textAlign: "right", maxWidth: "60%" }}>
+              {item.value}
+            </span>
           </div>
-        )}
-
-        <div style={{ background: "#1e293b", borderRadius: 14, padding: 20, marginBottom: 20 }}>
-          <p style={{ color: "#64748b", fontSize: 12, marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>
-            Resumen de tus datos
-          </p>
-          <ResumenDatos />
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <button
-            onClick={confirmarYGuardar}
-            disabled={saving}
-            style={{
-              width: "100%", padding: 16,
-              background: saving ? "#334155" : "#22c55e",
-              border: "none", borderRadius: 12, color: "white",
-              fontSize: 16, fontWeight: "bold",
-              cursor: saving ? "not-allowed" : "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-            }}
-          >
-            {saving
-              ? (subiendoFotos ? "📤 Subiendo archivos..." : <><Spinner /> Guardando...</>)
-              : "✅ Confirmar y guardar mis datos"
-            }
-          </button>
-
-          <button
-            onClick={() => { setSaveError(""); setScreen("form"); setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50); }}
-            disabled={saving}
-            style={{
-              width: "100%", padding: 14,
-              background: "transparent",
-              border: "2px solid #334155", borderRadius: 12, color: "#94a3b8",
-              fontSize: 15, fontWeight: "bold",
-              cursor: saving ? "not-allowed" : "pointer",
-            }}
-          >
-            ✏️ Editar mis datos
-          </button>
-        </div>
-
-        <p style={{ textAlign: "center", color: "#475569", fontSize: 12, marginTop: 16 }}>
-          Podés volver al formulario y editar cuantas veces necesites.
-        </p>
-      </div>
+        ))}
     </div>
   );
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PANTALLA 3: ÉXITO (CORREGIDA PARA iOS)
-  // ═══════════════════════════════════════════════════════════════════════════
-  if (screen === "success") return (
-    <div lang="es" translate="no" style={{ background: "#0f172a", minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "40px 20px", color: "white" }}>
-      <div style={{ maxWidth: 520, width: "100%", textAlign: "center" }}>
-        <style>{`
+  if (loading)
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          background: "#0f172a",
+        }}
+      >
+        <Spinner />
+      </div>
+    );
+
+  if (linkError)
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          background: "#0f172a",
+          color: "white",
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
+        <div style={{ fontSize: 60 }}>⚠️</div>
+        <h2>{linkError}</h2>
+        <p style={{ color: "#94a3b8" }}>Contacta con la Asociación para obtener un nuevo link.</p>
+      </div>
+    );
+
+  // PANTALLA REVISIÓN
+  if (screen === "review")
+    return (
+      <div
+        lang="es"
+        translate="no"
+        style={{ background: "#0f172a", minHeight: "100vh", padding: "40px 20px", color: "white" }}
+      >
+        <div style={{ maxWidth: 520, margin: "0 auto" }}>
+          <div
+            style={{
+              background: "#1e293b",
+              padding: 28,
+              borderRadius: 16,
+              marginBottom: 20,
+              borderLeft: "4px solid #f59e0b",
+            }}
+          >
+            <div style={{ fontSize: 40, marginBottom: 8 }}>🔍</div>
+            <h2 style={{ marginBottom: 6, fontSize: 22 }}>Revisá tus datos</h2>
+            <p style={{ color: "#94a3b8", fontSize: 14, margin: 0 }}>
+              Verificá que todo esté correcto antes de confirmar. Una vez guardado, el equipo
+              procesará tu registro.
+            </p>
+          </div>
+
+          {saveError && (
+            <div
+              style={{
+                background: "#7f1d1d",
+                padding: 16,
+                borderRadius: 10,
+                marginBottom: 20,
+                color: "#fca5a5",
+                fontWeight: "bold",
+                fontSize: 14,
+              }}
+            >
+              ⚠️ {saveError}
+            </div>
+          )}
+
+          <div style={{ background: "#1e293b", borderRadius: 14, padding: 20, marginBottom: 20 }}>
+            <p
+              style={{
+                color: "#64748b",
+                fontSize: 12,
+                marginBottom: 16,
+                textTransform: "uppercase",
+                letterSpacing: 1,
+              }}
+            >
+              Resumen de tus datos
+            </p>
+            <ResumenDatos />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <button
+              onClick={confirmarYGuardar}
+              disabled={saving}
+              style={{
+                width: "100%",
+                padding: 16,
+                background: saving ? "#334155" : "#22c55e",
+                border: "none",
+                borderRadius: 12,
+                color: "white",
+                fontSize: 16,
+                fontWeight: "bold",
+                cursor: saving ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+              }}
+            >
+              {saving ? (
+                subiendoFotos ? (
+                  "📤 Subiendo archivos..."
+                ) : (
+                  <>
+                    <Spinner /> Guardando...
+                  </>
+                )
+              ) : (
+                "✅ Confirmar y guardar mis datos"
+              )}
+            </button>
+
+            <button
+              onClick={() => {
+                setSaveError("");
+                setScreen("form");
+                setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
+              }}
+              disabled={saving}
+              style={{
+                width: "100%",
+                padding: 14,
+                background: "transparent",
+                border: "2px solid #334155",
+                borderRadius: 12,
+                color: "#94a3b8",
+                fontSize: 15,
+                fontWeight: "bold",
+                cursor: saving ? "not-allowed" : "pointer",
+              }}
+            >
+              ✏️ Editar mis datos
+            </button>
+          </div>
+
+          <p style={{ textAlign: "center", color: "#475569", fontSize: 12, marginTop: 16 }}>
+            Podés volver al formulario y editar cuantas veces necesites.
+          </p>
+        </div>
+      </div>
+    );
+
+  // PANTALLA ÉXITO
+  if (screen === "success")
+    return (
+      <div
+        lang="es"
+        translate="no"
+        style={{
+          background: "#0f172a",
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: "40px 20px",
+          color: "white",
+        }}
+      >
+        <div style={{ maxWidth: 520, width: "100%", textAlign: "center" }}>
+          <style>{`
           @keyframes popIn {
             0%   { transform: scale(0.5); opacity: 0; }
             70%  { transform: scale(1.15); opacity: 1; }
@@ -409,119 +682,202 @@ function ClientForm() {
           }
           .success-icon { animation: popIn 0.5s ease forwards; display: inline-block; }
         `}</style>
-        <div className="success-icon" style={{ fontSize: 80, marginBottom: 20 }}>🎉</div>
-        <div style={{ background: "#1e293b", padding: 36, borderRadius: 20, borderTop: "4px solid #22c55e" }}>
-          <h2 style={{ marginBottom: 20, fontSize: 26, color: "#22c55e" }}>¡Datos guardados exitosamente!</h2>
-
-          {credenciales && (
-            <div style={{ background: "#0f172a", borderRadius: 12, padding: "20px 24px", marginBottom: 24, textAlign: "left", border: "1px solid #1e3a5f" }}>
-              <p style={{ color: "#60a5fa", fontSize: 14, fontWeight: "bold", marginBottom: 12 }}>🔐 Tus credenciales de acceso</p>
-              <div style={{ background: "#1e293b", borderRadius: 8, padding: "10px 16px", marginBottom: 8 }}>
-                <p style={{ color: "#94a3b8", fontSize: 11, marginBottom: 2 }}>USUARIO</p>
-                <p style={{ color: "white", fontSize: 18, fontWeight: "bold", letterSpacing: 1 }}>{credenciales.username}</p>
-              </div>
-              <div style={{ background: "#1e293b", borderRadius: 8, padding: "10px 16px", marginBottom: 12 }}>
-                <p style={{ color: "#94a3b8", fontSize: 11, marginBottom: 2 }}>CONTRASEÑA</p>
-                <p style={{ color: "white", fontSize: 18, fontWeight: "bold", letterSpacing: 1 }}>{credenciales.password}</p>
-              </div>
-              <p style={{ color: "#64748b", fontSize: 12 }}>⚠️ Guardá esta información. No se volverá a mostrar.</p>
-            </div>
-          )}
-
-          {pdfBase64 && (
-            <div style={{ marginBottom: 24 }}>
-              <button
-                onClick={() => {
-                  try {
-                    const blob = base64ToBlob(pdfBase64, "application/pdf");
-                    const url = URL.createObjectURL(blob);
-                    // Abrir en nueva pestaña (funciona en iOS Safari)
-                    window.open(url, "_blank");
-                    // Liberar memoria
-                    setTimeout(() => URL.revokeObjectURL(url), 1000);
-                  } catch (err) {
-                    console.error("Error al abrir PDF:", err);
-                    // Fallback: intentar abrir con data URI
-                    const newTab = window.open();
-                    if (newTab) {
-                      newTab.document.write(
-                        `<iframe src="data:application/pdf;base64,${pdfBase64}" width="100%" height="100%" style="border:none;"></iframe>`
-                      );
-                    }
-                  }
-                }}
-                style={{
-                  width: "100%",
-                  background: "#10b981",
-                  border: "none",
-                  padding: "14px 20px",
-                  borderRadius: 10,
-                  color: "white",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  fontSize: 15,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                📄 Ver recibo del pedido
-              </button>
-              <p style={{ color: "#475569", fontSize: 12, marginTop: 8 }}>
-                En iPhone, toca el botón y luego el ícono de compartir para guardar el PDF.
-              </p>
-            </div>
-          )}
-
-          <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.6, marginBottom: 24 }}>
-            El equipo revisará tu información y se pondrá en contacto con vos a la brevedad.
-          </p>
-
-          <div style={{ background: "#0f172a", borderRadius: 10, padding: "12px 16px", marginBottom: 24, display: "flex", gap: 10, alignItems: "center" }}>
-            <span style={{ fontSize: 20 }}>📬</span>
-            <p style={{ color: "#60a5fa", fontSize: 13, margin: 0, textAlign: "left" }}>
-              Te contactaremos al número <strong>{celular}</strong> o al correo <strong>{email}</strong>.
-            </p>
+          <div className="success-icon" style={{ fontSize: 80, marginBottom: 20 }}>
+            🎉
           </div>
-
-          <button
-            onClick={() => window.location.href = "/"}
+          <div
             style={{
-              width: "100%", padding: 14,
-              background: "#3b82f6",
-              border: "none", borderRadius: 12, color: "white",
-              fontSize: 15, fontWeight: "bold", cursor: "pointer",
+              background: "#1e293b",
+              padding: 36,
+              borderRadius: 20,
+              borderTop: "4px solid #22c55e",
             }}
           >
-            🏠 Volver al inicio
-          </button>
-          <p style={{ color: "#475569", fontSize: 12, marginTop: 16 }}>
-            Si necesitás corregir algo, podés reingresar con el mismo link antes de que expire.
-          </p>
+            <h2 style={{ marginBottom: 20, fontSize: 26, color: "#22c55e" }}>
+              ¡Datos guardados exitosamente!
+            </h2>
+
+            {credenciales && (
+              <div
+                style={{
+                  background: "#0f172a",
+                  borderRadius: 12,
+                  padding: "20px 24px",
+                  marginBottom: 24,
+                  textAlign: "left",
+                  border: "1px solid #1e3a5f",
+                }}
+              >
+                <p style={{ color: "#60a5fa", fontSize: 14, fontWeight: "bold", marginBottom: 12 }}>
+                  🔐 Tus credenciales de acceso
+                </p>
+                <div
+                  style={{
+                    background: "#1e293b",
+                    borderRadius: 8,
+                    padding: "10px 16px",
+                    marginBottom: 8,
+                  }}
+                >
+                  <p style={{ color: "#94a3b8", fontSize: 11, marginBottom: 2 }}>USUARIO</p>
+                  <p
+                    style={{
+                      color: "white",
+                      fontSize: 18,
+                      fontWeight: "bold",
+                      letterSpacing: 1,
+                    }}
+                  >
+                    {credenciales.username}
+                  </p>
+                </div>
+                <div
+                  style={{
+                    background: "#1e293b",
+                    borderRadius: 8,
+                    padding: "10px 16px",
+                    marginBottom: 12,
+                  }}
+                >
+                  <p style={{ color: "#94a3b8", fontSize: 11, marginBottom: 2 }}>CONTRASEÑA</p>
+                  <p
+                    style={{
+                      color: "white",
+                      fontSize: 18,
+                      fontWeight: "bold",
+                      letterSpacing: 1,
+                    }}
+                  >
+                    {credenciales.password}
+                  </p>
+                </div>
+                <p style={{ color: "#64748b", fontSize: 12 }}>
+                  ⚠️ Guardá esta información. No se volverá a mostrar.
+                </p>
+              </div>
+            )}
+
+            {pdfBase64 && (
+              <div style={{ marginBottom: 24 }}>
+                <button
+                  onClick={() => {
+                    try {
+                      const blob = base64ToBlob(pdfBase64, "application/pdf");
+                      const url = URL.createObjectURL(blob);
+                      window.open(url, "_blank");
+                      setTimeout(() => URL.revokeObjectURL(url), 1000);
+                    } catch (err) {
+                      console.error("Error al abrir PDF:", err);
+                      const newTab = window.open();
+                      if (newTab) {
+                        newTab.document.write(
+                          `<iframe src="data:application/pdf;base64,${pdfBase64}" width="100%" height="100%" style="border:none;"></iframe>`
+                        );
+                      }
+                    }
+                  }}
+                  style={{
+                    width: "100%",
+                    background: "#10b981",
+                    border: "none",
+                    padding: "14px 20px",
+                    borderRadius: 10,
+                    color: "white",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    fontSize: 15,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                  }}
+                >
+                  📄 Ver recibo del pedido
+                </button>
+                <p style={{ color: "#475569", fontSize: 12, marginTop: 8 }}>
+                  En iPhone, toca el botón y luego el ícono de compartir para guardar el PDF.
+                </p>
+              </div>
+            )}
+
+            <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.6, marginBottom: 24 }}>
+              El equipo revisará tu información y se pondrá en contacto con vos a la brevedad.
+            </p>
+
+            <div
+              style={{
+                background: "#0f172a",
+                borderRadius: 10,
+                padding: "12px 16px",
+                marginBottom: 24,
+                display: "flex",
+                gap: 10,
+                alignItems: "center",
+              }}
+            >
+              <span style={{ fontSize: 20 }}>📬</span>
+              <p style={{ color: "#60a5fa", fontSize: 13, margin: 0, textAlign: "left" }}>
+                Te contactaremos al número <strong>{celular}</strong> o al correo{" "}
+                <strong>{email}</strong>.
+              </p>
+            </div>
+
+            <button
+              onClick={() => (window.location.href = "/")}
+              style={{
+                width: "100%",
+                padding: 14,
+                background: "#3b82f6",
+                border: "none",
+                borderRadius: 12,
+                color: "white",
+                fontSize: 15,
+                fontWeight: "bold",
+                cursor: "pointer",
+              }}
+            >
+              🏠 Volver al inicio
+            </button>
+            <p style={{ color: "#475569", fontSize: 12, marginTop: 16 }}>
+              Si necesitás corregir algo, podés reingresar con el mismo link antes de que expire.
+            </p>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PANTALLA 1: FORMULARIO
-  // ═══════════════════════════════════════════════════════════════════════════
+  // PANTALLA FORMULARIO
   return (
-    <div lang="es" translate="no" style={{ background: "#0f172a", minHeight: "100vh", padding: "40px 20px", color: "white" }}>
+    <div
+      lang="es"
+      translate="no"
+      style={{ background: "#0f172a", minHeight: "100vh", padding: "40px 20px", color: "white" }}
+    >
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
-
-        <div style={{ background: "#1e293b", padding: 28, borderRadius: 16, marginBottom: 24, borderLeft: "4px solid #3b82f6" }}>
+        <div
+          style={{
+            background: "#1e293b",
+            padding: 28,
+            borderRadius: 16,
+            marginBottom: 24,
+            borderLeft: "4px solid #3b82f6",
+          }}
+        >
           <h1 style={{ marginBottom: 8, fontSize: 24 }}>📋 Formulario de Registro</h1>
           <p style={{ color: "#94a3b8", fontSize: 14 }}>
             Complete sus datos personales para continuar con el proceso editorial.
           </p>
-          <div style={{
-            marginTop: 12, display: "inline-block",
-            background: daysLeft <= 1 ? "#7f1d1d" : "#1e3a5f",
-            padding: "4px 14px", borderRadius: 99, fontSize: 13,
-            color: daysLeft <= 1 ? "#fca5a5" : "#60a5fa",
-          }}>
+          <div
+            style={{
+              marginTop: 12,
+              display: "inline-block",
+              background: daysLeft <= 1 ? "#7f1d1d" : "#1e3a5f",
+              padding: "4px 14px",
+              borderRadius: 99,
+              fontSize: 13,
+              color: daysLeft <= 1 ? "#fca5a5" : "#60a5fa",
+            }}
+          >
             ⏳ Este link expira en {daysLeft} día(s)
           </div>
         </div>
@@ -530,105 +886,172 @@ function ClientForm() {
           <h3 style={sectionTitle}>👤 Datos Personales</h3>
 
           <div ref={refs.ci}>
-            <label style={labelStyle}>Cédula de Identidad <Req /></label>
-            <input placeholder="Ej: 1234567" value={ci}
-              onChange={e => setCi(e.target.value.replace(/\D/g, ""))}
-              style={errors.ci ? inputError : inputStyle} />
+            <label style={labelStyle}>
+              Cédula de Identidad <Req />
+            </label>
+            <input
+              placeholder="Ej: 1234567"
+              value={ci}
+              onChange={(e) => setCi(e.target.value.replace(/\D/g, ""))}
+              style={errors.ci ? inputError : inputStyle}
+            />
             {errors.ci && <p style={errorText}>{errors.ci}</p>}
           </div>
 
           <div ref={refs.nombres}>
-            <label style={labelStyle}>Nombres <Req /></label>
-            <input placeholder="Ej: JUAN CARLOS" value={nombres}
-              onChange={e => setNombres(soloLetras(e.target.value))}
-              style={errors.nombres ? inputError : inputStyle} />
+            <label style={labelStyle}>
+              Nombres <Req />
+            </label>
+            <input
+              placeholder="Ej: JUAN CARLOS"
+              value={nombres}
+              onChange={(e) => setNombres(soloLetras(e.target.value))}
+              style={errors.nombres ? inputError : inputStyle}
+            />
             {errors.nombres && <p style={errorText}>{errors.nombres}</p>}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div ref={refs.apellidoPaterno}>
-              <label style={labelStyle}>Apellido Paterno <Req /></label>
-              <input placeholder="Ej: FERNÁNDEZ" value={apellidoPaterno}
-                onChange={e => setApellidoPaterno(soloLetras(e.target.value))}
-                style={errors.apellidoPaterno ? inputError : inputStyle} />
+              <label style={labelStyle}>
+                Apellido Paterno <Req />
+              </label>
+              <input
+                placeholder="Ej: FERNÁNDEZ"
+                value={apellidoPaterno}
+                onChange={(e) => setApellidoPaterno(soloLetras(e.target.value))}
+                style={errors.apellidoPaterno ? inputError : inputStyle}
+              />
               {errors.apellidoPaterno && <p style={errorText}>{errors.apellidoPaterno}</p>}
             </div>
             <div ref={refs.apellidoMaterno}>
               <label style={labelStyle}>Apellido Materno</label>
-              <input placeholder="Ej: MAMANI" value={apellidoMaterno}
-                onChange={e => setApellidoMaterno(soloLetras(e.target.value))}
-                style={errors.apellidoMaterno ? inputError : inputStyle} />
+              <input
+                placeholder="Ej: MAMANI"
+                value={apellidoMaterno}
+                onChange={(e) => setApellidoMaterno(soloLetras(e.target.value))}
+                style={errors.apellidoMaterno ? inputError : inputStyle}
+              />
               {errors.apellidoMaterno && <p style={errorText}>{errors.apellidoMaterno}</p>}
             </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
             <div ref={refs.sexo}>
-              <label style={labelStyle}>Sexo <Req /></label>
-              <select value={sexo} onChange={e => setSexo(e.target.value as Sexo)}
-                style={errors.sexo ? { ...inputError, cursor: "pointer" } : { ...inputStyle, cursor: "pointer" }}>
+              <label style={labelStyle}>
+                Sexo <Req />
+              </label>
+              <select
+                value={sexo}
+                onChange={(e) => setSexo(e.target.value as Sexo)}
+                style={errors.sexo ? { ...inputError, cursor: "pointer" } : { ...inputStyle, cursor: "pointer" }}
+              >
                 <option value="">-- Seleccionar --</option>
-                {SEXOS.map(s => <option key={s} value={s}>{s}</option>)}
+                {SEXOS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
               </select>
               {errors.sexo && <p style={errorText}>{errors.sexo}</p>}
             </div>
             <div ref={refs.ciudad}>
-              <label style={labelStyle}>Ciudad <Req /></label>
-              <input placeholder="Ej: LA PAZ" value={ciudad}
-                onChange={e => setCiudad(e.target.value.toUpperCase())}
-                style={errors.ciudad ? inputError : inputStyle} />
+              <label style={labelStyle}>
+                Ciudad <Req />
+              </label>
+              <input
+                placeholder="Ej: LA PAZ"
+                value={ciudad}
+                onChange={(e) => setCiudad(e.target.value.toUpperCase())}
+                style={errors.ciudad ? inputError : inputStyle}
+              />
               {errors.ciudad && <p style={errorText}>{errors.ciudad}</p>}
             </div>
           </div>
 
           <div ref={refs.direccion} style={{ marginTop: 12 }}>
-            <label style={labelStyle}>Dirección <Req /></label>
-            <input placeholder="Ej: AVENIDA BOLIVIA NRO 7" value={direccion}
-              onChange={e => setDireccion(e.target.value.toUpperCase())}
-              style={errors.direccion ? inputError : inputStyle} />
+            <label style={labelStyle}>
+              Dirección <Req />
+            </label>
+            <input
+              placeholder="Ej: AVENIDA BOLIVIA NRO 7"
+              value={direccion}
+              onChange={(e) => setDireccion(e.target.value.toUpperCase())}
+              style={errors.direccion ? inputError : inputStyle}
+            />
             {errors.direccion && <p style={errorText}>{errors.direccion}</p>}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div ref={refs.fechaNacimiento}>
-              <label style={labelStyle}>Fecha de Nacimiento <Req /></label>
-              <input type="date" value={fechaNacimiento}
-                onChange={e => setFechaNacimiento(e.target.value)}
-                style={errors.fechaNacimiento ? inputError : inputStyle} />
+              <label style={labelStyle}>
+                Fecha de Nacimiento <Req />
+              </label>
+              <input
+                type="date"
+                value={fechaNacimiento}
+                onChange={(e) => setFechaNacimiento(e.target.value)}
+                style={errors.fechaNacimiento ? inputError : inputStyle}
+              />
               {errors.fechaNacimiento && <p style={errorText}>{errors.fechaNacimiento}</p>}
             </div>
             <div ref={refs.extension}>
-              <label style={labelStyle}>Extensión (Depto. C.I.) <Req /></label>
-              <select translate="no" value={extension} onChange={e => setExtension(e.target.value as Extension)}
-                style={errors.extension ? { ...inputError, cursor: "pointer" } : { ...inputStyle, cursor: "pointer" }}>
+              <label style={labelStyle}>
+                Extensión (Depto. C.I.) <Req />
+              </label>
+              <select
+                translate="no"
+                value={extension}
+                onChange={(e) => setExtension(e.target.value as Extension)}
+                style={errors.extension ? { ...inputError, cursor: "pointer" } : { ...inputStyle, cursor: "pointer" }}
+              >
                 <option value="">-- Seleccionar --</option>
-                {EXTENSIONES.map(ext => <option key={ext} value={ext} translate="no">{ext}</option>)}
+                {EXTENSIONES.map((ext) => (
+                  <option key={ext} value={ext} translate="no">
+                    {ext}
+                  </option>
+                ))}
               </select>
               {errors.extension && <p style={errorText}>{errors.extension}</p>}
             </div>
           </div>
 
           <div ref={refs.profesion} style={{ marginTop: 12 }}>
-            <label style={labelStyle}>Profesión <Req /></label>
-            <input placeholder="Ej: MAESTRO DE MATEMÁTICAS" value={profesion}
-              onChange={e => setProfesion(soloLetras(e.target.value))}
-              style={errors.profesion ? inputError : inputStyle} />
+            <label style={labelStyle}>
+              Profesión <Req />
+            </label>
+            <input
+              placeholder="Ej: MAESTRO DE MATEMÁTICAS"
+              value={profesion}
+              onChange={(e) => setProfesion(soloLetras(e.target.value))}
+              style={errors.profesion ? inputError : inputStyle}
+            />
             {errors.profesion && <p style={errorText}>{errors.profesion}</p>}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div ref={refs.celular}>
-              <label style={labelStyle}>Celular <Req /></label>
-              <input placeholder="Ej: 70012345" value={celular}
-                onChange={e => setCelular(e.target.value.replace(/\D/g, ""))}
-                style={errors.celular ? inputError : inputStyle} />
+              <label style={labelStyle}>
+                Celular <Req />
+              </label>
+              <input
+                placeholder="Ej: 70012345"
+                value={celular}
+                onChange={(e) => setCelular(e.target.value.replace(/\D/g, ""))}
+                style={errors.celular ? inputError : inputStyle}
+              />
               {errors.celular && <p style={errorText}>{errors.celular}</p>}
             </div>
             <div ref={refs.email}>
-              <label style={labelStyle}>Email <Req /></label>
-              <input placeholder="Ej: juan@gmail.com" value={email}
-                onChange={e => setEmail(e.target.value.toLowerCase())}
-                style={errors.email ? inputError : inputStyle} />
+              <label style={labelStyle}>
+                Email <Req />
+              </label>
+              <input
+                placeholder="Ej: juan@gmail.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                style={errors.email ? inputError : inputStyle}
+              />
               {errors.email && <p style={errorText}>{errors.email}</p>}
             </div>
           </div>
@@ -638,27 +1061,71 @@ function ClientForm() {
           <h3 style={sectionTitle}>📸 Fotografías y Documentos</h3>
 
           <div ref={refs.fotografia}>
-            <label style={labelStyle}>Foto Personal <Req /></label>
-            <div style={{
-              background: errors.fotografia ? "#450a0a" : "#0f172a",
-              borderRadius: 12, padding: 20, marginBottom: 8,
-              border: errors.fotografia ? "1px solid #ef4444" : "1px solid #334155",
-              display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
-            }}>
-              {fotoPreview
-                ? <img src={fotoPreview} alt="preview" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #3b82f6", flexShrink: 0 }} />
-                : <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>🤳</div>
-              }
+            <label style={labelStyle}>
+              Foto Personal <Req />
+            </label>
+            <div
+              style={{
+                background: errors.fotografia ? "#450a0a" : "#0f172a",
+                borderRadius: 12,
+                padding: 20,
+                marginBottom: 8,
+                border: errors.fotografia ? "1px solid #ef4444" : "1px solid #334155",
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                flexWrap: "wrap",
+              }}
+            >
+              {fotoPreview ? (
+                <img
+                  src={fotoPreview}
+                  alt="preview"
+                  style={{
+                    width: 90,
+                    height: 90,
+                    objectFit: "cover",
+                    borderRadius: 10,
+                    border: "2px solid #3b82f6",
+                    flexShrink: 0,
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 90,
+                    height: 90,
+                    background: "#1e293b",
+                    borderRadius: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 36,
+                    flexShrink: 0,
+                  }}
+                >
+                  🤳
+                </div>
+              )}
               <div style={{ flex: 1 }}>
                 <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>Foto clara de tu rostro</p>
-                <p style={{ color: "#475569", fontSize: 11, marginBottom: 8 }}>Máximo {MAX_FILE_SIZE_MB} MB · JPG, PNG</p>
+                <p style={{ color: "#475569", fontSize: 11, marginBottom: 8 }}>
+                  Máximo {MAX_FILE_SIZE_MB} MB · JPG, PNG
+                </p>
                 <label style={btnUpload}>
                   {fotoPreview ? "🔄 Cambiar foto" : "📤 Subir foto"}
-                  <input type="file" accept="image/*" style={{ display: "none" }}
-                    onChange={e => {
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file && validarTamano(file)) { setFotografia(file); setFotoPreview(URL.createObjectURL(file)); }
-                    }} />
+                      if (file && validarTamano(file)) {
+                        setFotografia(file);
+                        setFotoPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                  />
                 </label>
               </div>
             </div>
@@ -666,34 +1133,101 @@ function ClientForm() {
           </div>
 
           <div ref={refs.fotoCarnet} style={{ marginTop: 8 }}>
-            <label style={labelStyle}>Carnet de Identidad <Req /></label>
+            <label style={labelStyle}>
+              Carnet de Identidad <Req />
+            </label>
             <p style={{ color: "#64748b", fontSize: 12, marginBottom: 12 }}>
-              Podés subir <strong style={{ color: "#94a3b8" }}>2 fotos</strong> (frente y reverso) o un <strong style={{ color: "#94a3b8" }}>documento PDF/Word</strong>
+              Podés subir <strong style={{ color: "#94a3b8" }}>2 fotos</strong> (frente y reverso) o un{" "}
+              <strong style={{ color: "#94a3b8" }}>documento PDF/Word</strong>
             </p>
-            <div style={{
-              background: errors.fotoCarnet ? "#450a0a" : "#0f172a",
-              borderRadius: 12, padding: 20,
-              border: errors.fotoCarnet ? "1px solid #ef4444" : "1px solid #334155",
-            }}>
+            <div
+              style={{
+                background: errors.fotoCarnet ? "#450a0a" : "#0f172a",
+                borderRadius: 12,
+                padding: 20,
+                border: errors.fotoCarnet ? "1px solid #ef4444" : "1px solid #334155",
+              }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
-                {carnetPreview && carnetEsImagen
-                  ? <img src={carnetPreview} alt="carnet" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #64748b", flexShrink: 0 }} />
-                  : carnetPreview && !carnetEsImagen
-                    ? <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0 }}>
-                        <span style={{ fontSize: 32 }}>📄</span>
-                        <span style={{ color: "#60a5fa", fontSize: 9, textAlign: "center", padding: "0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 82 }}>{carnetPreview}</span>
-                      </div>
-                    : <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>🪪</div>
-                }
+                {carnetPreview && carnetEsImagen ? (
+                  <img
+                    src={carnetPreview}
+                    alt="carnet"
+                    style={{
+                      width: 90,
+                      height: 90,
+                      objectFit: "cover",
+                      borderRadius: 10,
+                      border: "2px solid #64748b",
+                      flexShrink: 0,
+                    }}
+                  />
+                ) : carnetPreview && !carnetEsImagen ? (
+                  <div
+                    style={{
+                      width: 90,
+                      height: 90,
+                      background: "#1e293b",
+                      borderRadius: 10,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 4,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span style={{ fontSize: 32 }}>📄</span>
+                    <span
+                      style={{
+                        color: "#60a5fa",
+                        fontSize: 9,
+                        textAlign: "center",
+                        padding: "0 4px",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: 82,
+                      }}
+                    >
+                      {carnetPreview}
+                    </span>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      width: 90,
+                      height: 90,
+                      background: "#1e293b",
+                      borderRadius: 10,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 36,
+                      flexShrink: 0,
+                    }}
+                  >
+                    🪪
+                  </div>
+                )}
                 <div style={{ flex: 1 }}>
                   <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>
                     {carnetEsImagen ? "Frente del carnet" : "Documento subido"}
                   </p>
-                  <p style={{ color: "#475569", fontSize: 11, marginBottom: 8 }}>Máximo {MAX_FILE_SIZE_MB} MB · JPG, PNG, PDF, DOC, DOCX</p>
+                  <p style={{ color: "#475569", fontSize: 11, marginBottom: 8 }}>
+                    Máximo {MAX_FILE_SIZE_MB} MB · JPG, PNG, PDF, DOC, DOCX
+                  </p>
                   <label style={btnUpload}>
                     {carnetPreview ? "🔄 Cambiar" : "📤 Subir frente o documento"}
-                    <input type="file" accept="image/*,.pdf,.doc,.docx" style={{ display: "none" }}
-                      onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet1(file); }} />
+                    <input
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleCarnet1(file);
+                      }}
+                    />
                   </label>
                 </div>
               </div>
@@ -702,16 +1236,52 @@ function ClientForm() {
                 <>
                   <div style={{ borderTop: "1px solid #1e293b", marginBottom: 16 }} />
                   <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                    {carnetPreview2
-                      ? <img src={carnetPreview2} alt="carnet2" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #64748b", flexShrink: 0 }} />
-                      : <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0, opacity: 0.5 }}>🔄</div>
-                    }
+                    {carnetPreview2 ? (
+                      <img
+                        src={carnetPreview2}
+                        alt="carnet2"
+                        style={{
+                          width: 90,
+                          height: 90,
+                          objectFit: "cover",
+                          borderRadius: 10,
+                          border: "2px solid #64748b",
+                          flexShrink: 0,
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: 90,
+                          height: 90,
+                          background: "#1e293b",
+                          borderRadius: 10,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 32,
+                          flexShrink: 0,
+                          opacity: 0.5,
+                        }}
+                      >
+                        🔄
+                      </div>
+                    )}
                     <div style={{ flex: 1 }}>
-                      <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>Reverso del carnet <span style={{ color: "#475569", fontSize: 11 }}>(opcional)</span></p>
+                      <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>
+                        Reverso del carnet <span style={{ color: "#475569", fontSize: 11 }}>(opcional)</span>
+                      </p>
                       <label style={{ ...btnUpload, background: "#1e293b" }}>
                         {carnetPreview2 ? "🔄 Cambiar reverso" : "📤 Subir reverso"}
-                        <input type="file" accept="image/*" style={{ display: "none" }}
-                          onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet2(file); }} />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: "none" }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleCarnet2(file);
+                          }}
+                        />
                       </label>
                     </div>
                   </div>
@@ -721,10 +1291,21 @@ function ClientForm() {
             {errors.fotoCarnet && <p style={errorText}>{errors.fotoCarnet}</p>}
           </div>
 
-          <div style={{ background: "#1e3a5f", borderRadius: 8, padding: "10px 14px", marginTop: 12, display: "flex", gap: 8, alignItems: "flex-start" }}>
+          <div
+            style={{
+              background: "#1e3a5f",
+              borderRadius: 8,
+              padding: "10px 14px",
+              marginTop: 12,
+              display: "flex",
+              gap: 8,
+              alignItems: "flex-start",
+            }}
+          >
             <span style={{ fontSize: 16, flexShrink: 0 }}>ℹ️</span>
             <p style={{ color: "#93c5fd", fontSize: 12, margin: 0, lineHeight: 1.6 }}>
-              Las fotografías e información serán utilizadas exclusivamente para el registro editorial y trámites ante SENAPI. Tus datos están protegidos.
+              Las fotografías e información serán utilizadas exclusivamente para el registro editorial y trámites ante
+              SENAPI. Tus datos están protegidos.
             </p>
           </div>
         </div>
@@ -732,11 +1313,19 @@ function ClientForm() {
         <button
           onClick={irARevisar}
           style={{
-            width: "100%", padding: 16,
+            width: "100%",
+            padding: 16,
             background: "#3b82f6",
-            border: "none", borderRadius: 12, color: "white",
-            fontSize: 16, fontWeight: "bold", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+            border: "none",
+            borderRadius: 12,
+            color: "white",
+            fontSize: 16,
+            fontWeight: "bold",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
           }}
         >
           Continuar
@@ -758,12 +1347,51 @@ function Req() {
   return <span style={{ color: "#ef4444" }}>*</span>;
 }
 
-const sectionStyle: React.CSSProperties = { background: "#1e293b", padding: 24, borderRadius: 14, marginBottom: 20 };
-const sectionTitle: React.CSSProperties = { fontSize: 16, fontWeight: "bold", marginBottom: 20, paddingBottom: 12, borderBottom: "1px solid #334155" };
-const labelStyle: React.CSSProperties  = { display: "block", color: "#94a3b8", fontSize: 12, marginBottom: 6, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 0.5 };
-const inputStyle: React.CSSProperties  = { width: "100%", padding: 10, marginBottom: 4, borderRadius: 8, border: "none", background: "#334155", color: "white", fontSize: 14, boxSizing: "border-box" };
-const inputError: React.CSSProperties  = { ...inputStyle, border: "1px solid #ef4444" };
-const errorText: React.CSSProperties   = { color: "#ef4444", fontSize: 12, marginBottom: 10, marginTop: 2 };
-const btnUpload: React.CSSProperties   = { display: "inline-block", background: "#334155", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 13 };
+const sectionStyle: React.CSSProperties = {
+  background: "#1e293b",
+  padding: 24,
+  borderRadius: 14,
+  marginBottom: 20,
+};
+const sectionTitle: React.CSSProperties = {
+  fontSize: 16,
+  fontWeight: "bold",
+  marginBottom: 20,
+  paddingBottom: 12,
+  borderBottom: "1px solid #334155",
+};
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  color: "#94a3b8",
+  fontSize: 12,
+  marginBottom: 6,
+  fontWeight: "bold",
+  textTransform: "uppercase",
+  letterSpacing: 0.5,
+};
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: 10,
+  marginBottom: 4,
+  borderRadius: 8,
+  border: "none",
+  background: "#334155",
+  color: "white",
+  fontSize: 14,
+  boxSizing: "border-box",
+};
+const inputError: React.CSSProperties = { ...inputStyle, border: "1px solid #ef4444" };
+const errorText: React.CSSProperties = { color: "#ef4444", fontSize: 12, marginBottom: 10, marginTop: 2 };
+const btnUpload: React.CSSProperties = {
+  display: "inline-block",
+  background: "#334155",
+  border: "none",
+  padding: "8px 14px",
+  borderRadius: 8,
+  color: "white",
+  cursor: "pointer",
+  fontWeight: "bold",
+  fontSize: 13,
+};
 
 export default ClientForm;
