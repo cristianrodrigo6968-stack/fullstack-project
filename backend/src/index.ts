@@ -26,8 +26,12 @@ app.use(
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
+    
   })
-);
+)// RUTA DE PRUEBA (colócala justo después de app.use(cors(...)))
+app.get("/ping", (req, res) => {
+  res.json({ ok: true, message: "pong" });
+});;
 
 // Middlewares estándar
 app.use(express.json());
