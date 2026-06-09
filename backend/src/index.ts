@@ -1,4 +1,4 @@
-// index.ts
+// index.ts - Servidor backend completo con corrección para subida de documentos
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -648,7 +648,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
             tipo: "producto",
             titulo: producto.nombre,
             notas: `Precio unitario: Bs ${precioFinal}`,
-            precioUnitario: precioFinal,   // ✅ Guardamos el precio real
+            precioUnitario: precioFinal,
           });
         }
       }
@@ -661,7 +661,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     itemsParaPedido.push({ tipo: "desconocido", titulo: "Pago sin productos específicos", precioUnitario: pago.monto });
   }
 
-  // Crear pedido con los items que ahora tienen precioUnitario
   const nuevoPedido = await prisma.pedido.create({
     data: {
       clienteId: cliente.id,
@@ -672,19 +671,17 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
           tipo: item.tipo,
           titulo: item.titulo,
           notas: item.notas,
-          precioUnitario: item.precioUnitario,   // ✅ Se guarda en BD
+          precioUnitario: item.precioUnitario,
         })),
       },
     },
   });
 
-  // Preparar datos para el PDF usando los precios unitarios reales
   const itemsParaPDF = itemsParaPedido.map((item) => ({
     titulo: item.titulo || "Producto",
     tipo: item.tipo,
-    precioUnitario: item.precioUnitario,   // ✅ Ya no se divide
+    precioUnitario: item.precioUnitario,
   }));
-  // 🔼 FIN
 
   const reciboData = {
     cliente: {
@@ -784,6 +781,7 @@ app.post("/clients", auth, async (req, res) => {
   );
 });
 
+// ===================== RUTA CORREGIDA: SUBIR FOTOS Y DOCUMENTOS =====================
 app.post(
   "/clients/form/:token/fotos",
   upload.fields([
@@ -801,15 +799,20 @@ app.post(
       const data: any = {};
 
       if (files?.fotografia?.[0]) {
-        data.fotografia = await subirImagen(files.fotografia[0].buffer, "clientes/fotografias");
+        data.fotografia = await subirImagen(files.fotografia[0].buffer, "clientes/fotografias", "image");
         if (!data.fotografia) throw new Error("Error al subir fotografía personal");
       }
+
       if (files?.fotoCarnet?.[0]) {
-        data.fotoCarnet = await subirImagen(files.fotoCarnet[0].buffer, "clientes/carnets");
+        const file = files.fotoCarnet[0];
+        const esImagen = file.mimetype.startsWith("image/");
+        const resourceType = esImagen ? "image" : "auto";
+        data.fotoCarnet = await subirImagen(file.buffer, "clientes/carnets", resourceType as any);
         if (!data.fotoCarnet) throw new Error("Error al subir carnet (frente)");
       }
+
       if (files?.fotoCarnet2?.[0]) {
-        data.fotoCarnet2 = await subirImagen(files.fotoCarnet2[0].buffer, "clientes/carnets");
+        data.fotoCarnet2 = await subirImagen(files.fotoCarnet2[0].buffer, "clientes/carnets", "image");
         if (!data.fotoCarnet2) throw new Error("Error al subir carnet (reverso)");
       }
 
@@ -825,7 +828,7 @@ app.post(
   }
 );
 
-// ===================== ACTUALIZACIÓN FORMULARIO CLIENTE (completo + credenciales) =====================
+// ===================== ACTUALIZACIÓN FORMULARIO CLIENTE =====================
 app.put("/clients/form/:token", async (req, res) => {
   const client = await prisma.client.findUnique({ where: { token: req.params.token } });
   if (!client) return res.status(404).json({ error: "Link no válido" });
@@ -886,7 +889,7 @@ app.put("/clients/form/:token", async (req, res) => {
     },
   });
 
-  // Generar PDF con credenciales (usando precios unitarios reales del pedido)
+  // Generar PDF con credenciales
   let pdfBase64: string | null = null;
   const pedidoActivo = await prisma.pedido.findFirst({
     where: { clienteId: updated.id, estado: { not: "completado" } },
@@ -895,7 +898,6 @@ app.put("/clients/form/:token", async (req, res) => {
   });
 
   if (pedidoActivo) {
-    // Usar precioUnitario de cada item, con fallback a división simple
     const itemsParaPDF = pedidoActivo.items.map((item) => ({
       titulo: item.titulo || "Producto",
       tipo: item.tipo,
@@ -929,14 +931,13 @@ app.put("/clients/form/:token", async (req, res) => {
     }
   }
 
-  // Respuesta al frontend
   res.json({
     client: updated,
     credentials: { username, password },
     pdfBase64,
   });
 
-  // Resto del flujo (tareas, entregas)
+  // Tareas y entregas
   await prisma.clienteTask.deleteMany({ where: { clienteId: updated.id } });
   await prisma.entrega.deleteMany({ where: { clienteId: updated.id } });
 
