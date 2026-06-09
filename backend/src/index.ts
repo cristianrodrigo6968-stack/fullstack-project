@@ -1,4 +1,3 @@
-// index.ts - Servidor backend completo
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -46,7 +45,7 @@ app.use(express.static("public"));
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB para documentos
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
 
 declare global {
@@ -626,7 +625,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
   }
 
-  // 🔽 Guardar precio unitario real de cada producto
+  // Guardar precio unitario real de cada producto
   let montoTotal = 0;
   const itemsParaPedido: any[] = [];
   if (pago.productos) {
@@ -781,8 +780,7 @@ app.post("/clients", auth, async (req, res) => {
   );
 });
 
-// ===================== RUTA CORREGIDA: SUBIR FOTOS Y DOCUMENTOS =====================
-// index.ts - Ruta de subida corregida
+// ===================== RUTA SUBIR FOTOS Y DOCUMENTOS =====================
 app.post(
   "/clients/form/:token/fotos",
   upload.fields([
@@ -800,29 +798,27 @@ app.post(
       const data: any = {};
 
       if (files?.fotografia?.[0]) {
-        // ... (el código para fotografía se queda igual)
         data.fotografia = await subirImagen(files.fotografia[0].buffer, "clientes/fotografias", "image");
         if (!data.fotografia) throw new Error("Error al subir fotografía personal");
       }
 
-      // --- CORRECCIÓN PRINCIPAL: Subir documento Word ---
       if (files?.fotoCarnet?.[0]) {
         const file = files.fotoCarnet[0];
         const esImagen = file.mimetype.startsWith("image/");
-        // Generamos un 'public_id' único que incluye la extensión original
+        const extension = file.originalname.split('.').pop() || '';
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
         const publicId = `clientes/carnets/${uniqueSuffix}-${file.originalname}`;
-        
+
         if (esImagen) {
           data.fotoCarnet = await subirImagen(file.buffer, "clientes/carnets", "image");
         } else {
-          // Usamos upload_stream directamente para tener más control sobre el 'public_id'
-          const uploadResult = await new Promise<any>((resolve, reject) => {
+          // Subir como raw con public_id explícito que incluya extensión
+          const result = await new Promise<any>((resolve, reject) => {
             const uploadStream = cloudinary.uploader.upload_stream(
               {
                 folder: "clientes/carnets",
                 resource_type: "raw",
-                public_id: publicId, // Usamos un public_id explícito
+                public_id: publicId,
               },
               (error, result) => {
                 if (error) reject(error);
@@ -831,16 +827,12 @@ app.post(
             );
             uploadStream.end(file.buffer);
           });
-          data.fotoCarnet = uploadResult.secure_url;
+          data.fotoCarnet = result.secure_url;
         }
-        if (!data.fotoCarnet) {
-          throw new Error(`No se pudo subir el archivo ${file.originalname}.`);
-        }
+        if (!data.fotoCarnet) throw new Error("Error al subir carnet (frente)");
       }
-      // --- FIN DE LA CORRECCIÓN ---
 
       if (files?.fotoCarnet2?.[0]) {
-        // ... (el código para fotoCarnet2 se queda igual)
         data.fotoCarnet2 = await subirImagen(files.fotoCarnet2[0].buffer, "clientes/carnets", "image");
         if (!data.fotoCarnet2) throw new Error("Error al subir carnet (reverso)");
       }

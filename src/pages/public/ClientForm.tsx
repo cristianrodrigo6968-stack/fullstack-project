@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -45,51 +43,10 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
   return new Blob([byteArray], { type: mimeType });
 }
 
-// Función para convertir un archivo (Word, PDF, etc.) a PDF usando jsPDF y html2canvas.
-// NOTA: Esta es una conversión MUY básica. Para documentos reales, se recomienda hacer la conversión en el backend.
-const convertirDocAPDF = async (file: File): Promise<File> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsArrayBuffer(file);
-    reader.onload = async () => {
-      try {
-        // Creamos un elemento div temporal para renderizar contenido (esto es limitado)
-        const div = document.createElement("div");
-        div.style.position = "absolute";
-        div.style.left = "-9999px";
-        div.style.top = "-9999px";
-        div.style.width = "800px";
-        div.style.background = "white";
-        div.style.color = "black";
-        div.style.padding = "20px";
-        div.style.fontFamily = "Arial";
-        // Intentamos leer el texto del archivo (solo funciona si es un archivo de texto plano)
-        // Para .docx real necesitarías una librería como 'mammoth.js'
-        const text = new TextDecoder().decode(reader.result as ArrayBuffer);
-        div.innerText = text.substring(0, 2000); // limitamos longitud
-        document.body.appendChild(div);
-
-        const canvas = await html2canvas(div, { scale: 2 });
-        const imgData = canvas.toDataURL("image/png");
-        const pdf = new jsPDF("p", "mm", "a4");
-        const imgWidth = 190;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
-        const pdfBlob = pdf.output("blob");
-        const pdfFile = new File(
-          [pdfBlob],
-          file.name.replace(/\.[^/.]+$/, "") + ".pdf",
-          { type: "application/pdf" }
-        );
-        document.body.removeChild(div);
-        resolve(pdfFile);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.onerror = reject;
-  });
-};
+// Función para permitir solo letras y espacios, y convertir a mayúsculas
+function soloLetrasMayusculas(value: string): string {
+  return value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "").toUpperCase();
+}
 
 function ClientForm() {
   const { token } = useParams();
@@ -283,27 +240,10 @@ function ClientForm() {
       const formData = new FormData();
       if (fotografia) formData.append("fotografia", fotografia);
 
-      // 👇 CONVERSIÓN DE DOCUMENTO A PDF ANTES DE SUBIR
+      // Enviar el archivo del carnet tal cual (sin conversión)
       if (fotoCarnet) {
-        if (fotoCarnet.type.startsWith("image/")) {
-          formData.append("fotoCarnet", fotoCarnet);
-        } else {
-          // Convertir documento (Word, PDF, etc.) a PDF
-          try {
-            const pdfFile = await convertirDocAPDF(fotoCarnet);
-            formData.append("fotoCarnet", pdfFile);
-          } catch (convError) {
-            console.error("Error al convertir documento a PDF:", convError);
-            setSaveError(
-              "No se pudo convertir el documento a PDF. Intenta subir una imagen o un PDF válido."
-            );
-            setSaving(false);
-            setSubiendoFotos(false);
-            return;
-          }
-        }
+        formData.append("fotoCarnet", fotoCarnet);
       }
-
       if (fotoCarnet2) formData.append("fotoCarnet2", fotoCarnet2);
 
       let fotosOk = true;
@@ -905,7 +845,7 @@ function ClientForm() {
             <input
               placeholder="Ej: JUAN CARLOS"
               value={nombres}
-              onChange={(e) => setNombres(soloLetras(e.target.value))}
+              onChange={(e) => setNombres(soloLetrasMayusculas(e.target.value))}
               style={errors.nombres ? inputError : inputStyle}
             />
             {errors.nombres && <p style={errorText}>{errors.nombres}</p>}
@@ -919,7 +859,7 @@ function ClientForm() {
               <input
                 placeholder="Ej: FERNÁNDEZ"
                 value={apellidoPaterno}
-                onChange={(e) => setApellidoPaterno(soloLetras(e.target.value))}
+                onChange={(e) => setApellidoPaterno(soloLetrasMayusculas(e.target.value))}
                 style={errors.apellidoPaterno ? inputError : inputStyle}
               />
               {errors.apellidoPaterno && <p style={errorText}>{errors.apellidoPaterno}</p>}
@@ -929,7 +869,7 @@ function ClientForm() {
               <input
                 placeholder="Ej: MAMANI"
                 value={apellidoMaterno}
-                onChange={(e) => setApellidoMaterno(soloLetras(e.target.value))}
+                onChange={(e) => setApellidoMaterno(soloLetrasMayusculas(e.target.value))}
                 style={errors.apellidoMaterno ? inputError : inputStyle}
               />
               {errors.apellidoMaterno && <p style={errorText}>{errors.apellidoMaterno}</p>}
@@ -962,7 +902,7 @@ function ClientForm() {
               <input
                 placeholder="Ej: LA PAZ"
                 value={ciudad}
-                onChange={(e) => setCiudad(e.target.value.toUpperCase())}
+                onChange={(e) => setCiudad(soloLetrasMayusculas(e.target.value))}
                 style={errors.ciudad ? inputError : inputStyle}
               />
               {errors.ciudad && <p style={errorText}>{errors.ciudad}</p>}
@@ -1023,7 +963,7 @@ function ClientForm() {
             <input
               placeholder="Ej: MAESTRO DE MATEMÁTICAS"
               value={profesion}
-              onChange={(e) => setProfesion(soloLetras(e.target.value))}
+              onChange={(e) => setProfesion(soloLetrasMayusculas(e.target.value))}
               style={errors.profesion ? inputError : inputStyle}
             />
             {errors.profesion && <p style={errorText}>{errors.profesion}</p>}
@@ -1337,10 +1277,6 @@ function ClientForm() {
       </div>
     </div>
   );
-}
-
-function soloLetras(value: string): string {
-  return value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "").toUpperCase();
 }
 
 function Req() {
