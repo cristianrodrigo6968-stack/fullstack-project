@@ -2,6 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWindowSize } from "../../hooks/useWindowSize";
 
+// Función auxiliar: solo letras y espacios, y convertir a mayúsculas
+const soloLetrasMayusculas = (value: string): string => {
+  return value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "").toUpperCase();
+};
+
 const redondearAdelanto = (valor: number): number => {
   if (valor < 100) return Math.ceil(valor / 10) * 10;
   else if (valor < 1000) return Math.ceil(valor / 50) * 50;
@@ -440,19 +445,18 @@ function CarritoPage() {
                       objectFit: "contain", border: "1px solid #1e1b4b",
                     }}
                   />
-                  
-                    <a
-  href="/qr-pago.jpeg" download="QR_Pago_Vanguardistas.jpg"
-  style={{
-    display: "inline-flex", alignItems: "center", gap: 6,
-    marginTop: 12, color: "#818cf8", fontSize: 13,
-    textDecoration: "none", transition: "color .2s",
-  }}
-  onMouseEnter={e => (e.currentTarget.style.color = "#a5b4fc")}
-  onMouseLeave={e => (e.currentTarget.style.color = "#818cf8")}
->
-  📥 Descargar QR
-</a>
+                  <a
+                    href="/qr-pago.jpeg" download="QR_Pago_Vanguardistas.jpg"
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      marginTop: 12, color: "#818cf8", fontSize: 13,
+                      textDecoration: "none", transition: "color .2s",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.color = "#a5b4fc")}
+                    onMouseLeave={e => (e.currentTarget.style.color = "#818cf8")}
+                  >
+                    📥 Descargar QR
+                  </a>
                   <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 4 }}>
                     <p style={{ color: "#475569", fontSize: 12, margin: 0 }}>Banco Unión · Cuenta: 123456789</p>
                     <p style={{ color: "#475569", fontSize: 12, margin: 0 }}>Titular: Asociación Vanguardistas 3.0</p>
@@ -496,10 +500,21 @@ function CarritoPage() {
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <label style={labelStyle}>Nombre completo</label>
-                    <input className="cart-input" placeholder="Tu nombre completo" value={nombreDeclarado} onChange={e => setNombreDeclarado(e.target.value)} />
+                    <input
+                      className="cart-input"
+                      placeholder="Tu nombre completo (solo letras)"
+                      value={nombreDeclarado}
+                      onChange={e => setNombreDeclarado(soloLetrasMayusculas(e.target.value))}
+                    />
 
                     <label style={labelStyle}>Monto depositado (Bs)</label>
-                    <input className="cart-input" placeholder={`Ej: ${adelanto}`} type="number" value={monto} onChange={e => setMonto(e.target.value)} />
+                    <input
+                      className="cart-input"
+                      placeholder={`Ej: ${adelanto}`}
+                      type="number"
+                      value={monto}
+                      onChange={e => setMonto(e.target.value)}
+                    />
 
                     {modo === "subir" && (
                       <>
@@ -515,7 +530,12 @@ function CarritoPage() {
                     {modo === "declarar" && (
                       <>
                         <label style={labelStyle}>Descripción (opcional)</label>
-                        <input className="cart-input" placeholder="Cualquier detalle adicional" value={descripcion} onChange={e => setDescripcion(e.target.value)} />
+                        <input
+                          className="cart-input"
+                          placeholder="Cualquier detalle adicional"
+                          value={descripcion}
+                          onChange={e => setDescripcion(e.target.value)}
+                        />
                       </>
                     )}
 
