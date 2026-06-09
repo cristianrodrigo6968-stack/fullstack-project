@@ -788,7 +788,6 @@ app.post(
           const safeOriginalName = file.originalname
             .replace(/\s+/g, "_")
             .replace(/[^a-zA-Z0-9._-]/g, "");
-          // public_id sin slashes — Cloudinary agrega el folder por separado
           const publicId = `${uniqueSuffix}-${safeOriginalName}`;
 
           const result = await new Promise<any>((resolve, reject) => {

@@ -141,10 +141,7 @@ function ClientForm() {
   }, []);
 
   const esImagen = (file: File) => file.type.startsWith("image/");
-  const esDocumento = (file: File) =>
-    file.type === "application/pdf" ||
-    file.type === "application/msword" ||
-    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  const esPDF = (file: File) => file.type === "application/pdf";
 
   const validarTamano = (file: File): boolean => {
     if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -162,12 +159,16 @@ function ClientForm() {
       setFotoCarnet(file);
       setCarnetPreview(URL.createObjectURL(file));
       setCarnetEsImagen(true);
-    } else if (esDocumento(file)) {
+      // Si es imagen, permitimos subir reverso más tarde
+    } else if (esPDF(file)) {
       setFotoCarnet(file);
       setCarnetPreview(file.name);
       setCarnetEsImagen(false);
+      // Si es PDF, no se puede subir reverso (el PDF ya contiene ambas caras)
       setFotoCarnet2(null);
       setCarnetPreview2("");
+    } else {
+      alert("Solo se permiten imágenes (JPG, PNG) o archivos PDF.");
     }
   };
 
@@ -176,6 +177,8 @@ function ClientForm() {
     if (esImagen(file)) {
       setFotoCarnet2(file);
       setCarnetPreview2(URL.createObjectURL(file));
+    } else {
+      alert("El reverso solo puede ser una imagen (JPG o PNG).");
     }
   };
 
@@ -240,7 +243,7 @@ function ClientForm() {
       const formData = new FormData();
       if (fotografia) formData.append("fotografia", fotografia);
 
-      // Enviar el archivo del carnet tal cual (sin conversión)
+      // Enviar el archivo del carnet tal cual (imagen o PDF)
       if (fotoCarnet) {
         formData.append("fotoCarnet", fotoCarnet);
       }
@@ -1077,8 +1080,7 @@ function ClientForm() {
               Carnet de Identidad <Req />
             </label>
             <p style={{ color: "#64748b", fontSize: 12, marginBottom: 12 }}>
-              Podés subir <strong style={{ color: "#94a3b8" }}>2 fotos</strong> (frente y reverso) o un{" "}
-              <strong style={{ color: "#94a3b8" }}>documento PDF/Word</strong>
+              Podés subir una <strong>imagen (JPG, PNG)</strong> del frente o un <strong>documento PDF</strong> que contenga ambas caras.
             </p>
             <div
               style={{
@@ -1155,13 +1157,13 @@ function ClientForm() {
                     {carnetEsImagen ? "Frente del carnet" : "Documento subido"}
                   </p>
                   <p style={{ color: "#475569", fontSize: 11, marginBottom: 8 }}>
-                    Máximo {MAX_FILE_SIZE_MB} MB · JPG, PNG, PDF, DOC, DOCX
+                    Máximo {MAX_FILE_SIZE_MB} MB · JPG, PNG, PDF
                   </p>
                   <label style={btnUpload}>
-                    {carnetPreview ? "🔄 Cambiar" : "📤 Subir frente o documento"}
+                    {carnetPreview ? "🔄 Cambiar" : "📤 Subir frente o PDF"}
                     <input
                       type="file"
-                      accept="image/*,.pdf,.doc,.docx"
+                      accept="image/*,application/pdf"
                       style={{ display: "none" }}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
@@ -1172,6 +1174,7 @@ function ClientForm() {
                 </div>
               </div>
 
+              {/* Solo mostrar el reverso si se subió una imagen (no PDF) */}
               {(carnetEsImagen || !fotoCarnet) && (
                 <>
                   <div style={{ borderTop: "1px solid #1e293b", marginBottom: 16 }} />
@@ -1209,7 +1212,7 @@ function ClientForm() {
                     )}
                     <div style={{ flex: 1 }}>
                       <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>
-                        Reverso del carnet <span style={{ color: "#475569", fontSize: 11 }}>(opcional)</span>
+                        Reverso del carnet <span style={{ color: "#475569", fontSize: 11 }}>(opcional, solo si subiste imagen)</span>
                       </p>
                       <label style={{ ...btnUpload, background: "#1e293b" }}>
                         {carnetPreview2 ? "🔄 Cambiar reverso" : "📤 Subir reverso"}
