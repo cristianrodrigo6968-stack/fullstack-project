@@ -892,12 +892,79 @@ app.put("/clients/form/:token", async (req, res) => {
   const emailEnvio = updated.email || "";
   const celularEnvio = updated.celular || "";
 
+  // --- INICIO MEJORA: ENVIAR RECIBO PDF ADICIONALMENTE ---
+  // Buscar el pedido activo más reciente (no completado)
+  const pedidoActivo = await prisma.pedido.findFirst({
+    where: { clienteId: updated.id, estado: { not: "completado" } },
+    orderBy: { creadoEn: "desc" },
+    include: { items: true },
+  });
+
+  let pdfBuffer: Buffer | undefined;
+  if (pedidoActivo) {
+    // Preparar datos para el PDF
+    const itemsParaPDF = pedidoActivo.items.map((item) => ({
+      titulo: item.titulo || "Producto",
+      tipo: item.tipo,
+      precioUnitario: pedidoActivo.montoTotal / (pedidoActivo.items.length || 1),
+    }));
+    const reciboData = {
+      cliente: {
+        nombreCompleto: nombreCompletoEnvio,
+        ci: updated.ci || "",
+        celular: celularEnvio,
+        email: emailEnvio,
+      },
+      pedido: {
+        id: pedidoActivo.id,
+        montoTotal: pedidoActivo.montoTotal,
+        montoPagado: pedidoActivo.montoPagado,
+        saldoPendiente: pedidoActivo.montoTotal - pedidoActivo.montoPagado,
+        fecha: pedidoActivo.creadoEn,
+      },
+      items: itemsParaPDF,
+    };
+    try {
+      pdfBuffer = await generarReciboPDF(reciboData);
+      console.log(`✅ Recibo PDF generado para cliente ${updated.id} (pedido ${pedidoActivo.id})`);
+    } catch (err) {
+      console.error("Error generando PDF en formulario:", err);
+    }
+  }
+
   setTimeout(() => {
     enviarCorreo({ email: emailEnvio, nombreCompleto: nombreCompletoEnvio, username: username!, password, linkPortal: LINK_PORTAL })
       .catch((err) => console.error("Error enviando correo:", err));
-    enviarWhatsAppCliente(celularEnvio, nombreCompletoEnvio, username!, password, LINK_PORTAL)
-      .catch((err) => console.error("Error enviando WhatsApp:", err));
+
+    // Enviar WhatsApp con credenciales (si es nuevo) y el recibo (si existe)
+    if (username && password) {
+      // Si se generaron credenciales nuevas, las enviamos junto con el recibo
+      enviarWhatsAppCliente(
+        celularEnvio,
+        nombreCompletoEnvio,
+        username,
+        password,
+        LINK_PORTAL,
+        pdfBuffer,
+        pedidoActivo ? `Recibo_Pedido_${pedidoActivo.id}.pdf` : undefined
+      ).catch((err) => console.error("Error enviando WhatsApp:", err));
+    } else if (pdfBuffer) {
+      // Si ya tenía credenciales, solo enviamos el recibo
+      enviarWhatsAppCliente(
+        celularEnvio,
+        nombreCompletoEnvio,
+        "",
+        "",
+        "",
+        pdfBuffer,
+        pedidoActivo ? `Recibo_Pedido_${pedidoActivo.id}.pdf` : undefined
+      ).catch((err) => console.error("Error enviando WhatsApp:", err));
+    } else {
+      // Si no hay recibo ni nuevas credenciales, solo envía credenciales existentes (esto ya se hace)
+      // Pero como arriba solo llamamos si había username/password, aquí no es necesario repetir
+    }
   }, 5000);
+  // --- FIN MEJORA ---
 
   await prisma.clienteTask.deleteMany({ where: { clienteId: updated.id } });
   await prisma.entrega.deleteMany({ where: { clienteId: updated.id } });
