@@ -422,11 +422,26 @@ function ClientForm() {
             <div style={{ marginBottom: 24 }}>
               <button
                 onClick={() => {
-                  const link = document.createElement("a");
-                  link.href = `data:application/pdf;base64,${pdfBase64}`;
-                  link.download = "recibo_pedido.pdf";
-                  link.click();
-                }}
+  try {
+    const byteCharacters = atob(pdfBase64!);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: "application/pdf" });
+    const blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, "_blank");
+  } catch {
+    // Fallback por si falla el blob
+    const newTab = window.open();
+    if (newTab) {
+      newTab.document.write(
+        `<iframe src="data:application/pdf;base64,${pdfBase64}" width="100%" height="100%" style="border:none;"></iframe>`
+      );
+    }
+  }
+}}
                 style={{
                   width: "100%",
                   background: "#10b981",
