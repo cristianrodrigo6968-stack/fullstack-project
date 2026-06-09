@@ -27,10 +27,7 @@ export interface ReciboData {
 
 export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    // URL del logo: puede venir de variable de entorno o usar una por defecto
-    const logoUrl = process.env.LOGO_URL || 'https://taskmanager-backend-new.onrender.com/logo.jpg';
-    // Si no tienes logo en producción, puedes dejar una cadena vacía y no mostrar la imagen
-
+    const logoUrl = process.env.LOGO_URL || '';
     const fechaFormateada = data.pedido.fecha.toLocaleDateString('es-BO', {
       year: 'numeric',
       month: 'long',
@@ -49,51 +46,59 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
       saldo <= 0
         ? { label: 'PAGADO', color: '#16a34a', bg: '#dcfce7' }
         : saldo < data.pedido.montoTotal
-          ? { label: 'PAGO PARCIAL', color: '#d97706', bg: '#fef3c7' }
-          : { label: 'PENDIENTE', color: '#dc2626', bg: '#fee2e2' };
+        ? { label: 'PAGO PARCIAL', color: '#d97706', bg: '#fef3c7' }
+        : { label: 'PENDIENTE', color: '#dc2626', bg: '#fee2e2' };
 
     const saldoColor = saldo <= 0 ? '#16a34a' : '#dc2626';
     const saldoBorder = saldo <= 0 ? '#bbf7d0' : '#fecaca';
 
-    const MIN_ROWS = 5;
-
-    const itemRows = data.items.map((item) => `
-      <tr>
-        <td style="padding:24px 28px; color:#2c3e50; border-bottom:1px solid #eef1f5; font-size:28px;">
+    // Generar filas de items con precio unitario real y fondo alternado
+    const itemRows = data.items
+      .map(
+        (item, idx) => `
+      <tr style="background-color: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+        <td style="padding: 12px 16px; color: #1e293b; border-bottom: 1px solid #e2e8f0; font-size: 14px;">
           ${item.titulo}
           <span style="
-            display:inline-block;
-            font-size:20px;
-            font-weight:700;
-            letter-spacing:.06em;
-            text-transform:uppercase;
-            color:#155f96;
-            background:#dbeafe;
-            padding:3px 14px;
-            border-radius:6px;
-            margin-left:14px;
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #155f96;
+            background: #dbeafe;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
           ">${item.tipo}</span>
         </td>
-        <td style="padding:24px 28px; text-align:right; font-weight:600; color:#2c3e50; border-bottom:1px solid #eef1f5; font-size:28px;">
+        <td style="padding: 12px 16px; text-align: right; font-weight: 600; color: #1e293b; border-bottom: 1px solid #e2e8f0; font-size: 14px;">
           Bs ${item.precioUnitario.toFixed(2)}
         </td>
-      </tr>`).join('');
+      </tr>
+    `
+      )
+      .join('');
 
+    const MIN_ROWS = 5;
     const emptyRows = Array.from({ length: Math.max(0, MIN_ROWS - data.items.length) })
-      .map(() => `
-        <tr>
-          <td style="padding:24px 28px; border-bottom:1px solid #f4f6f9;">&nbsp;</td>
-          <td style="border-bottom:1px solid #f4f6f9;">&nbsp;</td>
-        </tr>`)
+      .map(
+        () => `
+      <tr>
+        <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">&nbsp;</td>
+        <td style="border-bottom: 1px solid #f1f5f9;">&nbsp;</td>
+      </tr>
+    `
+      )
       .join('');
 
     const credencialesHtml = data.credenciales
       ? `
-      <div style="margin-top: 30px; background: #eef2ff; border-left: 8px solid #3b82f6; padding: 20px 30px; border-radius: 12px;">
-        <p style="font-size: 24px; font-weight: bold; color: #1e3a5f; margin-bottom: 12px;">🔐 Tus credenciales de acceso</p>
-        <p style="font-size: 22px; margin: 8px 0;"><strong>Usuario:</strong> ${data.credenciales.username}</p>
-        <p style="font-size: 22px; margin: 8px 0;"><strong>Contraseña:</strong> ${data.credenciales.password}</p>
-        <p style="font-size: 18px; color: #4b5563; margin-top: 10px;">Guarda esta información para ingresar a tu portal.</p>
+      <div style="margin-top: 24px; background: #eef2ff; border-left: 6px solid #3b82f6; padding: 16px 20px; border-radius: 12px;">
+        <p style="font-size: 16px; font-weight: bold; color: #1e3a5f; margin-bottom: 10px;">🔐 Tus credenciales de acceso</p>
+        <p style="font-size: 14px; margin: 6px 0;"><strong>Usuario:</strong> ${data.credenciales.username}</p>
+        <p style="font-size: 14px; margin: 6px 0;"><strong>Contraseña:</strong> ${data.credenciales.password}</p>
+        <p style="font-size: 12px; color: #4b5563; margin-top: 8px;">Guarda esta información para ingresar a tu portal.</p>
       </div>
     `
       : '';
@@ -105,236 +110,234 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
   <title>Recibo #${String(data.pedido.id).padStart(4, '0')} — Vanguardistas 3.0</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
-      font-family: Arial, Helvetica, sans-serif;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
       background: #ffffff;
-      color: #1e2d3d;
-      font-size: 28px;
+      color: #1e293b;
+      font-size: 14px;
+      line-height: 1.5;
     }
-
     .header {
       background: #0b3a5e;
-      padding: 48px 60px 40px;
-      border-bottom: 10px solid #f59e0b;
-      width: 100%;
+      padding: 24px 30px 20px;
+      border-bottom: 6px solid #f59e0b;
     }
-    .header table { width: 100%; border-collapse: collapse; }
-    .header td { vertical-align: middle; }
-
     .logo-wrap {
       display: inline-block;
-      background: rgba(255,255,255,0.12);
-      border-radius: 10px;
-      padding: 10px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 6px;
+      margin-right: 16px;
       vertical-align: middle;
-      margin-right: 25px;
     }
     .logo {
-      width: 230px;
-      height: 230px;
+      width: 70px;
+      height: 70px;
       object-fit: contain;
-      border-radius: 5px;
       display: block;
     }
     .org-name {
-      font-size: 36px;
+      font-size: 20px;
       font-weight: 700;
       color: #ffffff;
-      line-height: 1.25;
       display: inline-block;
       vertical-align: middle;
     }
     .org-sub {
-      font-size: 22px;
-      color: rgba(255,255,255,0.55);
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      margin-top: 8px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 0.05em;
+      margin-top: 4px;
     }
     .rlabel {
-      font-size: 20px;
-      letter-spacing: 0.12em;
+      font-size: 11px;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       color: rgba(255,255,255,0.5);
-      margin-bottom: 8px;
     }
     .rnum {
-      font-size: 64px;
+      font-size: 32px;
       font-weight: 700;
       color: #f59e0b;
-      line-height: 1;
+      line-height: 1.2;
     }
     .rfecha {
-      font-size: 22px;
+      font-size: 12px;
       color: rgba(255,255,255,0.6);
-      margin-top: 10px;
     }
     .estado-badge {
       display: inline-block;
-      padding: 8px 26px;
-      border-radius: 40px;
-      font-size: 20px;
+      padding: 4px 14px;
+      border-radius: 30px;
+      font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin-top: 14px;
+      letter-spacing: 0.05em;
+      margin-top: 8px;
       background: ${estadoPago.bg};
       color: ${estadoPago.color};
     }
-
     .section-title {
-      font-size: 18px;
-      letter-spacing: 0.15em;
+      font-size: 12px;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: #8fa3b8;
+      color: #64748b;
       font-weight: 700;
-      margin-bottom: 16px;
-      margin-top: 40px;
+      margin-bottom: 10px;
+      margin-top: 20px;
     }
-
     .cliente-box {
-      background: #f6f9fc;
-      border: 1px solid #e1eaf4;
-      border-radius: 16px;
-      padding: 28px 32px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 20px;
     }
-    .cliente-box table { width: 100%; border-collapse: collapse; }
-    .cliente-box td { vertical-align: middle; }
-
     .avatar {
-      width: 90px;
-      height: 90px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
       background: #0b3a5e;
       color: #ffffff;
-      font-size: 34px;
+      font-size: 20px;
       font-weight: 700;
       text-align: center;
-      line-height: 90px;
+      line-height: 48px;
       display: inline-block;
     }
     .cliente-nombre {
-      font-size: 30px;
+      font-size: 16px;
       font-weight: 700;
-      color: #1e2d3d;
-      margin-bottom: 8px;
+      color: #0f172a;
     }
     .ci-badge {
       display: inline-block;
-      background: #e8f0f8;
-      color: #0b3a5e;
-      font-size: 20px;
-      font-weight: 700;
-      padding: 3px 14px;
-      border-radius: 8px;
-      margin-left: 12px;
+      background: #e2e8f0;
+      color: #1e293b;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-left: 8px;
     }
     .cliente-meta {
-      font-size: 24px;
-      color: #6b849b;
-      line-height: 1.6;
+      font-size: 13px;
+      color: #475569;
+      margin-top: 4px;
     }
-
-    .items-table { width: 100%; border-collapse: collapse; font-size: 28px; }
-    .items-table thead tr { background: #0b3a5e; }
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .items-table thead tr {
+      background: #0b3a5e;
+    }
     .items-table thead th {
-      padding: 20px 28px;
+      padding: 10px 16px;
       font-weight: 600;
       text-align: left;
       color: #ffffff;
-      letter-spacing: 0.03em;
-      font-size: 26px;
+      font-size: 12px;
+      letter-spacing: 0.05em;
     }
-    .items-table thead th.right { text-align: right; }
-
+    .items-table thead th.right {
+      text-align: right;
+    }
     .totales-box {
-      background: #f6f9fc;
-      border: 1px solid #e1eaf4;
-      border-radius: 16px;
-      padding: 30px 36px;
-      margin-top: 40px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-top: 24px;
     }
-    .tot-table { width: 100%; border-collapse: collapse; }
+    .tot-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
     .tot-table td {
-      padding: 16px 0;
-      font-size: 28px;
-      color: #4a6278;
-      border-bottom: 1px dashed #dde5ef;
+      padding: 8px 0;
+      font-size: 14px;
+      color: #334155;
+      border-bottom: 1px dashed #cbd5e1;
     }
     .tot-table tr:last-child td {
       border-bottom: none;
-      border-top: 3px solid ${saldoBorder};
-      padding-top: 22px;
-      font-size: 36px;
+      border-top: 2px solid ${saldoBorder};
+      padding-top: 12px;
+      font-size: 18px;
       font-weight: 700;
       color: ${saldoColor};
     }
-    .tot-table td.right { text-align: right; }
-
+    .tot-table td.right {
+      text-align: right;
+    }
     .nota {
       text-align: center;
-      font-size: 22px;
-      color: #8fa3b8;
+      font-size: 12px;
+      color: #64748b;
       font-style: italic;
-      margin-top: 40px;
+      margin-top: 24px;
     }
-    .nota strong { font-style: normal; color: #0b3a5e; }
-
     .sello {
-      display: block;
-      border: 2px dashed #d1dde8;
-      border-radius: 16px;
-      padding: 16px 0;
-      font-size: 20px;
-      color: #a0b3c5;
-      letter-spacing: 0.05em;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 8px 0;
+      font-size: 10px;
+      color: #94a3b8;
       text-align: center;
-      margin: 22px auto 0;
-      width: 70%;
+      margin: 16px auto 0;
+      width: 60%;
     }
-
     .footer {
       background: #0b3a5e;
-      padding: 30px 60px;
-      border-top: 5px solid #f59e0b;
-      margin-top: 50px;
-      width: 100%;
+      padding: 16px 30px;
+      border-top: 4px solid #f59e0b;
+      margin-top: 30px;
     }
-    .footer table { width: 100%; border-collapse: collapse; }
-    .footer td { vertical-align: middle; }
     .fbrand {
-      font-size: 26px;
+      font-size: 14px;
       font-weight: 700;
       color: rgba(255,255,255,0.9);
-      margin-bottom: 6px;
     }
     .footer p {
-      font-size: 22px;
+      font-size: 11px;
       color: rgba(255,255,255,0.5);
-      line-height: 1.8;
+      line-height: 1.4;
     }
-    .footer a { color: #f59e0b; text-decoration: none; }
-
-    .divider { border: none; border-top: 1px solid #e8eef5; margin: 40px 0 0; }
-    .spacer { height: 40px; }
+    .footer a {
+      color: #f59e0b;
+      text-decoration: none;
+    }
+    .divider {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 20px 0 0;
+    }
+    .spacer {
+      height: 20px;
+    }
+    .content {
+      padding: 0 30px;
+    }
   </style>
 </head>
 <body>
-
   <div class="header">
-    <table>
+    <table style="width:100%; border-collapse:collapse;">
       <tr>
-        <td style="width:80%;">
-          <div class="logo-wrap">
-            <img class="logo" src="${logoUrl}" alt="Logo" />
-          </div>
+        <td style="width:70%;">
+          ${
+            logoUrl
+              ? `<div class="logo-wrap"><img class="logo" src="${logoUrl}" alt="Logo" /></div>`
+              : ''
+          }
           <div style="display:inline-block; vertical-align:middle;">
             <div class="org-name">Asociación de Escritores<br>Vanguardistas 3.0</div>
             <div class="org-sub">El Alto, Bolivia</div>
           </div>
         </td>
-        <td style="width:40%; text-align:right; vertical-align:middle;">
+        <td style="width:30%; text-align:right;">
           <div class="rlabel">Recibo de Pago</div>
           <div class="rnum">#${String(data.pedido.id).padStart(4, '0')}</div>
           <div class="rfecha">${fechaFormateada}</div>
@@ -344,22 +347,19 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
     </table>
   </div>
 
-  <div style="padding: 10px 60px 0;">
-
+  <div class="content">
     <div class="section-title">Datos del cliente</div>
     <div class="cliente-box">
-      <table>
+      <table style="width:100%">
         <tr>
-          <td style="width:110px;">
-            <div class="avatar">${initials}</div>
-          </td>
+          <td style="width:60px;"><div class="avatar">${initials}</div></td>
           <td>
             <div class="cliente-nombre">
               ${data.cliente.nombreCompleto}
               <span class="ci-badge">CI ${data.cliente.ci}</span>
             </div>
             <div class="cliente-meta">
-              Celular: ${data.cliente.celular}&nbsp;&nbsp;|&nbsp;&nbsp;Email: ${data.cliente.email}
+              Celular: ${data.cliente.celular} | Email: ${data.cliente.email}
             </div>
           </td>
         </tr>
@@ -371,7 +371,7 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
       <thead>
         <tr>
           <th>Producto / Servicio</th>
-          <th class="right" style="width:260px;">Precio Unit.</th>
+          <th class="right">Precio Unit.</th>
         </tr>
       </thead>
       <tbody>
@@ -384,15 +384,11 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
       <table class="tot-table">
         <tr>
           <td>Total del pedido</td>
-          <td class="right" style="font-weight:600; color:#1e2d3d;">
-            Bs ${data.pedido.montoTotal.toFixed(2)}
-          </td>
+          <td class="right">Bs ${data.pedido.montoTotal.toFixed(2)}</td>
         </tr>
         <tr>
           <td>Monto pagado</td>
-          <td class="right" style="font-weight:700; color:#16a34a;">
-            − Bs ${data.pedido.montoPagado.toFixed(2)}
-          </td>
+          <td class="right" style="color:#16a34a;">− Bs ${data.pedido.montoPagado.toFixed(2)}</td>
         </tr>
         <tr>
           <td>Saldo pendiente</td>
@@ -404,36 +400,28 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
     ${credencialesHtml}
 
     <hr class="divider" />
-
     <div class="nota">
-      ¡Gracias por confiar en <strong>Vanguardistas 3.0</strong>!
+      ¡Gracias por confiar en <strong>Vanguardistas 3.0</strong>!<br>
       Este documento es válido como comprobante de pago.
     </div>
     <div class="sello">Documento generado electrónicamente · No requiere firma física</div>
-
     <div class="spacer"></div>
   </div>
 
   <div class="footer">
-    <table>
+    <table style="width:100%">
       <tr>
-        <td style="width:55%;">
+        <td>
           <div class="fbrand">Vanguardistas 3.0</div>
-          <p>El Alto, Bolivia &nbsp;·&nbsp;
-            <a href="mailto:xd@vanguardistas.com">xd@vanguardistas.com</a>
-          </p>
-          <p>Tel: +591 71234567</p>
+          <p>El Alto, Bolivia · <a href="mailto:xd@vanguardistas.com">xd@vanguardistas.com</a><br>Tel: +591 71234567</p>
         </td>
-        <td style="text-align:right; vertical-align:middle;">
+        <td style="text-align:right;">
           <p>© 2026 Todos los derechos reservados</p>
-          <p style="font-size:18px; color:rgba(255,255,255,0.28); margin-top:4px;">
-            Recibo generado automáticamente
-          </p>
+          <p style="font-size:9px;">Recibo generado automáticamente</p>
         </td>
       </tr>
     </table>
   </div>
-
 </body>
 </html>`;
 
