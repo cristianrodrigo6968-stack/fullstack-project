@@ -27,7 +27,9 @@ export interface ReciboData {
 
 export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const logoUrl = `${process.env.API_URL || 'http://localhost:3000'}/logo.jpg`;
+    // URL del logo: puede venir de variable de entorno o usar una por defecto
+    const logoUrl = process.env.LOGO_URL || 'https://taskmanager-backend-new.onrender.com/logo.jpg';
+    // Si no tienes logo en producción, puedes dejar una cadena vacía y no mostrar la imagen
 
     const fechaFormateada = data.pedido.fecha.toLocaleDateString('es-BO', {
       year: 'numeric',

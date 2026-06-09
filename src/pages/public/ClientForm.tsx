@@ -28,6 +28,17 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 type Screen = "form" | "review" | "success";
 
+// Función auxiliar para convertir base64 a Blob
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type: mimeType });
+}
+
 function ClientForm() {
   const { token } = useParams();
 
@@ -232,7 +243,6 @@ function ClientForm() {
 
       const data = await res.json();
 
-      // Siempre guardar credenciales y PDF que lleguen del backend
       if (data.credentials) {
         setCredenciales(data.credentials);
       }
@@ -386,7 +396,7 @@ function ClientForm() {
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PANTALLA 3: ÉXITO
+  // PANTALLA 3: ÉXITO (CORREGIDA PARA iOS)
   // ═══════════════════════════════════════════════════════════════════════════
   if (screen === "success") return (
     <div lang="es" translate="no" style={{ background: "#0f172a", minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "40px 20px", color: "white" }}>
@@ -422,26 +432,24 @@ function ClientForm() {
             <div style={{ marginBottom: 24 }}>
               <button
                 onClick={() => {
-  try {
-    const byteCharacters = atob(pdfBase64!);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: "application/pdf" });
-    const blobUrl = URL.createObjectURL(blob);
-    window.open(blobUrl, "_blank");
-  } catch {
-    // Fallback por si falla el blob
-    const newTab = window.open();
-    if (newTab) {
-      newTab.document.write(
-        `<iframe src="data:application/pdf;base64,${pdfBase64}" width="100%" height="100%" style="border:none;"></iframe>`
-      );
-    }
-  }
-}}
+                  try {
+                    const blob = base64ToBlob(pdfBase64, "application/pdf");
+                    const url = URL.createObjectURL(blob);
+                    // Abrir en nueva pestaña (funciona en iOS Safari)
+                    window.open(url, "_blank");
+                    // Liberar memoria
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                  } catch (err) {
+                    console.error("Error al abrir PDF:", err);
+                    // Fallback: intentar abrir con data URI
+                    const newTab = window.open();
+                    if (newTab) {
+                      newTab.document.write(
+                        `<iframe src="data:application/pdf;base64,${pdfBase64}" width="100%" height="100%" style="border:none;"></iframe>`
+                      );
+                    }
+                  }
+                }}
                 style={{
                   width: "100%",
                   background: "#10b981",
@@ -458,10 +466,10 @@ function ClientForm() {
                   gap: 8,
                 }}
               >
-                📄 Descargar recibo del pedido
+                📄 Ver recibo del pedido
               </button>
               <p style={{ color: "#475569", fontSize: 12, marginTop: 8 }}>
-                El recibo incluye tus credenciales de acceso.
+                En iPhone, toca el botón y luego el ícono de compartir para guardar el PDF.
               </p>
             </div>
           )}
