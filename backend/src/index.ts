@@ -45,7 +45,7 @@ app.use(express.static("public"));
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
 declare global {
@@ -125,12 +125,7 @@ app.post("/login", async (req, res) => {
     if (!passwordValida) return res.status(401).json({ error: "Credenciales incorrectas" });
 
     const token = jwt.sign(
-      {
-        id: client.id,
-        clienteId: client.id,
-        username: client.clientUsername,
-        role: "cliente",
-      },
+      { id: client.id, clienteId: client.id, username: client.clientUsername, role: "cliente" },
       SECRET,
       { expiresIn: "8h" }
     );
@@ -424,13 +419,7 @@ app.post("/productos", auth, upload.single("imagen"), async (req, res) => {
     }
   }
   const producto = await prisma.producto.create({
-    data: {
-      nombre,
-      descripcion,
-      precio: Number(precio),
-      descuento: Number(descuento),
-      imagenUrl,
-    },
+    data: { nombre, descripcion, precio: Number(precio), descuento: Number(descuento), imagenUrl },
   });
   res.json(producto);
 });
@@ -459,16 +448,13 @@ app.delete("/productos/:id", auth, async (req, res) => {
 app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
   try {
     const { nombreDeclarado, monto, tipo, descripcion, productos, celular, ci } = req.body;
-
     if (!nombreDeclarado || !monto) {
       return res.status(400).json({ error: "Faltan datos obligatorios: nombreDeclarado y monto" });
     }
-
     let imagenUrl: string | null = null;
     if (req.file) {
       imagenUrl = await subirImagen(req.file.buffer, "pagos/comprobantes", "image");
     }
-
     const pago = await prisma.pago.create({
       data: {
         nombreDeclarado,
@@ -481,14 +467,12 @@ app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
         ci: ci || null,
       },
     });
-
     try {
       const { notificarAdminMensaje } = await import("./whatsapp");
       await notificarAdminMensaje(`Nuevo pago pendiente de ${nombreDeclarado} por Bs ${monto}`);
     } catch (err) {
       console.warn("⚠️ No se pudo notificar al admin:", err);
     }
-
     res.json(pago);
   } catch (error: any) {
     console.error("💥 Error en POST /pagos:", error?.message);
@@ -509,7 +493,6 @@ app.post("/pagos/manual", auth, async (req, res) => {
       ci: ci || null,
     },
   });
-
   if (pedidoId) {
     const pedido = await prisma.pedido.findUnique({ where: { id: Number(pedidoId) } });
     if (pedido) {
@@ -519,7 +502,6 @@ app.post("/pagos/manual", auth, async (req, res) => {
       });
     }
   }
-
   res.json(pago);
 });
 
@@ -559,7 +541,7 @@ app.delete("/pagos/:id", auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ===================== VERIFICAR PAGO (crea pedido y credenciales) =====================
+// ===================== VERIFICAR PAGO =====================
 app.put("/pagos/:id/verificar", auth, async (req, res) => {
   const id = Number(req.params.id);
   const pago = await prisma.pago.findUnique({ where: { id } });
@@ -608,11 +590,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     await prisma.client.update({
       where: { id: cliente.id },
-      data: {
-        clientUsername: username,
-        clientPassword: hashedPassword,
-        credencialesGeneradaAt: new Date(),
-      },
+      data: { clientUsername: username, clientPassword: hashedPassword, credencialesGeneradaAt: new Date() },
     });
   } else {
     await prisma.client.update({
@@ -625,7 +603,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
   }
 
-  // Guardar precio unitario real de cada producto
   let montoTotal = 0;
   const itemsParaPedido: any[] = [];
   if (pago.productos) {
@@ -750,10 +727,7 @@ app.put("/pagos/:id/rechazar", auth, async (req, res) => {
   const id = Number(req.params.id);
   const { motivoRechazo } = req.body;
   res.json(
-    await prisma.pago.update({
-      where: { id },
-      data: { estado: "rechazado", motivoRechazo },
-    })
+    await prisma.pago.update({ where: { id }, data: { estado: "rechazado", motivoRechazo } })
   );
 });
 
@@ -805,14 +779,18 @@ app.post(
       if (files?.fotoCarnet?.[0]) {
         const file = files.fotoCarnet[0];
         const esImagen = file.mimetype.startsWith("image/");
-        const extension = file.originalname.split('.').pop() || '';
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const publicId = `clientes/carnets/${uniqueSuffix}-${file.originalname}`;
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
 
         if (esImagen) {
           data.fotoCarnet = await subirImagen(file.buffer, "clientes/carnets", "image");
         } else {
-          // Subir como raw con public_id explícito que incluya extensión
+          // Sanitizar nombre: quitar espacios y caracteres especiales
+          const safeOriginalName = file.originalname
+            .replace(/\s+/g, "_")
+            .replace(/[^a-zA-Z0-9._-]/g, "");
+          // public_id sin slashes — Cloudinary agrega el folder por separado
+          const publicId = `${uniqueSuffix}-${safeOriginalName}`;
+
           const result = await new Promise<any>((resolve, reject) => {
             const uploadStream = cloudinary.uploader.upload_stream(
               {
@@ -875,7 +853,6 @@ app.put("/clients/form/:token", async (req, res) => {
     },
   });
 
-  // Generar credenciales
   const nombresArray = (updated.nombres || "").split(" ");
   const apellidoPaternoRaw = (updated.apellidoPaterno || "").toLowerCase();
   let baseUsername = `${nombresArray[0] || ""}.${apellidoPaternoRaw}`
@@ -903,14 +880,9 @@ app.put("/clients/form/:token", async (req, res) => {
   const hashedPassword = await bcrypt.hash(password, 10);
   await prisma.client.update({
     where: { id: updated.id },
-    data: {
-      clientUsername: username,
-      clientPassword: hashedPassword,
-      credencialesGeneradaAt: new Date(),
-    },
+    data: { clientUsername: username, clientPassword: hashedPassword, credencialesGeneradaAt: new Date() },
   });
 
-  // Generar PDF con credenciales
   let pdfBase64: string | null = null;
   const pedidoActivo = await prisma.pedido.findFirst({
     where: { clienteId: updated.id, estado: { not: "completado" } },
@@ -952,13 +924,8 @@ app.put("/clients/form/:token", async (req, res) => {
     }
   }
 
-  res.json({
-    client: updated,
-    credentials: { username, password },
-    pdfBase64,
-  });
+  res.json({ client: updated, credentials: { username, password }, pdfBase64 });
 
-  // Tareas y entregas
   await prisma.clienteTask.deleteMany({ where: { clienteId: updated.id } });
   await prisma.entrega.deleteMany({ where: { clienteId: updated.id } });
 
@@ -1034,7 +1001,6 @@ app.put("/clients/:id/regenerar", auth, async (req, res) => {
 
 app.delete("/clients/:id", auth, async (req, res) => {
   const id = Number(req.params.id);
-
   await prisma.magazine.updateMany({ where: { clienteId: id }, data: { clienteId: null } });
   await prisma.book.updateMany({ where: { clienteId: id }, data: { clienteId: null } });
   await prisma.mensaje.deleteMany({ where: { clienteId: id } });
@@ -1042,7 +1008,6 @@ app.delete("/clients/:id", auth, async (req, res) => {
   await prisma.clienteTask.deleteMany({ where: { clienteId: id } });
   await prisma.entrega.deleteMany({ where: { clienteId: id } });
   await prisma.clienteArchivo.deleteMany({ where: { clienteId: id } });
-
   const pedidos = await prisma.pedido.findMany({ where: { clienteId: id }, select: { id: true } });
   const pedidoIds = pedidos.map((p) => p.id);
   const items = await prisma.itemPedido.findMany({ where: { pedidoId: { in: pedidoIds } }, select: { id: true } });
@@ -1051,7 +1016,6 @@ app.delete("/clients/:id", auth, async (req, res) => {
   await prisma.itemPedido.deleteMany({ where: { pedidoId: { in: pedidoIds } } });
   await prisma.pedido.deleteMany({ where: { clienteId: id } });
   await prisma.client.delete({ where: { id } });
-
   res.json({ ok: true });
 });
 
@@ -1175,7 +1139,6 @@ app.post("/items/:id/revision", auth, upload.array("archivos", 5), async (req: a
       include: { pedido: { include: { cliente: true } } },
     });
     if (item?.pedido?.cliente) {
-      const { enviarWhatsAppCliente } = await import("./whatsapp");
       await enviarWhatsAppCliente(
         item.pedido.cliente.celular || "",
         item.pedido.cliente.nombreCompleto || "Cliente",
