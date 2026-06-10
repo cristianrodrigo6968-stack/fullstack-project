@@ -144,7 +144,7 @@ model Client {
   pagos             Pago[]
   pedidos           Pedido[]
 
-  @@unique([ci, extension])   // 👈 ESTA ES LA LÍNEA QUE AGREGASTE
+  @@unique([ci, extension])
 }
 
 model Entrega {
@@ -224,10 +224,12 @@ model Pago {
   motivoRechazo   String?
   productos       String?
   celular         String?
-  ci        String?   
+  ci              String?
   creadoEn        DateTime @default(now())
   clienteId       Int?
   cliente         Client?  @relation(fields: [clienteId], references: [id])
+  pedidoId        Int?     @unique
+  pedido          Pedido?  @relation(fields: [pedidoId], references: [id])
 }
 
 model Pedido {
@@ -240,6 +242,7 @@ model Pedido {
   creadoEn      DateTime     @default(now())
   cliente       Client       @relation(fields: [clienteId], references: [id])
   items         ItemPedido[]
+  pago          Pago?        @relation   // 👈 esta línea debe estar UNA sola vez
 }
 
 model Edicion {
@@ -261,7 +264,7 @@ model ItemPedido {
   tipoAutor               String?
   asociacionEncargaTitulo Boolean        @default(false)
   notas                   String?
-   precioUnitario Float? 
+  precioUnitario          Float?
   archivoWord             String?
   archivoPdf              String?
   estado                  String         @default("pendiente")
