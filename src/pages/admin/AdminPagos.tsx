@@ -14,7 +14,7 @@ interface Pago {
   imagenUrl: string | null;
   estado: string;
   motivoRechazo: string | null;
-  productos: string | null;
+  productos: string | null;   // JSON con el carrito
   celular: string | null;
   ci: string | null;
   creadoEn: string;
@@ -24,6 +24,13 @@ interface Pago {
     montoPagado: number;
     estado: string;
   };
+}
+
+// Tipo para un producto en el carrito
+interface ProductoCarrito {
+  id: number;
+  nombre: string;
+  precioUnitario: number;
 }
 
 // ─── Helpers de color ─────────────────────────────────────────────────────────
@@ -105,7 +112,7 @@ function AdminPagos() {
     Authorization: `Bearer ${token}`,
   };
 
-  // ── API calls (sin cambios) ────────────────────────────────────────────────
+  // ── API calls ────────────────────────────────────────────────────────────────
   const load = async () => {
     setLoading(true);
     const res = await fetch(`${API_URL}/pagos`, { headers });
@@ -208,6 +215,16 @@ function AdminPagos() {
       ? selected.pedido.montoTotal - selected.pedido.montoPagado
       : null;
 
+    // Parsear productos del carrito (si existen)
+    let productosLista: ProductoCarrito[] = [];
+    if (selected.productos) {
+      try {
+        productosLista = JSON.parse(selected.productos);
+      } catch (e) {
+        console.error("Error parseando productos del pago:", e);
+      }
+    }
+
     return (
       <div>
         <style>{fadeIn}</style>
@@ -246,7 +263,7 @@ function AdminPagos() {
             {selected.descripcion && <InfoRow label="Descripción" value={selected.descripcion} />}
           </div>
 
-          {/* Pedido + acciones */}
+          {/* Pedido asociado + productos */}
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
             {/* Pedido asociado */}
@@ -269,6 +286,44 @@ function AdminPagos() {
                 <p style={{ color: "#475569", fontSize: 13 }}>Sin pedido asociado</p>
               </div>
             )}
+
+            {/* 🛍️ Productos comprados */}
+            <div style={{ background: "#1e293b", borderRadius: 14, padding: 22 }}>
+              <p style={sectionLabel}>🛍️ Productos comprados</p>
+              {productosLista.length === 0 ? (
+                <p style={{ color: "#475569", fontSize: 13, margin: 0 }}>No hay productos registrados en este pago.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {productosLista.map((prod, idx) => (
+                    <div key={idx} style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "8px 0",
+                      borderBottom: idx !== productosLista.length - 1 ? "1px solid #0f172a" : "none"
+                    }}>
+                      <span style={{ color: "#cbd5e1", fontSize: 14 }}>{prod.nombre}</span>
+                      <span style={{ color: "#22c55e", fontWeight: "bold", fontSize: 14 }}>
+                        Bs {prod.precioUnitario.toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                  <div style={{
+                    marginTop: 8,
+                    paddingTop: 8,
+                    borderTop: "2px solid #334155",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center"
+                  }}>
+                    <span style={{ color: "white", fontWeight: "bold", fontSize: 14 }}>Total productos</span>
+                    <span style={{ color: "#22c55e", fontWeight: "bold", fontSize: 16 }}>
+                      Bs {productosLista.reduce((sum, p) => sum + p.precioUnitario, 0).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Comprobante */}
             {selected.imagenUrl && (
@@ -456,47 +511,45 @@ function AdminPagos() {
       />
 
       {/* Filtros */}
-     {/* Filtros */}
-<div style={{ display: "flex", gap: 6, margin: "16px 0", flexWrap: "wrap" }}>
-  {(["todos", "pendiente", "verificado", "rechazado"] as const).map(f => {
-    const counts = {
-      todos: pagosMes.length,
-      pendiente: pendientesMes.length,
-      verificado: verificadosMes.length,
-      rechazado: rechazadosMes.length,
-    };
-    const isActive = filtro === f;
-    const buttonStyles: React.CSSProperties = {
-      padding: "6px 14px",
-      borderRadius: 99,
-      background: isActive ? "#3b82f6" : "#1e293b",
-      color: isActive ? "white" : "#64748b",
-      fontWeight: "bold",
-      fontSize: 12,
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      gap: 6,
-      border: isActive ? "none" : "1px solid #334155",
-    };
-    return (
-      <button key={f} onClick={() => setFiltro(f)} style={buttonStyles}>
-        {f === "todos" ? "Todos" : f.charAt(0).toUpperCase() + f.slice(1)}
-        <span
-          style={{
-            background: isActive ? "rgba(255,255,255,0.2)" : "#334155",
+      <div style={{ display: "flex", gap: 6, margin: "16px 0", flexWrap: "wrap" }}>
+        {(["todos", "pendiente", "verificado", "rechazado"] as const).map(f => {
+          const counts = {
+            todos: pagosMes.length,
+            pendiente: pendientesMes.length,
+            verificado: verificadosMes.length,
+            rechazado: rechazadosMes.length,
+          };
+          const isActive = filtro === f;
+          const buttonStyles: React.CSSProperties = {
+            padding: "6px 14px",
             borderRadius: 99,
-            padding: "1px 7px",
-            fontSize: 11,
-          }}
-        >
-          {counts[f]}
-        </span>
-      </button>
-    );
-  })}
-</div>
-    
+            background: isActive ? "#3b82f6" : "#1e293b",
+            color: isActive ? "white" : "#64748b",
+            fontWeight: "bold",
+            fontSize: 12,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            border: isActive ? "none" : "1px solid #334155",
+          };
+          return (
+            <button key={f} onClick={() => setFiltro(f)} style={buttonStyles}>
+              {f === "todos" ? "Todos" : f.charAt(0).toUpperCase() + f.slice(1)}
+              <span
+                style={{
+                  background: isActive ? "rgba(255,255,255,0.2)" : "#334155",
+                  borderRadius: 99,
+                  padding: "1px 7px",
+                  fontSize: 11,
+                }}
+              >
+                {counts[f]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       {/* Lista de pagos */}
       {loading ? (
@@ -516,6 +569,15 @@ function AdminPagos() {
             const sc = getEstadoColor(p.estado);
             const saldoPendiente  = p.pedido ? p.pedido.montoTotal - p.pedido.montoPagado : null;
             const estaPagado      = saldoPendiente !== null && saldoPendiente <= 0;
+            
+            // Contar productos (si existe el campo productos)
+            let cantidadProductos = 0;
+            if (p.productos) {
+              try {
+                const prods = JSON.parse(p.productos);
+                if (Array.isArray(prods)) cantidadProductos = prods.length;
+              } catch (e) {}
+            }
 
             return (
               <div
@@ -548,6 +610,19 @@ function AdminPagos() {
                       {p.tipo !== "declarado" && (
                         <span style={{ fontSize: 11, color: "#475569" }}>
                           {TIPO_LABEL[p.tipo] ?? p.tipo}
+                        </span>
+                      )}
+                      {/* Badge de cantidad de productos */}
+                      {cantidadProductos > 0 && (
+                        <span style={{
+                          background: "#3b82f6",
+                          color: "white",
+                          fontSize: 10,
+                          padding: "2px 8px",
+                          borderRadius: 99,
+                          fontWeight: "bold"
+                        }}>
+                          🛒 {cantidadProductos} producto{cantidadProductos !== 1 ? "s" : ""}
                         </span>
                       )}
                     </div>
