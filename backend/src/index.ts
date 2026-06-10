@@ -541,7 +541,7 @@ app.delete("/pagos/:id", auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ===================== VERIFICAR PAGO (CORREGIDO) =====================
+// ===================== VERIFICAR PAGO =====================
 app.put("/pagos/:id/verificar", auth, async (req, res) => {
   const id = Number(req.params.id);
   const pago = await prisma.pago.findUnique({ where: { id } });
@@ -566,7 +566,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     esClienteNuevo = true;
     tokenFormulario = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 4);
+    expiresAt.setDate(expiresAt.getDate() + 365);
     cliente = await prisma.client.create({
       data: {
         token: tokenFormulario,
@@ -574,6 +574,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
         nombreCompleto: pago.nombreDeclarado,
         ci: pago.ci || null,
         celular: pago.celular || null,
+        status: "pendiente",
       },
     });
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
@@ -593,17 +594,23 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
       data: { clientUsername: username, clientPassword: hashedPassword, credencialesGeneradaAt: new Date() },
     });
   } else {
+    const nuevoToken = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 365);
     await prisma.client.update({
       where: { id: cliente.id },
       data: {
         celular: pago.celular || cliente.celular,
         nombreCompleto: pago.nombreDeclarado || cliente.nombreCompleto,
+        token: nuevoToken,
+        expiresAt,
+        status: "pendiente",
       },
     });
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
+    cliente = await prisma.client.findUnique({ where: { id: cliente.id } }) as any;
   }
 
-  // ✅ Usar los datos del carrito enviados por el frontend (nombres y precios reales)
   let montoTotal = 0;
   const itemsParaPedido: any[] = [];
   if (pago.productos) {
@@ -627,7 +634,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     }
   }
 
-  // Fallback por si no hay productos
   if (montoTotal === 0 && itemsParaPedido.length === 0) {
     montoTotal = pago.monto;
     itemsParaPedido.push({
@@ -638,7 +644,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     });
   }
 
-  // Crear pedido con los ítems (con precios individuales)
   const nuevoPedido = await prisma.pedido.create({
     data: {
       clienteId: cliente.id,
@@ -742,17 +747,17 @@ app.get("/clients", auth, async (req, res) => {
 app.get("/clients/form/:token", async (req, res) => {
   const client = await prisma.client.findUnique({ where: { token: req.params.token } });
   if (!client) return res.status(404).json({ error: "Link no válido" });
-  if (new Date() > client.expiresAt) return res.status(410).json({ error: "Este link ha expirado" });
+  if (client.status === "formulario llenado") return res.status(410).json({ error: "Este link ya fue utilizado" });
   res.json(client);
 });
 
 app.post("/clients", auth, async (req, res) => {
   const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 4);
+  expiresAt.setDate(expiresAt.getDate() + 365);
   res.json(
     await prisma.client.create({
-      data: { token, expiresAt, nombreCompleto: req.body.nombreCompleto || null },
+      data: { token, expiresAt, nombreCompleto: req.body.nombreCompleto || null, status: "pendiente" },
     })
   );
 });
@@ -769,7 +774,7 @@ app.post(
     try {
       const client = await prisma.client.findUnique({ where: { token: req.params.token } });
       if (!client) return res.status(404).json({ error: "Link no válido" });
-      if (new Date() > client.expiresAt) return res.status(410).json({ error: "Link expirado" });
+      if (client.status === "formulario llenado") return res.status(410).json({ error: "Este link ya fue utilizado" });
 
       const files = req.files as Record<string, Express.Multer.File[]>;
       const data: any = {};
@@ -791,14 +796,9 @@ app.post(
             .replace(/\s+/g, "_")
             .replace(/[^a-zA-Z0-9._-]/g, "");
           const publicId = `${uniqueSuffix}-${safeOriginalName}`;
-
           const result = await new Promise<any>((resolve, reject) => {
             const uploadStream = cloudinary.uploader.upload_stream(
-              {
-                folder: "clientes/carnets",
-                resource_type: "raw",
-                public_id: publicId,
-              },
+              { folder: "clientes/carnets", resource_type: "raw", public_id: publicId },
               (error, result) => {
                 if (error) reject(error);
                 else resolve(result);
@@ -816,10 +816,7 @@ app.post(
         if (!data.fotoCarnet2) throw new Error("Error al subir carnet (reverso)");
       }
 
-      const updated = await prisma.client.update({
-        where: { token: req.params.token },
-        data,
-      });
+      const updated = await prisma.client.update({ where: { token: req.params.token }, data });
       res.json(updated);
     } catch (error) {
       console.error("❌ Error en /clients/form/:token/fotos:", error);
@@ -832,7 +829,7 @@ app.post(
 app.put("/clients/form/:token", async (req, res) => {
   const client = await prisma.client.findUnique({ where: { token: req.params.token } });
   if (!client) return res.status(404).json({ error: "Link no válido" });
-  if (new Date() > client.expiresAt) return res.status(410).json({ error: "Este link ha expirado" });
+  if (client.status === "formulario llenado") return res.status(410).json({ error: "Este link ya fue utilizado" });
 
   const {
     ci, nombres, apellidoPaterno, apellidoMaterno, sexo, ciudad, nombreCompleto,
@@ -886,21 +883,17 @@ app.put("/clients/form/:token", async (req, res) => {
 
   let pdfBase64: string | null = null;
   const pedidoActivo = await prisma.pedido.findFirst({
-  where: { clienteId: updated.id, estado: { not: "completado" } },
-  orderBy: { creadoEn: "desc" },
-  include: { items: true },
-});
-
-// TEMPORAL - borrá esto después
-console.log("ITEMS DEL PEDIDO:", JSON.stringify(pedidoActivo?.items, null, 2));
+    where: { clienteId: updated.id, estado: { not: "completado" } },
+    orderBy: { creadoEn: "desc" },
+    include: { items: true },
+  });
 
   if (pedidoActivo) {
-    // DESPUÉS (fix)
-const itemsParaPDF = pedidoActivo.items.map((item) => ({
-  titulo: item.titulo || "Producto",
-  tipo: item.tipo,
-  precioUnitario: item.precioUnitario ?? 0,
-}));
+    const itemsParaPDF = pedidoActivo.items.map((item) => ({
+      titulo: item.titulo || "Producto",
+      tipo: item.tipo,
+      precioUnitario: item.precioUnitario ?? 0,
+    }));
     const reciboData = {
       cliente: {
         nombreCompleto:
@@ -995,11 +988,11 @@ app.put("/clients/:id/progreso", auth, async (req, res) => {
 app.put("/clients/:id/regenerar", auth, async (req, res) => {
   const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 4);
+  expiresAt.setDate(expiresAt.getDate() + 365);
   res.json(
     await prisma.client.update({
       where: { id: Number(req.params.id) },
-      data: { token, expiresAt },
+      data: { token, expiresAt, status: "pendiente" },
     })
   );
 });
@@ -1594,7 +1587,7 @@ app.get("/clients/:id/libro-detalles", auth, async (req, res) => {
 app.post("/clients/form/:token/libro-detalles", async (req, res) => {
   const client = await prisma.client.findUnique({ where: { token: req.params.token } });
   if (!client) return res.status(404).json({ error: "Link no válido" });
-  if (new Date() > client.expiresAt) return res.status(410).json({ error: "Link expirado" });
+  if (client.status === "formulario llenado") return res.status(410).json({ error: "Este link ya fue utilizado" });
   const { detalles } = req.body;
   await prisma.libroDetalle.deleteMany({ where: { clienteId: client.id } });
   if (detalles && detalles.length > 0) {
