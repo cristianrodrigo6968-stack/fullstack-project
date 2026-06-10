@@ -14,7 +14,7 @@ interface Pago {
   imagenUrl: string | null;
   estado: string;
   motivoRechazo: string | null;
-  productos: string | null;   // JSON con el carrito
+  productos: string | null;
   celular: string | null;
   ci: string | null;
   creadoEn: string;
@@ -26,18 +26,16 @@ interface Pago {
   };
 }
 
-// Tipo para un producto en el carrito
 interface ProductoCarrito {
   id: number;
   nombre: string;
   precioUnitario: number;
 }
 
-// ─── Helpers de color ─────────────────────────────────────────────────────────
 const getEstadoColor = (estado: string) => {
   if (estado === "verificado") return { bg: "#14532d", color: "#22c55e", glow: "rgba(34,197,94,0.15)" };
   if (estado === "rechazado")  return { bg: "#7f1d1d", color: "#ef4444", glow: "rgba(239,68,68,0.15)" };
-  return                              { bg: "#422006", color: "#f59e0b", glow: "rgba(245,158,11,0.15)" };
+  return { bg: "#422006", color: "#f59e0b", glow: "rgba(245,158,11,0.15)" };
 };
 
 const TIPO_LABEL: Record<string, string> = {
@@ -45,7 +43,6 @@ const TIPO_LABEL: Record<string, string> = {
   manual: "✍️ Manual",
 };
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ label, value, color, sub }: { label: string; value: string; color: string; sub?: string }) {
   return (
     <div style={{
@@ -63,7 +60,6 @@ function StatCard({ label, value, color, sub }: { label: string; value: string; 
   );
 }
 
-// ─── Badge de estado ──────────────────────────────────────────────────────────
 function EstadoBadge({ estado }: { estado: string }) {
   const { bg, color } = getEstadoColor(estado);
   return (
@@ -77,34 +73,30 @@ function EstadoBadge({ estado }: { estado: string }) {
   );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
 function AdminPagos() {
   const { token } = useAuth();
   const { isMobile } = useWindowSize();
   const { mes, anio, mesLabel, anterior, siguiente, esActual } = useMesActual();
 
-  const [pagos, setPagos]         = useState<Pago[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [selected, setSelected]   = useState<Pago | null>(null);
+  const [pagos, setPagos] = useState<Pago[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<Pago | null>(null);
   const [motivoRechazo, setMotivoRechazo] = useState("");
-  const [rechazandoId, setRechazandoId]   = useState<number | null>(null);
-  const [filtro, setFiltro]       = useState<"todos" | "pendiente" | "verificado" | "rechazado">("todos");
+  const [rechazandoId, setRechazandoId] = useState<number | null>(null);
+  const [filtro, setFiltro] = useState<"todos" | "pendiente" | "verificado" | "rechazado">("todos");
   const [panelManual, setPanelManual] = useState(false);
 
-  // Pago manual
-  const [manualNombre, setManualNombre]   = useState("");
-  const [manualMonto, setManualMonto]     = useState("");
+  const [manualNombre, setManualNombre] = useState("");
+  const [manualMonto, setManualMonto] = useState("");
   const [manualCelular, setManualCelular] = useState("");
-  const [manualCi, setManualCi]           = useState("");
+  const [manualCi, setManualCi] = useState("");
   const [manualPedidoId, setManualPedidoId] = useState("");
   const [agregandoManual, setAgregandoManual] = useState(false);
 
-  // Editar pago
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [editNombre, setEditNombre] = useState("");
-  const [editMonto, setEditMonto]   = useState("");
+  const [editMonto, setEditMonto] = useState("");
 
-  // Eliminar pago
   const [eliminandoId, setEliminandoId] = useState<number | null>(null);
 
   const headers = {
@@ -112,7 +104,6 @@ function AdminPagos() {
     Authorization: `Bearer ${token}`,
   };
 
-  // ── API calls ────────────────────────────────────────────────────────────────
   const load = async () => {
     setLoading(true);
     const res = await fetch(`${API_URL}/pagos`, { headers });
@@ -188,13 +179,11 @@ function AdminPagos() {
     setEliminandoId(null);
   };
 
-  // ── Stats del mes ──────────────────────────────────────────────────────────
-  const totalMes       = pagosMes.reduce((s, p) => s + p.monto, 0);
-  const pendientesMes  = pagosMes.filter(p => p.estado === "pendiente");
+  const totalMes = pagosMes.reduce((s, p) => s + (p.monto ?? 0), 0);
+  const pendientesMes = pagosMes.filter(p => p.estado === "pendiente");
   const verificadosMes = pagosMes.filter(p => p.estado === "verificado");
-  const rechazadosMes  = pagosMes.filter(p => p.estado === "rechazado");
+  const rechazadosMes = pagosMes.filter(p => p.estado === "rechazado");
 
-  // ── Animación keyframes ────────────────────────────────────────────────────
   const fadeIn = `
     @keyframes fadeSlideIn {
       from { opacity: 0; transform: translateY(8px); }
@@ -206,39 +195,38 @@ function AdminPagos() {
     }
   `;
 
-  // ═════════════════════════════════════════════════════════════════════════════
   // VISTA DETALLE
-  // ═════════════════════════════════════════════════════════════════════════════
   if (selected) {
     const sc = getEstadoColor(selected.estado);
     const saldoPendiente = selected.pedido
       ? selected.pedido.montoTotal - selected.pedido.montoPagado
       : null;
 
-    // Parsear productos del carrito (si existen)
     let productosLista: ProductoCarrito[] = [];
     if (selected.productos) {
       try {
-        productosLista = JSON.parse(selected.productos);
+        const parsed = JSON.parse(selected.productos);
+        if (Array.isArray(parsed)) {
+          productosLista = parsed.map(p => ({
+            ...p,
+            precioUnitario: typeof p.precioUnitario === 'number' ? p.precioUnitario : Number(p.precioUnitario) || 0
+          }));
+        }
       } catch (e) {
-        console.error("Error parseando productos del pago:", e);
+        console.error("Error parseando productos:", e);
       }
     }
 
     return (
       <div>
         <style>{fadeIn}</style>
-
-        {/* Header de detalle */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
           <button onClick={() => setSelected(null)} style={{
             background: "#1e293b", border: "1px solid #334155",
             padding: "8px 14px", borderRadius: 8, color: "#94a3b8",
             cursor: "pointer", fontWeight: "bold", fontSize: 13,
             display: "flex", alignItems: "center", gap: 6,
-          }}>
-            ← Volver
-          </button>
+          }}>← Volver</button>
           <div>
             <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22 }}>Pago #{selected.id}</h2>
             <p style={{ color: "#64748b", fontSize: 12, margin: 0 }}>
@@ -251,28 +239,23 @@ function AdminPagos() {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16, animation: "fadeSlideIn 0.3s ease" }}>
-
-          {/* Datos principales */}
           <div style={{ background: "#1e293b", borderRadius: 14, padding: 22, borderTop: `3px solid ${sc.color}` }}>
             <p style={sectionLabel}>👤 Datos del pago</p>
             <InfoRow label="Nombre" value={selected.nombreDeclarado} highlight />
-            <InfoRow label="Monto pagado" value={`Bs ${selected.monto.toFixed(2)}`} valueColor="#22c55e" large />
+            <InfoRow label="Monto pagado" value={`Bs ${(selected.monto ?? 0).toFixed(2)}`} valueColor="#22c55e" large />
             <InfoRow label="Tipo" value={TIPO_LABEL[selected.tipo] ?? `📝 ${selected.tipo}`} />
             <InfoRow label="Celular" value={selected.celular || "—"} />
             <InfoRow label="C.I." value={selected.ci || "—"} />
             {selected.descripcion && <InfoRow label="Descripción" value={selected.descripcion} />}
           </div>
 
-          {/* Pedido asociado + productos */}
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-            {/* Pedido asociado */}
             {selected.pedido ? (
               <div style={{ background: "#1e293b", borderRadius: 14, padding: 22 }}>
                 <p style={sectionLabel}>📦 Pedido asociado</p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <MiniStat label="Total pedido"   value={`Bs ${selected.pedido.montoTotal.toFixed(2)}`} color="white" />
-                  <MiniStat label="Pagado"         value={`Bs ${selected.pedido.montoPagado.toFixed(2)}`} color="#22c55e" />
+                  <MiniStat label="Total pedido" value={`Bs ${selected.pedido.montoTotal.toFixed(2)}`} color="white" />
+                  <MiniStat label="Pagado" value={`Bs ${selected.pedido.montoPagado.toFixed(2)}`} color="#22c55e" />
                   <MiniStat
                     label="Saldo pendiente"
                     value={`Bs ${(selected.pedido.montoTotal - selected.pedido.montoPagado).toFixed(2)}`}
@@ -287,7 +270,6 @@ function AdminPagos() {
               </div>
             )}
 
-            {/* 🛍️ Productos comprados */}
             <div style={{ background: "#1e293b", borderRadius: 14, padding: 22 }}>
               <p style={sectionLabel}>🛍️ Productos comprados</p>
               {productosLista.length === 0 ? (
@@ -304,7 +286,7 @@ function AdminPagos() {
                     }}>
                       <span style={{ color: "#cbd5e1", fontSize: 14 }}>{prod.nombre}</span>
                       <span style={{ color: "#22c55e", fontWeight: "bold", fontSize: 14 }}>
-                        Bs {prod.precioUnitario.toFixed(2)}
+                        Bs {(prod.precioUnitario ?? 0).toFixed(2)}
                       </span>
                     </div>
                   ))}
@@ -318,49 +300,36 @@ function AdminPagos() {
                   }}>
                     <span style={{ color: "white", fontWeight: "bold", fontSize: 14 }}>Total productos</span>
                     <span style={{ color: "#22c55e", fontWeight: "bold", fontSize: 16 }}>
-                      Bs {productosLista.reduce((sum, p) => sum + p.precioUnitario, 0).toFixed(2)}
+                      Bs {productosLista.reduce((sum, p) => sum + (p.precioUnitario ?? 0), 0).toFixed(2)}
                     </span>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Comprobante */}
             {selected.imagenUrl && (
               <div style={{ background: "#1e293b", borderRadius: 14, padding: 16 }}>
                 <p style={sectionLabel}>🖼 Comprobante</p>
-                <img
-                  src={selected.imagenUrl}
-                  alt="comprobante"
-                  style={{ width: "100%", borderRadius: 8, border: "1px solid #334155" }}
-                />
+                <img src={selected.imagenUrl} alt="comprobante" style={{ width: "100%", borderRadius: 8, border: "1px solid #334155" }} />
               </div>
             )}
           </div>
         </div>
 
-        {/* Motivo de rechazo */}
         {selected.motivoRechazo && (
           <div style={{ marginTop: 16, background: "#7f1d1d", padding: "14px 18px", borderRadius: 12, borderLeft: "4px solid #ef4444" }}>
             <p style={{ color: "#fca5a5", fontSize: 13, margin: 0 }}>❌ Motivo: {selected.motivoRechazo}</p>
           </div>
         )}
 
-        {/* Acciones */}
         <div style={{ marginTop: 16, background: "#1e293b", borderRadius: 14, padding: 20 }}>
           <p style={sectionLabel}>⚡ Acciones</p>
-
           {selected.estado === "pendiente" && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
               <button onClick={() => verificar(selected.id)} style={btnGreen}>✅ Verificar pago</button>
               {rechazandoId === selected.id ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <input
-                    placeholder="Motivo del rechazo..."
-                    value={motivoRechazo}
-                    onChange={e => setMotivoRechazo(e.target.value)}
-                    style={{ ...inputStyle, width: 240 }}
-                  />
+                  <input placeholder="Motivo del rechazo..." value={motivoRechazo} onChange={e => setMotivoRechazo(e.target.value)} style={{ ...inputStyle, width: 240 }} />
                   <div style={{ display: "flex", gap: 6 }}>
                     <button onClick={() => rechazar(selected.id)} style={btnRed}>Confirmar rechazo</button>
                     <button onClick={() => { setRechazandoId(null); setMotivoRechazo(""); }} style={btnGray}>Cancelar</button>
@@ -371,7 +340,6 @@ function AdminPagos() {
               )}
             </div>
           )}
-
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {editandoId === selected.id ? (
               <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -381,18 +349,9 @@ function AdminPagos() {
                 <button onClick={() => setEditandoId(null)} style={btnGray}>Cancelar</button>
               </div>
             ) : (
-              <button
-                onClick={() => { setEditandoId(selected.id); setEditNombre(selected.nombreDeclarado); setEditMonto(String(selected.monto)); }}
-                style={btnYellow}
-              >
-                ✏️ Editar
-              </button>
+              <button onClick={() => { setEditandoId(selected.id); setEditNombre(selected.nombreDeclarado); setEditMonto(String(selected.monto)); }} style={btnYellow}>✏️ Editar</button>
             )}
-            <button
-              onClick={() => eliminarPago(selected.id)}
-              disabled={eliminandoId === selected.id}
-              style={btnRed}
-            >
+            <button onClick={() => eliminarPago(selected.id)} disabled={eliminandoId === selected.id} style={btnRed}>
               {eliminandoId === selected.id ? "Eliminando..." : "🗑 Eliminar"}
             </button>
           </div>
@@ -401,34 +360,22 @@ function AdminPagos() {
     );
   }
 
-  // ═════════════════════════════════════════════════════════════════════════════
   // VISTA LISTA
-  // ═════════════════════════════════════════════════════════════════════════════
   return (
     <div>
       <style>{fadeIn}</style>
-
-      {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28 }}>💰 Pagos</h1>
-          <p style={{ color: "#64748b", fontSize: 13, margin: "4px 0 0" }}>
-            Gestión de pagos de clientes
-          </p>
+          <p style={{ color: "#64748b", fontSize: 13, margin: "4px 0 0" }}>Gestión de pagos de clientes</p>
         </div>
-        <button
-          onClick={() => setPanelManual(v => !v)}
-          style={{
-            ...btnGreen,
-            background: panelManual ? "#334155" : "#22c55e",
-            display: "flex", alignItems: "center", gap: 6,
-          }}
-        >
-          {panelManual ? "✕ Cerrar" : "➕ Pago manual"}
-        </button>
+        <button onClick={() => setPanelManual(v => !v)} style={{
+          ...btnGreen,
+          background: panelManual ? "#334155" : "#22c55e",
+          display: "flex", alignItems: "center", gap: 6,
+        }}>{panelManual ? "✕ Cerrar" : "➕ Pago manual"}</button>
       </div>
 
-      {/* Panel pago manual — colapsable */}
       {panelManual && (
         <div style={{
           background: "#1e293b", borderRadius: 14, padding: 20,
@@ -473,44 +420,15 @@ function AdminPagos() {
         </div>
       )}
 
-      {/* Stats del mes */}
       <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-        <StatCard
-          label="Total del mes"
-          value={`Bs ${totalMes.toFixed(2)}`}
-          color="#60a5fa"
-          sub={`${pagosMes.length} pago(s)`}
-        />
-        <StatCard
-          label="Verificados"
-          value={`${verificadosMes.length}`}
-          color="#22c55e"
-          sub={`Bs ${verificadosMes.reduce((s, p) => s + p.monto, 0).toFixed(2)}`}
-        />
-        <StatCard
-          label="Pendientes"
-          value={`${pendientesMes.length}`}
-          color="#f59e0b"
-          sub={`Bs ${pendientesMes.reduce((s, p) => s + p.monto, 0).toFixed(2)}`}
-        />
-        <StatCard
-          label="Rechazados"
-          value={`${rechazadosMes.length}`}
-          color="#ef4444"
-          sub={`Bs ${rechazadosMes.reduce((s, p) => s + p.monto, 0).toFixed(2)}`}
-        />
+        <StatCard label="Total del mes" value={`Bs ${totalMes.toFixed(2)}`} color="#60a5fa" sub={`${pagosMes.length} pago(s)`} />
+        <StatCard label="Verificados" value={`${verificadosMes.length}`} color="#22c55e" sub={`Bs ${verificadosMes.reduce((s, p) => s + (p.monto ?? 0), 0).toFixed(2)}`} />
+        <StatCard label="Pendientes" value={`${pendientesMes.length}`} color="#f59e0b" sub={`Bs ${pendientesMes.reduce((s, p) => s + (p.monto ?? 0), 0).toFixed(2)}`} />
+        <StatCard label="Rechazados" value={`${rechazadosMes.length}`} color="#ef4444" sub={`Bs ${rechazadosMes.reduce((s, p) => s + (p.monto ?? 0), 0).toFixed(2)}`} />
       </div>
 
-      {/* Navegador de mes */}
-      <NavegadorMes
-        mesLabel={mesLabel}
-        anio={anio}
-        onAnterior={anterior}
-        onSiguiente={siguiente}
-        esActual={esActual()}
-      />
+      <NavegadorMes mesLabel={mesLabel} anio={anio} onAnterior={anterior} onSiguiente={siguiente} esActual={esActual()} />
 
-      {/* Filtros */}
       <div style={{ display: "flex", gap: 6, margin: "16px 0", flexWrap: "wrap" }}>
         {(["todos", "pendiente", "verificado", "rechazado"] as const).map(f => {
           const counts = {
@@ -536,27 +454,15 @@ function AdminPagos() {
           return (
             <button key={f} onClick={() => setFiltro(f)} style={buttonStyles}>
               {f === "todos" ? "Todos" : f.charAt(0).toUpperCase() + f.slice(1)}
-              <span
-                style={{
-                  background: isActive ? "rgba(255,255,255,0.2)" : "#334155",
-                  borderRadius: 99,
-                  padding: "1px 7px",
-                  fontSize: 11,
-                }}
-              >
-                {counts[f]}
-              </span>
+              <span style={{ background: isActive ? "rgba(255,255,255,0.2)" : "#334155", borderRadius: 99, padding: "1px 7px", fontSize: 11 }}>{counts[f]}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Lista de pagos */}
       {loading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[1, 2, 3].map(i => (
-            <div key={i} style={{ background: "#1e293b", borderRadius: 12, height: 80, opacity: 0.4, animation: "pulseGlow 1.5s infinite" }} />
-          ))}
+          {[1,2,3].map(i => <div key={i} style={{ background: "#1e293b", borderRadius: 12, height: 80, opacity: 0.4, animation: "pulseGlow 1.5s infinite" }} />)}
         </div>
       ) : pagosFiltrados.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 20px" }}>
@@ -567,10 +473,9 @@ function AdminPagos() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {pagosFiltrados.map((p, i) => {
             const sc = getEstadoColor(p.estado);
-            const saldoPendiente  = p.pedido ? p.pedido.montoTotal - p.pedido.montoPagado : null;
-            const estaPagado      = saldoPendiente !== null && saldoPendiente <= 0;
-            
-            // Contar productos (si existe el campo productos)
+            const saldoPendiente = p.pedido ? p.pedido.montoTotal - p.pedido.montoPagado : null;
+            const estaPagado = saldoPendiente !== null && saldoPendiente <= 0;
+
             let cantidadProductos = 0;
             if (p.productos) {
               try {
@@ -603,60 +508,36 @@ function AdminPagos() {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Fila superior */}
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
                       <p style={{ color: "white", fontWeight: "bold", fontSize: 15, margin: 0 }}>{p.nombreDeclarado}</p>
                       <EstadoBadge estado={p.estado} />
-                      {p.tipo !== "declarado" && (
-                        <span style={{ fontSize: 11, color: "#475569" }}>
-                          {TIPO_LABEL[p.tipo] ?? p.tipo}
-                        </span>
-                      )}
-                      {/* Badge de cantidad de productos */}
+                      {p.tipo !== "declarado" && <span style={{ fontSize: 11, color: "#475569" }}>{TIPO_LABEL[p.tipo] ?? p.tipo}</span>}
                       {cantidadProductos > 0 && (
-                        <span style={{
-                          background: "#3b82f6",
-                          color: "white",
-                          fontSize: 10,
-                          padding: "2px 8px",
-                          borderRadius: 99,
-                          fontWeight: "bold"
-                        }}>
+                        <span style={{ background: "#3b82f6", color: "white", fontSize: 10, padding: "2px 8px", borderRadius: 99, fontWeight: "bold" }}>
                           🛒 {cantidadProductos} producto{cantidadProductos !== 1 ? "s" : ""}
                         </span>
                       )}
                     </div>
-
-                    {/* Monto + deuda */}
                     <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
                       <p style={{ color: "#22c55e", fontWeight: "bold", fontSize: 20, margin: 0 }}>
-                        Bs {p.monto.toFixed(2)}
+                        Bs {(p.monto ?? 0).toFixed(2)}
                       </p>
-                      {saldoPendiente !== null && (
-                        <span style={{
-                          fontSize: 12,
-                          color: estaPagado ? "#22c55e" : "#ef4444",
-                          fontWeight: "bold",
-                        }}>
+                      {saldoPendiente !== null ? (
+                        <span style={{ fontSize: 12, color: estaPagado ? "#22c55e" : "#ef4444", fontWeight: "bold" }}>
                           {estaPagado ? "✅ Saldado" : `⚠️ Deuda: Bs ${saldoPendiente.toFixed(2)}`}
                         </span>
+                      ) : (
+                        <span style={{ fontSize: 12, color: "#64748b", fontWeight: "bold" }}>⚠️ Sin pedido</span>
                       )}
                     </div>
-
-                    {/* Meta */}
                     <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
-                      {p.celular && (
-                        <span style={{ fontSize: 11, color: "#64748b" }}>📞 {p.celular}</span>
-                      )}
-                      {p.ci && (
-                        <span style={{ fontSize: 11, color: "#64748b" }}>🆔 {p.ci}</span>
-                      )}
+                      {p.celular && <span style={{ fontSize: 11, color: "#64748b" }}>📞 {p.celular}</span>}
+                      {p.ci && <span style={{ fontSize: 11, color: "#64748b" }}>🆔 {p.ci}</span>}
                       <span style={{ fontSize: 11, color: "#475569" }}>
                         {new Date(p.creadoEn).toLocaleDateString("es-BO", { day: "2-digit", month: "short", year: "numeric" })}
                       </span>
                     </div>
                   </div>
-
                   <span style={{ color: "#334155", fontSize: 20, flexShrink: 0 }}>›</span>
                 </div>
               </div>
@@ -668,7 +549,6 @@ function AdminPagos() {
   );
 }
 
-// ─── Sub-componentes de detalle ───────────────────────────────────────────────
 function InfoRow({ label, value, highlight, valueColor, large }: {
   label: string; value: string;
   highlight?: boolean; valueColor?: string; large?: boolean;
@@ -676,12 +556,7 @@ function InfoRow({ label, value, highlight, valueColor, large }: {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid #0f172a", gap: 8 }}>
       <span style={{ color: "#64748b", fontSize: 12, flexShrink: 0 }}>{label}</span>
-      <span style={{
-        color: valueColor || (highlight ? "white" : "#cbd5e1"),
-        fontSize: large ? 18 : 13,
-        fontWeight: large || highlight ? "bold" : "normal",
-        textAlign: "right",
-      }}>
+      <span style={{ color: valueColor || (highlight ? "white" : "#cbd5e1"), fontSize: large ? 18 : 13, fontWeight: large || highlight ? "bold" : "normal", textAlign: "right" }}>
         {value}
       </span>
     </div>
@@ -697,7 +572,6 @@ function MiniStat({ label, value, color }: { label: string; value: string; color
   );
 }
 
-// ─── Estilos ──────────────────────────────────────────────────────────────────
 const sectionLabel: React.CSSProperties = {
   color: "#64748b", fontSize: 11, textTransform: "uppercase",
   letterSpacing: 1, marginBottom: 12, fontWeight: "bold",
@@ -714,9 +588,9 @@ const inputStyle: React.CSSProperties = {
 const inputStyleFull: React.CSSProperties = {
   ...inputStyle, width: "100%",
 };
-const btnGreen:  React.CSSProperties = { background: "#22c55e", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
-const btnRed:    React.CSSProperties = { background: "#ef4444", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
-const btnGray:   React.CSSProperties = { background: "#334155", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
+const btnGreen: React.CSSProperties = { background: "#22c55e", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
+const btnRed: React.CSSProperties = { background: "#ef4444", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
+const btnGray: React.CSSProperties = { background: "#334155", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
 const btnYellow: React.CSSProperties = { background: "#f59e0b", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
 
 export default AdminPagos;
