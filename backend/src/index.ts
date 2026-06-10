@@ -886,10 +886,13 @@ app.put("/clients/form/:token", async (req, res) => {
 
   let pdfBase64: string | null = null;
   const pedidoActivo = await prisma.pedido.findFirst({
-    where: { clienteId: updated.id, estado: { not: "completado" } },
-    orderBy: { creadoEn: "desc" },
-    include: { items: true },
-  });
+  where: { clienteId: updated.id, estado: { not: "completado" } },
+  orderBy: { creadoEn: "desc" },
+  include: { items: true },
+});
+
+// TEMPORAL - borrá esto después
+console.log("ITEMS DEL PEDIDO:", JSON.stringify(pedidoActivo?.items, null, 2));
 
   if (pedidoActivo) {
     // DESPUÉS (fix)
