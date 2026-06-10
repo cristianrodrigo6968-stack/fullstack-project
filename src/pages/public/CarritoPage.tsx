@@ -201,7 +201,6 @@ function CarritoPage() {
       `}</style>
 
       <div style={{ maxWidth: 680, margin: "0 auto" }}>
-
         {/* Header */}
         <div style={{ marginBottom: 32 }}>
           <h1 style={{ fontSize: isMobile ? 22 : 30, fontWeight: 800, margin: "0 0 8px", color: "#f1f5f9" }}>

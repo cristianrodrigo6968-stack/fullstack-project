@@ -73,7 +73,7 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
         </td>
         <td style="padding: 12px 16px; text-align: right; font-weight: 600; color: #1e293b; border-bottom: 1px solid #e2e8f0; font-size: 14px;">
           Bs ${item.precioUnitario.toFixed(2)}
-        </td>
+        </tr>
       </tr>
     `
       )
@@ -382,7 +382,7 @@ export function generarReciboPDF(data: ReciboData): Promise<Buffer> {
     <div class="totales-box">
       <table class="tot-table">
         <tr>
-          <td>Total del pedido</td>
+          <td>Total del pedido</th>
           <td class="right">Bs ${data.pedido.montoTotal.toFixed(2)}</td>
         </tr>
         <tr>
