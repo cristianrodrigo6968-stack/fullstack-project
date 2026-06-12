@@ -29,7 +29,7 @@ import Notes from "./pages/admin/Notes";
 
 // Páginas del cliente
 import ClientePanel from "./pages/cliente/ClientePanel";
-import ClienteDatos from "./pages/cliente/ClienteDatos";
+
 import ClienteEntregas from "./pages/cliente/ClienteEntregas";
 import ClienteHacerPedido from "./pages/cliente/ClienteHacerPedido";
 import ClienteInicio from "./pages/cliente/ClienteInicio";
@@ -69,7 +69,7 @@ function App() {
 
         {/* Cliente */}
         <Route path="/cliente" element={<ClientProtectedRoute><ClientePanel /></ClientProtectedRoute>} />
-        <Route path="/cliente/datos" element={<ClientProtectedRoute><ClienteDatos /></ClientProtectedRoute>} />
+      
         <Route path="/cliente/entregas" element={<ClientProtectedRoute><ClienteEntregas /></ClientProtectedRoute>} />
         <Route path="/cliente/hacer-pedido" element={<ClientProtectedRoute><ClienteHacerPedido /></ClientProtectedRoute>} />
         <Route path="/cliente/inicio" element={<ClientProtectedRoute><ClienteInicio /></ClientProtectedRoute>} />
