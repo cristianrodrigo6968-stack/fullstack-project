@@ -14,6 +14,12 @@ interface Producto {
   imagenUrl?: string;
 }
 
+// Nuevos tipos para el formulario
+type TipoProducto = "libro" | "revista" | "otro";
+type CategoriaLibro = "A" | "B" | "C";
+type TipoRevista = "director" | "fundador" | "articulo" | "elaboracion";
+type SubTipoArticulo = "redaccion_publicacion" | "solo_publicacion";
+
 function AdminProductos() {
   const { token } = useAuth();
   const { isMobile } = useWindowSize();
@@ -27,6 +33,13 @@ function AdminProductos() {
   const [descuento, setDescuento] = useState("0");
   const [imagen, setImagen] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Nuevos estados para categorización
+  const [tipoProducto, setTipoProducto] = useState<TipoProducto>("otro");
+  const [categoriaLibro, setCategoriaLibro] = useState<CategoriaLibro>("A");
+  const [tipoRevista, setTipoRevista] = useState<TipoRevista>("director");
+  const [subTipoArticulo, setSubTipoArticulo] = useState<SubTipoArticulo>("redaccion_publicacion");
+  const [incluyeImpresion, setIncluyeImpresion] = useState(false);
 
   const headers = {
     "Content-Type": "application/json",
@@ -42,6 +55,65 @@ function AdminProductos() {
 
   useEffect(() => { load(); }, []);
 
+  // Función para construir la descripción completa a partir de los campos
+  const construirDescripcionCompleta = () => {
+    let detalles = "";
+    if (tipoProducto === "libro") {
+      detalles = `[TIPO: Libro - Categoría ${categoriaLibro}] `;
+    } else if (tipoProducto === "revista") {
+      let tipo = "";
+      if (tipoRevista === "director") tipo = "Director de revista";
+      else if (tipoRevista === "fundador") tipo = "Fundador";
+      else if (tipoRevista === "articulo") {
+        tipo = subTipoArticulo === "redaccion_publicacion" 
+          ? "Artículo (redacción y publicación)" 
+          : "Artículo (solo publicación)";
+      } else if (tipoRevista === "elaboracion") {
+        tipo = "Elaboración de libros/revistas (impresión)";
+      }
+      detalles = `[TIPO: Revista - ${tipo}] `;
+      if (incluyeImpresion && tipoRevista !== "elaboracion") {
+        detalles += "[+ Impresión] ";
+      }
+    } else {
+      detalles = "[TIPO: Otro] ";
+    }
+    // Concatenar la descripción original del usuario
+    return detalles + (descripcion || "");
+  };
+
+  const parsearDescripcionAlEditar = (desc: string) => {
+    // Intentar extraer la información de la descripción para rellenar los campos al editar
+    // Esto es un parseo simple, puedes mejorarlo según tu formato
+    if (desc.includes("[TIPO: Libro - Categoría")) {
+      setTipoProducto("libro");
+      const match = desc.match(/Categoría ([A-C])/);
+      if (match) setCategoriaLibro(match[1] as CategoriaLibro);
+      // Quitar el prefijo para mostrar solo la descripción real
+      const limpia = desc.replace(/\[TIPO: Libro - Categoría [A-C]\] /, "");
+      setDescripcion(limpia);
+    } else if (desc.includes("[TIPO: Revista")) {
+      setTipoProducto("revista");
+      if (desc.includes("Director de revista")) setTipoRevista("director");
+      else if (desc.includes("Fundador")) setTipoRevista("fundador");
+      else if (desc.includes("Artículo (redacción y publicación)")) {
+        setTipoRevista("articulo");
+        setSubTipoArticulo("redaccion_publicacion");
+      } else if (desc.includes("Artículo (solo publicación)")) {
+        setTipoRevista("articulo");
+        setSubTipoArticulo("solo_publicacion");
+      } else if (desc.includes("Elaboración de libros/revistas (impresión)")) {
+        setTipoRevista("elaboracion");
+      }
+      setIncluyeImpresion(desc.includes("[+ Impresión]"));
+      const limpia = desc.replace(/\[TIPO: Revista - .*?\](\s*\[\+ Impresión\])?\s*/, "");
+      setDescripcion(limpia);
+    } else {
+      setTipoProducto("otro");
+      setDescripcion(desc);
+    }
+  };
+
   const openCreate = () => {
     setEditId(null);
     setNombre("");
@@ -49,16 +121,22 @@ function AdminProductos() {
     setPrecio("");
     setDescuento("0");
     setImagen(null);
+    // Resetear campos nuevos
+    setTipoProducto("otro");
+    setCategoriaLibro("A");
+    setTipoRevista("director");
+    setSubTipoArticulo("redaccion_publicacion");
+    setIncluyeImpresion(false);
     setOpen(true);
   };
 
   const openEdit = (p: Producto) => {
     setEditId(p.id);
     setNombre(p.nombre);
-    setDescripcion(p.descripcion);
     setPrecio(String(p.precio));
     setDescuento(String(p.descuento));
     setImagen(null);
+    parsearDescripcionAlEditar(p.descripcion);
     setOpen(true);
   };
 
@@ -66,9 +144,11 @@ function AdminProductos() {
     if (!nombre || !precio) return;
     setSaving(true);
 
+    const descripcionFinal = construirDescripcionCompleta();
+
     const formData = new FormData();
     formData.append("nombre", nombre);
-    formData.append("descripcion", descripcion.replace(/\r\n/g, "\n"));
+    formData.append("descripcion", descripcionFinal);
     formData.append("precio", precio);
     formData.append("descuento", descuento);
     if (imagen) formData.append("imagen", imagen);
@@ -180,9 +260,24 @@ function AdminProductos() {
           font-size: 11px; font-weight: 600; padding: 3px 10px;
           border-radius: 99px; letter-spacing: 0.3px;
         }
+        .radio-group {
+          display: flex;
+          gap: 16px;
+          align-items: center;
+          margin-bottom: 10px;
+          flex-wrap: wrap;
+        }
+        .radio-group label {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: #cbd5e1;
+          font-size: 13px;
+          cursor: pointer;
+        }
       `}</style>
 
-      {/* HEADER */}
+      {/* HEADER (sin cambios) */}
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
           <div style={{
@@ -200,7 +295,7 @@ function AdminProductos() {
         </p>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          {/* Contador */}
+          {/* Contadores */}
           <div style={{ display: "flex", gap: 16 }}>
             <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
               <div style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 20 }}>{productos.length}</div>
@@ -233,7 +328,7 @@ function AdminProductos() {
         </div>
       </div>
 
-      {/* LISTA */}
+      {/* LISTA DE PRODUCTOS (sin cambios visuales, pero la descripción ya incluirá los detalles) */}
       {loading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {[1,2,3].map(i => (
@@ -269,22 +364,12 @@ function AdminProductos() {
                 alignItems: "center", flexWrap: "wrap", gap: 12, padding: "14px 16px",
                 borderLeft: `3px solid ${p.activo ? "#22c55e" : "#ef4444"}`,
               }}>
-                {/* Izquierda: imagen + info */}
                 <div style={{ display: "flex", gap: 14, alignItems: "center", flex: 1, minWidth: 0 }}>
                   {p.imagenUrl ? (
-                    <img
-                      src={p.imagenUrl}
-                      alt={p.nombre}
-                      style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 10, flexShrink: 0 }}
-                    />
+                    <img src={p.imagenUrl} alt={p.nombre} style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
                   ) : (
-                    <div style={{
-                      width: 56, height: 56, borderRadius: 10, flexShrink: 0,
-                      background: "#1e293b", display: "flex", alignItems: "center",
-                      justifyContent: "center", fontSize: 22,
-                    }}>📦</div>
+                    <div style={{ width: 56, height: 56, borderRadius: 10, flexShrink: 0, background: "#1e293b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>📦</div>
                   )}
-
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
                       <span style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 14 }}>{p.nombre}</span>
@@ -296,60 +381,22 @@ function AdminProductos() {
                         {p.activo ? "Activo" : "Inactivo"}
                       </span>
                     </div>
-
-                    <p style={{
-                      color: "#475569", fontSize: 12, margin: "0 0 6px",
-                      whiteSpace: "pre-wrap", wordBreak: "break-word",
-                      maxHeight: 36, overflow: "hidden",
-                      display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-                    }}>
+                    <p style={{ color: "#475569", fontSize: 12, margin: "0 0 6px", whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 36, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                       {p.descripcion}
                     </p>
-
                     <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                      {p.descuento > 0 && (
-                        <span style={{ color: "#475569", fontSize: 12, textDecoration: "line-through" }}>
-                          Bs {p.precio.toFixed(2)}
-                        </span>
-                      )}
-                      <span style={{ color: "#22c55e", fontWeight: 700, fontSize: 14 }}>
-                        Bs {precioFinal(p).toFixed(2)}
-                      </span>
-                      {p.descuento > 0 && (
-                        <span style={{
-                          background: "rgba(239,68,68,0.15)", color: "#ef4444",
-                          padding: "2px 8px", borderRadius: 99, fontSize: 11, fontWeight: 600,
-                        }}>
-                          -{p.descuento}%
-                        </span>
-                      )}
+                      {p.descuento > 0 && <span style={{ color: "#475569", fontSize: 12, textDecoration: "line-through" }}>Bs {p.precio.toFixed(2)}</span>}
+                      <span style={{ color: "#22c55e", fontWeight: 700, fontSize: 14 }}>Bs {precioFinal(p).toFixed(2)}</span>
+                      {p.descuento > 0 && <span style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", padding: "2px 8px", borderRadius: 99, fontSize: 11, fontWeight: 600 }}>-{p.descuento}%</span>}
                     </div>
                   </div>
                 </div>
-
-                {/* Derecha: botones */}
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flexShrink: 0 }}>
-                  <button
-                    onClick={() => toggleActivo(p)}
-                    className="action-btn"
-                    style={{ background: p.activo ? "#1e293b" : "rgba(34,197,94,0.15)", color: p.activo ? "#94a3b8" : "#22c55e" }}
-                  >
+                  <button onClick={() => toggleActivo(p)} className="action-btn" style={{ background: p.activo ? "#1e293b" : "rgba(34,197,94,0.15)", color: p.activo ? "#94a3b8" : "#22c55e" }}>
                     {p.activo ? "Inactivar" : "✓ Activar"}
                   </button>
-                  <button
-                    onClick={() => openEdit(p)}
-                    className="action-btn"
-                    style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b" }}
-                  >
-                    ✏️ Editar
-                  </button>
-                  <button
-                    onClick={() => remove(p.id)}
-                    className="action-btn"
-                    style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}
-                  >
-                    🗑
-                  </button>
+                  <button onClick={() => openEdit(p)} className="action-btn" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b" }}>✏️ Editar</button>
+                  <button onClick={() => remove(p.id)} className="action-btn" style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>🗑</button>
                 </div>
               </div>
             </div>
@@ -357,7 +404,7 @@ function AdminProductos() {
         </div>
       )}
 
-      {/* MODAL */}
+      {/* MODAL CON NUEVAS OPCIONES */}
       {open && (
         <div style={{
           position: "fixed", inset: 0,
@@ -371,11 +418,12 @@ function AdminProductos() {
             border: "1px solid #1e293b",
             padding: "28px 24px",
             borderRadius: 18,
-            width: "100%", maxWidth: 460,
+            width: "100%", maxWidth: 500,
             color: "white",
             boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
+            maxHeight: "90vh",
+            overflowY: "auto",
           }}>
-            {/* Modal header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#f1f5f9" }}>
@@ -385,97 +433,111 @@ function AdminProductos() {
                   {editId ? "Modifica los datos del producto" : "Completa los datos del nuevo producto"}
                 </p>
               </div>
-              <button
-                onClick={() => setOpen(false)}
-                style={{
-                  background: "#1e293b", border: "none", color: "#64748b",
-                  width: 32, height: 32, borderRadius: 8, cursor: "pointer",
-                  fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center",
-                  fontFamily: "inherit",
-                }}
-              >✕</button>
+              <button onClick={() => setOpen(false)} style={{ background: "#1e293b", border: "none", color: "#64748b", width: 32, height: 32, borderRadius: 8, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>✕</button>
             </div>
 
-            {/* Campos */}
+            {/* Nombre */}
             <label style={labelStyle}>Nombre del producto</label>
-            <input
-              placeholder="Ej: Membresía Categoría A"
-              value={nombre}
-              onChange={e => setNombre(e.target.value)}
-              className="modal-input"
-            />
+            <input placeholder="Ej: Membresía Categoría A" value={nombre} onChange={e => setNombre(e.target.value)} className="modal-input" />
 
-            <label style={labelStyle}>Descripción</label>
+            {/* Tipo de producto */}
+            <label style={labelStyle}>Tipo de producto</label>
+            <div className="radio-group">
+              <label><input type="radio" name="tipo" value="libro" checked={tipoProducto === "libro"} onChange={() => setTipoProducto("libro")} /> Libro</label>
+              <label><input type="radio" name="tipo" value="revista" checked={tipoProducto === "revista"} onChange={() => setTipoProducto("revista")} /> Revista</label>
+              <label><input type="radio" name="tipo" value="otro" checked={tipoProducto === "otro"} onChange={() => setTipoProducto("otro")} /> Otro</label>
+            </div>
+
+            {/* Opciones según tipo */}
+            {tipoProducto === "libro" && (
+              <>
+                <label style={labelStyle}>Categoría de libro</label>
+                <div className="radio-group">
+                  <label><input type="radio" name="categoriaLibro" value="A" checked={categoriaLibro === "A"} onChange={() => setCategoriaLibro("A")} /> Categoría A</label>
+                  <label><input type="radio" name="categoriaLibro" value="B" checked={categoriaLibro === "B"} onChange={() => setCategoriaLibro("B")} /> Categoría B</label>
+                  <label><input type="radio" name="categoriaLibro" value="C" checked={categoriaLibro === "C"} onChange={() => setCategoriaLibro("C")} /> Categoría C</label>
+                </div>
+              </>
+            )}
+
+            {tipoProducto === "revista" && (
+              <>
+                <label style={labelStyle}>Tipo de servicio de revista</label>
+                <div className="radio-group" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+                  <label><input type="radio" name="tipoRevista" value="director" checked={tipoRevista === "director"} onChange={() => setTipoRevista("director")} /> Director de revista</label>
+                  <label><input type="radio" name="tipoRevista" value="fundador" checked={tipoRevista === "fundador"} onChange={() => setTipoRevista("fundador")} /> Fundador</label>
+                  <label><input type="radio" name="tipoRevista" value="articulo" checked={tipoRevista === "articulo"} onChange={() => setTipoRevista("articulo")} /> Publicación de artículo</label>
+                  <label><input type="radio" name="tipoRevista" value="elaboracion" checked={tipoRevista === "elaboracion"} onChange={() => setTipoRevista("elaboracion")} /> Elaboración de libros/revistas (impresión)</label>
+                </div>
+
+                {tipoRevista === "articulo" && (
+                  <>
+                    <label style={labelStyle}>Modalidad de artículo</label>
+                    <div className="radio-group">
+                      <label><input type="radio" name="subArticulo" value="redaccion_publicacion" checked={subTipoArticulo === "redaccion_publicacion"} onChange={() => setSubTipoArticulo("redaccion_publicacion")} /> Redacción y publicación</label>
+                      <label><input type="radio" name="subArticulo" value="solo_publicacion" checked={subTipoArticulo === "solo_publicacion"} onChange={() => setSubTipoArticulo("solo_publicacion")} /> Solo publicación</label>
+                    </div>
+                  </>
+                )}
+
+                {tipoRevista !== "elaboracion" && (
+                  <div className="radio-group">
+                    <label><input type="checkbox" checked={incluyeImpresion} onChange={() => setIncluyeImpresion(!incluyeImpresion)} /> Incluye impresión</label>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Descripción (adicional) */}
+            <label style={labelStyle}>Descripción adicional (opcional)</label>
             <textarea
-              placeholder="Descripción del producto (Enter para nueva línea)"
+              placeholder="Detalles adicionales del producto..."
               value={descripcion}
               onChange={e => setDescripcion(e.target.value)}
-              rows={5}
+              rows={3}
               className="modal-input"
               style={{ resize: "vertical", lineHeight: 1.6 }}
             />
 
+            {/* Precio y descuento (igual que antes) */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div>
                 <label style={labelStyle}>Precio (Bs)</label>
-                <input
-                  placeholder="0.00"
-                  type="number"
-                  value={precio}
-                  onChange={e => setPrecio(e.target.value)}
-                  className="modal-input"
-                />
+                <input placeholder="0.00" type="number" value={precio} onChange={e => setPrecio(e.target.value)} className="modal-input" />
               </div>
               <div>
                 <label style={labelStyle}>Descuento (%)</label>
-                <input
-                  placeholder="0"
-                  type="number"
-                  value={descuento}
-                  onChange={e => setDescuento(e.target.value)}
-                  className="modal-input"
-                />
+                <input placeholder="0" type="number" value={descuento} onChange={e => setDescuento(e.target.value)} className="modal-input" />
               </div>
             </div>
 
+            {/* Imagen */}
             <label style={labelStyle}>Imagen del producto</label>
             <label className="file-label">
               <span style={{ fontSize: 18 }}>🖼️</span>
               <span>{imagen ? imagen.name : "Seleccionar imagen..."}</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={e => setImagen(e.target.files?.[0] || null)}
-                style={{ display: "none" }}
-              />
+              <input type="file" accept="image/*" onChange={e => setImagen(e.target.files?.[0] || null)} style={{ display: "none" }} />
             </label>
 
             {/* Acciones */}
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-              <button
-                onClick={save}
-                disabled={saving}
-                style={{
-                  flex: 1,
-                  background: saving ? "#1e293b" : "linear-gradient(135deg, #3b82f6, #6366f1)",
-                  border: "none", padding: "12px", borderRadius: 10,
-                  color: saving ? "#475569" : "white",
-                  fontWeight: 600, cursor: saving ? "not-allowed" : "pointer",
-                  fontSize: 14, fontFamily: "inherit",
-                  transition: "opacity 0.2s",
-                }}
-              >
+              <button onClick={save} disabled={saving} style={{
+                flex: 1,
+                background: saving ? "#1e293b" : "linear-gradient(135deg, #3b82f6, #6366f1)",
+                border: "none", padding: "12px", borderRadius: 10,
+                color: saving ? "#475569" : "white",
+                fontWeight: 600, cursor: saving ? "not-allowed" : "pointer",
+                fontSize: 14, fontFamily: "inherit",
+                transition: "opacity 0.2s",
+              }}>
                 {saving ? "Guardando..." : "💾 Guardar"}
               </button>
-              <button
-                onClick={() => setOpen(false)}
-                style={{
-                  background: "#1e293b", border: "1px solid #334155",
-                  padding: "12px 20px", borderRadius: 10,
-                  color: "#94a3b8", fontWeight: 600,
-                  cursor: "pointer", fontSize: 14, fontFamily: "inherit",
-                }}
-              >
+              <button onClick={() => setOpen(false)} style={{
+                background: "#1e293b", border: "1px solid #334155",
+                padding: "12px 20px", borderRadius: 10,
+                color: "#94a3b8", fontWeight: 600,
+                cursor: "pointer", fontSize: 14, fontFamily: "inherit",
+              }}>
                 Cancelar
               </button>
             </div>
