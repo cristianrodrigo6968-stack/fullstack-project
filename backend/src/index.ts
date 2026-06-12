@@ -402,14 +402,17 @@ app.delete("/projects/:id", auth, async (req, res) => {
 });
 
 // ===================== PRODUCTOS =====================
+// ===================== PRODUCTOS =====================
 app.get("/productos", async (req, res) => {
   res.json(await prisma.producto.findMany({ where: { activo: true } }));
 });
+
 app.get("/productos/admin", auth, async (req, res) => {
   res.json(await prisma.producto.findMany({ orderBy: { creadoEn: "desc" } }));
 });
+
 app.post("/productos", auth, upload.single("imagen"), async (req, res) => {
-  const { nombre, descripcion, precio, descuento } = req.body;
+  const { nombre, descripcion, precio, descuento, componentes } = req.body;
   let imagenUrl: string | undefined = undefined;
   if (req.file) {
     try {
@@ -418,14 +421,27 @@ app.post("/productos", auth, upload.single("imagen"), async (req, res) => {
       console.error("❌ Error subiendo imagen:", err);
     }
   }
+  let componentesData = null;
+  try {
+    if (componentes) componentesData = JSON.parse(componentes);
+  } catch { /* ignorar */ }
+
   const producto = await prisma.producto.create({
-    data: { nombre, descripcion, precio: Number(precio), descuento: Number(descuento), imagenUrl },
+    data: {
+      nombre,
+      descripcion: descripcion || "",
+      precio: Number(precio),
+      descuento: Number(descuento || 0),
+      imagenUrl,
+      componentes: componentesData,
+    },
   });
   res.json(producto);
 });
+
 app.put("/productos/:id", auth, upload.single("imagen"), async (req, res) => {
   const id = Number(req.params.id);
-  const { nombre, descripcion, precio, descuento, activo } = req.body;
+  const { nombre, descripcion, precio, descuento, activo, componentes } = req.body;
   let imagenUrl: string | null = null;
   if (req.file) {
     imagenUrl = await subirImagen(req.file.buffer, "productos", "image");
@@ -437,13 +453,18 @@ app.put("/productos/:id", auth, upload.single("imagen"), async (req, res) => {
   if (descuento !== undefined) data.descuento = Number(descuento);
   if (activo !== undefined) data.activo = activo === "true" || activo === true;
   if (imagenUrl) data.imagenUrl = imagenUrl;
+  if (componentes !== undefined) {
+    try {
+      data.componentes = JSON.parse(componentes);
+    } catch { data.componentes = null; }
+  }
   res.json(await prisma.producto.update({ where: { id }, data }));
 });
+
 app.delete("/productos/:id", auth, async (req, res) => {
   await prisma.producto.delete({ where: { id: Number(req.params.id) } });
   res.json({ ok: true });
 });
-
 // ===================== PAGOS (cliente anónimo) =====================
 app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
   try {
