@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useWindowSize } from "../../hooks/useWindowSize";
 
@@ -13,56 +13,44 @@ interface Producto {
   imagenUrl?: string;
 }
 
-interface ItemCarrito {
-  tipo: string;
-  titulo: string;
-  conSenapi: boolean;
-  conIsbn: boolean;
-  periodicidad: string;
-  tipoAutor: string;
-  asociacionEncargaTitulo: boolean;
-  notas: string;
-  archivoWord: File | null;
-  archivoPdf: File | null;
-}
-
-const TIPO_INFO: Record<string, { emoji: string; label: string; color: string }> = {
-  libroA: { emoji: "📚", label: "Libro Categoría A", color: "#6366f1" },
-  libroB: { emoji: "📚", label: "Libro Categoría B", color: "#8b5cf6" },
-  libroC: { emoji: "📚", label: "Libro Categoría C", color: "#a78bfa" },
-  director: { emoji: "📘", label: "Director de Revista", color: "#3b82f6" },
-  fundador: { emoji: "🏆", label: "Fundador de Revista", color: "#f59e0b" },
-  autor: { emoji: "📝", label: "Autor de Artículo", color: "#10b981" },
-};
-
-const getCategoria = (nombre: string): string => {
-  const n = nombre.toLowerCase();
-  if (n.includes("categoría a") || n.includes("categoria a")) return "libroA";
-  if (n.includes("categoría b") || n.includes("categoria b")) return "libroB";
-  if (n.includes("categoría c") || n.includes("categoria c")) return "libroC";
-  if (n.includes("director")) return "director";
-  if (n.includes("fundador")) return "fundador";
-  return "autor";
-};
+interface Toast { id: number; }
 
 const getPrecioFinal = (precio: number, descuento: number) =>
   descuento > 0 ? precio - (precio * descuento) / 100 : precio;
+
+const soloLetrasMayusculas = (value: string): string =>
+  value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "").toUpperCase();
+
+const redondearAdelanto = (valor: number): number => {
+  if (valor < 100) return Math.ceil(valor / 10) * 10;
+  else if (valor < 1000) return Math.ceil(valor / 50) * 50;
+  else return Math.ceil(valor / 100) * 100;
+};
 
 function ClienteHacerPedido() {
   const { token } = useAuth();
   const { isMobile } = useWindowSize();
 
-  const [paso, setPaso] = useState(1);
+  const [paso, setPaso] = useState<"catalogo" | "pago" | "confirmacion">("catalogo");
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
+  const [carrito, setCarrito] = useState<Producto[]>([]);
   const [loadingCat, setLoadingCat] = useState(true);
-  const [enviando, setEnviando] = useState(false);
-  const [pedidoCreado, setPedidoCreado] = useState(false);
 
-  const headers = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
+  // feedback visual por producto
+  const [feedbacks, setFeedbacks] = useState<Record<number, { count: number; toasts: Toast[]; bounce: boolean }>>({});
+  const toastIdRef = useRef(0);
+
+  // pago
+  const [modo, setModo] = useState<"subir" | "declarar" | null>(null);
+  const [comprobante, setComprobante] = useState<File | null>(null);
+  const [nombreDeclarado, setNombreDeclarado] = useState("");
+  const [monto, setMonto] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [mensaje, setMensaje] = useState("");
+
+  const total = carrito.reduce((sum, p) => sum + getPrecioFinal(p.precio, p.descuento), 0);
+  const adelanto = redondearAdelanto(total * 0.3);
 
   useEffect(() => {
     fetch(`${API_URL}/productos`)
@@ -71,119 +59,123 @@ function ClienteHacerPedido() {
       .catch(() => setLoadingCat(false));
   }, []);
 
-  const agregarAlCarrito = (tipo: string) => {
-    setCarrito(prev => [...prev, {
-      tipo,
-      titulo: "",
-      conSenapi: false,
-      conIsbn: false,
-      periodicidad: "3 ediciones en 3 meses",
-      tipoAutor: "soloTitulo",
-      asociacionEncargaTitulo: false,
-      notas: "",
-      archivoWord: null,
-      archivoPdf: null,
-    }]);
+  const agregarAlCarrito = (producto: Producto, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCarrito(prev => [...prev, producto]);
+
+    const pid = producto.id;
+    const newToast = ++toastIdRef.current;
+    setFeedbacks(prev => ({
+      ...prev,
+      [pid]: {
+        count: (prev[pid]?.count ?? 0) + 1,
+        toasts: [...(prev[pid]?.toasts ?? []), { id: newToast }],
+        bounce: true,
+      },
+    }));
+    setTimeout(() => setFeedbacks(prev => ({ ...prev, [pid]: { ...prev[pid], bounce: false } })), 300);
+    setTimeout(() => setFeedbacks(prev => ({
+      ...prev,
+      [pid]: { ...prev[pid], toasts: (prev[pid]?.toasts ?? []).filter(t => t.id !== newToast) },
+    })), 1800);
   };
 
   const quitarDelCarrito = (index: number) => {
-    setCarrito(prev => prev.filter((_, i) => i !== index));
+    const nuevo = carrito.filter((_, i) => i !== index);
+    setCarrito(nuevo);
+    if (nuevo.length === 0) setPaso("catalogo");
   };
 
-  const actualizarItem = (index: number, campo: keyof ItemCarrito, valor: any) => {
-    setCarrito(prev => prev.map((item, i) => i === index ? { ...item, [campo]: valor } : item));
-  };
+  const getProductosPayload = () => carrito.map(p => ({
+    id: p.id,
+    nombre: p.nombre,
+    precioUnitario: getPrecioFinal(p.precio, p.descuento),
+  }));
 
-  const confirmarPedido = async () => {
-    setEnviando(true);
-    const itemsParaEnviar = [];
-
-    for (const item of carrito) {
-      let archivoWordUrl: string | null = null;
-      let archivoPdfUrl: string | null = null;
-
-      if (item.archivoWord) {
-        const formData = new FormData();
-        formData.append("archivo", item.archivoWord);
-        const res = await fetch(`${API_URL}/cliente/archivos/libro/0`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        });
-        if (res.ok) archivoWordUrl = (await res.json()).archivoUrl;
-      }
-
-      if (item.archivoPdf) {
-        const formData = new FormData();
-        formData.append("archivo", item.archivoPdf);
-        const res = await fetch(`${API_URL}/cliente/archivos/libro/0`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        });
-        if (res.ok) archivoPdfUrl = (await res.json()).archivoUrl;
-      }
-
-      itemsParaEnviar.push({
-        tipo: item.tipo,
-        titulo: item.titulo || null,
-        conSenapi: item.conSenapi,
-        conIsbn: item.conIsbn,
-        periodicidad: item.periodicidad || null,
-        tipoAutor: item.tipoAutor || null,
-        asociacionEncargaTitulo: item.asociacionEncargaTitulo,
-        notas: item.notas || null,
-        archivoWord: archivoWordUrl,
-        archivoPdf: archivoPdfUrl,
-      });
+  const handleSubirComprobante = async () => {
+    if (!comprobante || !nombreDeclarado || !monto) {
+      alert("Completá todos los campos antes de enviar.");
+      return;
     }
-
-    const res = await fetch(`${API_URL}/cliente/pedidos`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ items: itemsParaEnviar }),
-    });
-
-    if (res.ok) {
-      setPedidoCreado(true);
-      setCarrito([]);
-    } else {
-      alert("Error al crear el pedido. Intenta de nuevo.");
+    setEnviando(true);
+    const formData = new FormData();
+    formData.append("comprobante", comprobante);
+    formData.append("tipo", "imagen");
+    formData.append("nombreDeclarado", nombreDeclarado);
+    formData.append("monto", monto);
+    formData.append("productos", JSON.stringify(getProductosPayload()));
+    try {
+      const res = await fetch(`${API_URL}/pagos`, { method: "POST", body: formData });
+      const data = await res.json();
+      if (res.ok) {
+        setMensaje("Tu pago fue registrado. El equipo lo verificará y te contactará pronto.");
+        setCarrito([]);
+        setPaso("confirmacion");
+      } else {
+        alert(`❌ Error: ${data.error || "Intenta de nuevo."}`);
+      }
+    } catch {
+      alert("❌ Error de conexión. Verificá tu internet e intentá de nuevo.");
     }
     setEnviando(false);
   };
 
-  const esTipoLibro = (tipo: string) => tipo.startsWith("libro");
-  const esDirector = (tipo: string) => tipo === "director";
-  const esFundador = (tipo: string) => tipo === "fundador";
-  const esAutor = (tipo: string) => tipo === "autor";
+  const handleDeclararPago = async () => {
+    if (!nombreDeclarado || !monto) {
+      alert("Completá todos los campos antes de enviar.");
+      return;
+    }
+    setEnviando(true);
+    const formData = new FormData();
+    formData.append("nombreDeclarado", nombreDeclarado);
+    formData.append("monto", monto);
+    formData.append("tipo", "declarado");
+    if (descripcion) formData.append("descripcion", descripcion);
+    formData.append("productos", JSON.stringify(getProductosPayload()));
+    try {
+      const res = await fetch(`${API_URL}/pagos`, { method: "POST", body: formData });
+      const data = await res.json();
+      if (res.ok) {
+        setMensaje("Tu pago fue registrado. El equipo lo verificará y te contactará pronto.");
+        setCarrito([]);
+        setPaso("confirmacion");
+      } else {
+        alert(`❌ Error: ${data.error || "Intenta de nuevo."}`);
+      }
+    } catch {
+      alert("❌ Error de conexión. Verificá tu internet e intentá de nuevo.");
+    }
+    setEnviando(false);
+  };
 
-  const PASOS = ["Catálogo", "Configurar", "Confirmar"];
+  const PASOS = ["catalogo", "pago"];
+  const stepIndex = PASOS.indexOf(paso);
 
-  // ── PANTALLA DE ÉXITO ────────────────────────────────────────
-  if (pedidoCreado) {
+  // ── CONFIRMACIÓN ────────────────────────────────────────────
+  if (paso === "confirmacion") {
     return (
       <div style={{
         background: "#000", minHeight: "100vh",
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: 24,
       }}>
+        <style>{`@keyframes fadeIn { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }`}</style>
         <div style={{
           background: "#0d0d1a", border: "1px solid #14532d",
           padding: "52px 40px", borderRadius: 24, textAlign: "center",
-          maxWidth: 460, width: "100%",
-          boxShadow: "0 0 60px rgba(5,150,105,.12)",
+          maxWidth: 480, width: "100%",
+          boxShadow: "0 0 60px rgba(5,150,105,.1)",
           animation: "fadeIn .4s ease",
         }}>
           <div style={{ fontSize: 72, marginBottom: 20 }}>✅</div>
           <h2 style={{ color: "#34d399", fontSize: 24, fontWeight: 800, margin: "0 0 14px" }}>
-            ¡Pedido registrado!
+            ¡Pago registrado!
           </h2>
           <p style={{ color: "#64748b", fontSize: 15, lineHeight: 1.8, margin: "0 0 32px" }}>
-            El equipo editorial revisará tu solicitud y se contactará contigo a la brevedad.
+            {mensaje}
           </p>
           <button
-            onClick={() => { setPedidoCreado(false); setPaso(1); }}
+            onClick={() => { setPaso("catalogo"); setModo(null); setNombreDeclarado(""); setMonto(""); setComprobante(null); }}
             style={{
               background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
               border: "none", padding: "13px 32px", borderRadius: 12,
@@ -203,7 +195,31 @@ function ClienteHacerPedido() {
       <style>{`
         @keyframes fadeIn    { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
         @keyframes spin      { to{transform:rotate(360deg)} }
+        @keyframes toastUp   { 0%{opacity:0;transform:translateX(-50%) translateY(0) scale(.8)} 15%{opacity:1;transform:translateX(-50%) translateY(-10px) scale(1)} 70%{opacity:1;transform:translateX(-50%) translateY(-28px) scale(1)} 100%{opacity:0;transform:translateX(-50%) translateY(-44px) scale(.9)} }
+        @keyframes btnBounce { 0%{transform:scale(1)} 40%{transform:scale(.94)} 70%{transform:scale(1.04)} 100%{transform:scale(1)} }
         @keyframes badgePop  { 0%{transform:scale(.6);opacity:0} 60%{transform:scale(1.2);opacity:1} 100%{transform:scale(1);opacity:1} }
+
+        .ped-card {
+          background: linear-gradient(160deg,#0d0d1a,#0a0a14);
+          border: 1px solid #1e1b4b; border-radius: 18px; overflow: hidden;
+          display: flex; flex-direction: column;
+          transition: border-color .25s, transform .25s, box-shadow .25s;
+        }
+        .ped-card:hover { border-color:#312e81; transform:translateY(-6px); box-shadow:0 20px 40px rgba(99,102,241,.13); }
+
+        .ped-cart-item {
+          background: #0d0d1a; border: 1px solid #1e1b4b; border-radius: 14px;
+          padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;
+          transition: background .2s, border-color .2s;
+        }
+        .ped-cart-item:hover { background: #0f0e1a; border-color: #312e81; }
+
+        .ped-remove-btn {
+          background: none; border: none; color: #475569;
+          cursor: pointer; font-size: 16px; padding: 6px 8px;
+          border-radius: 8px; transition: color .2s, background .2s;
+        }
+        .ped-remove-btn:hover { color: #ef4444; background: rgba(239,68,68,.1); }
 
         .ped-input {
           padding: 13px 16px; border-radius: 12px;
@@ -214,79 +230,31 @@ function ClienteHacerPedido() {
         .ped-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
         .ped-input::placeholder { color: #334155; }
 
-        .ped-select {
-          padding: 13px 16px; border-radius: 12px;
-          border: 1px solid #1e1b4b; background: #0a0a14;
-          color: white; font-size: 14px; width: 100%; box-sizing: border-box;
-          outline: none; cursor: pointer; font-family: inherit;
-          transition: border-color .2s;
-        }
-        .ped-select:focus { border-color: #6366f1; }
-
-        .ped-card {
-          background: linear-gradient(160deg,#0d0d1a,#0a0a14);
-          border: 1px solid #1e1b4b; border-radius: 18px; overflow: hidden;
-          display: flex; flex-direction: column;
-          transition: border-color .2s, transform .2s, box-shadow .2s;
-        }
-        .ped-card:hover {
-          border-color: #312e81;
-          transform: translateY(-4px);
-          box-shadow: 0 16px 36px rgba(99,102,241,.12);
-        }
-
-        .ped-item-carrito {
-          background: #0d0d1a; border: 1px solid #1e1b4b; border-radius: 14px;
-          padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;
-          transition: background .2s, border-color .2s;
-        }
-        .ped-item-carrito:hover { background: #0f0e1a; border-color: #312e81; }
-
-        .ped-remove-btn {
-          background: none; border: none; color: #475569;
-          cursor: pointer; font-size: 16px; padding: 6px 8px;
-          border-radius: 8px; transition: color .2s, background .2s;
-        }
-        .ped-remove-btn:hover { color: #ef4444; background: rgba(239,68,68,.1); }
-
-        .ped-config-card {
-          background: #0d0d1a; border-radius: 18px;
-          border-left: 3px solid #6366f1; border-top: 1px solid #1e1b4b;
-          border-right: 1px solid #1e1b4b; border-bottom: 1px solid #1e1b4b;
-          padding: 24px; animation: fadeIn .3s ease;
-        }
-
-        .ped-checkbox-label {
-          display: flex; align-items: center; gap: 10px;
-          color: #94a3b8; font-size: 14px; cursor: pointer;
-          padding: 10px 14px; border-radius: 10px;
-          border: 1px solid #1e1b4b; background: #0a0a14;
-          transition: border-color .2s, background .2s;
-          user-select: none;
-        }
-        .ped-checkbox-label:hover { border-color: #312e81; background: rgba(99,102,241,.05); }
-        .ped-checkbox-label input { accent-color: #6366f1; width: 16px; height: 16px; }
-
         .ped-file-label {
           display: flex; align-items: center; gap: 10px;
           padding: 13px 16px; background: #0a0a14;
           border: 1px dashed #312e81; border-radius: 12px;
-          color: #475569; font-size: 13px; cursor: pointer;
+          color: #475569; font-size: 13px; cursor: pointer; width: 100%; box-sizing: border-box;
           transition: border-color .2s, color .2s, background .2s;
-          width: 100%; box-sizing: border-box;
         }
         .ped-file-label:hover { border-color: #6366f1; color: #a5b4fc; background: rgba(99,102,241,.05); }
+
+        .ped-modo-card {
+          background: #070710; border: 1px solid #1e1b4b; border-radius: 14px;
+          padding: 22px 16px; text-align: center; cursor: pointer;
+          transition: border-color .2s, background .2s, transform .15s, box-shadow .2s;
+        }
+        .ped-modo-card:hover { border-color:#6366f1; background:rgba(99,102,241,.07); transform:translateY(-3px); box-shadow:0 12px 28px rgba(99,102,241,.12); }
 
         .ped-btn-primary {
           background: linear-gradient(135deg,#6366f1,#8b5cf6);
           border: none; border-radius: 12px; color: white;
           font-weight: 700; cursor: pointer; font-family: inherit;
-          transition: opacity .15s, transform .15s, filter .15s;
+          transition: filter .15s, transform .15s;
           box-shadow: 0 4px 20px rgba(99,102,241,.35);
         }
-        .ped-btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
-        .ped-btn-primary:active { transform: translateY(0); }
-        .ped-btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+        .ped-btn-primary:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+        .ped-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
 
         .ped-btn-green {
           background: linear-gradient(135deg,#10b981,#059669);
@@ -295,7 +263,7 @@ function ClienteHacerPedido() {
           transition: filter .15s, transform .15s;
           box-shadow: 0 4px 16px rgba(16,185,129,.3);
         }
-        .ped-btn-green:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .ped-btn-green:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
         .ped-btn-green:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
         .ped-btn-ghost {
@@ -305,72 +273,72 @@ function ClienteHacerPedido() {
         }
         .ped-btn-ghost:hover { border-color: #312e81; color: #94a3b8; }
 
-        .ped-agregar-btn {
-          background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.25);
-          border-radius: 10px; color: #818cf8; font-weight: 700;
-          font-size: 13px; cursor: pointer; font-family: inherit;
-          padding: 8px 16px;
-          transition: background .2s, border-color .2s, color .2s;
+        .ped-comprar-btn {
+          width: 100%; padding: 12px 0; border: none; border-radius: 0 0 18px 18px;
+          color: white; font-weight: 700; font-size: 14px; cursor: pointer;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          font-family: inherit;
+          transition: filter .2s;
         }
-        .ped-agregar-btn:hover { background: rgba(99,102,241,.2); border-color: #6366f1; color: #a5b4fc; }
+        .ped-comprar-btn:hover { filter: brightness(1.12); }
+        .ped-comprar-btn:active { transform: scale(0.98); }
       `}</style>
 
       <div style={{ maxWidth: 820, margin: "0 auto" }}>
 
         {/* Header */}
-        <div style={{ marginBottom: 36 }}>
+        <div style={{ marginBottom: 32 }}>
           <h1 style={{ fontSize: isMobile ? 22 : 30, fontWeight: 800, margin: "0 0 6px", color: "#f1f5f9" }}>
             🛒 Hacer Pedido
           </h1>
           <p style={{ color: "#334155", fontSize: 13, margin: 0 }}>
-            Seleccioná los servicios editoriales que necesitás.
+            Elegí los servicios editoriales que necesitás.
           </p>
         </div>
 
         {/* Stepper */}
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 40 }}>
-          {PASOS.map((label, i) => {
-            const n = i + 1;
-            const active = paso === n;
-            const done = paso > n;
-            return (
-              <div key={n} style={{ display: "flex", alignItems: "center", flex: i < PASOS.length - 1 ? 1 : "none" }}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: "50%",
-                    background: done ? "#059669" : active ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "#0d0d1a",
-                    border: `2px solid ${done ? "#059669" : active ? "#6366f1" : "#1e1b4b"}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 13, fontWeight: 700,
-                    color: done || active ? "white" : "#334155",
-                    boxShadow: active ? "0 2px 14px rgba(99,102,241,.45)" : "none",
-                    transition: "all .3s",
-                  }}>
-                    {done ? "✓" : n}
+        {paso !== "confirmacion" && (
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 40 }}>
+            {["Catálogo", "Pago"].map((label, i) => {
+              const active = i === stepIndex;
+              const done = i < stepIndex;
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "center", flex: i < 1 ? 1 : "none" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: "50%",
+                      background: done ? "#059669" : active ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "#0d0d1a",
+                      border: `2px solid ${done ? "#059669" : active ? "#6366f1" : "#1e1b4b"}`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 13, fontWeight: 700,
+                      color: done || active ? "white" : "#334155",
+                      boxShadow: active ? "0 2px 14px rgba(99,102,241,.45)" : "none",
+                      transition: "all .3s",
+                    }}>
+                      {done ? "✓" : i + 1}
+                    </div>
+                    <span style={{
+                      fontSize: 11, fontWeight: active ? 700 : 400,
+                      color: active ? "#a5b4fc" : done ? "#34d399" : "#334155",
+                    }}>
+                      {label}
+                    </span>
                   </div>
-                  <span style={{
-                    fontSize: 11, fontWeight: active ? 700 : 400,
-                    color: active ? "#a5b4fc" : done ? "#34d399" : "#334155",
-                    whiteSpace: "nowrap",
-                  }}>
-                    {label}
-                  </span>
+                  {i < 1 && (
+                    <div style={{
+                      flex: 1, height: 2, margin: "0 8px", marginBottom: 22,
+                      background: done ? "#059669" : "#1e1b4b",
+                      borderRadius: 99, transition: "background .3s",
+                    }} />
+                  )}
                 </div>
-                {i < PASOS.length - 1 && (
-                  <div style={{
-                    flex: 1, height: 2, margin: "0 8px",
-                    background: done ? "#059669" : "#1e1b4b",
-                    marginBottom: 22, borderRadius: 99,
-                    transition: "background .3s",
-                  }} />
-                )}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* ── PASO 1: CATÁLOGO ─────────────────────────────────── */}
-        {paso === 1 && (
+        {paso === "catalogo" && (
           <div style={{ animation: "fadeIn .3s ease" }}>
             <p style={{ color: "#475569", fontSize: 14, marginBottom: 24, lineHeight: 1.7 }}>
               Agregá los servicios que querés contratar. Podés agregar varios del mismo tipo.
@@ -385,87 +353,122 @@ function ClienteHacerPedido() {
                 }} />
                 <p style={{ color: "#475569", fontSize: 13 }}>Cargando catálogo...</p>
               </div>
+            ) : productos.length === 0 ? (
+              <p style={{ color: "#475569", textAlign: "center", padding: 60, fontSize: 15 }}>
+                Próximamente nuevos servicios.
+              </p>
             ) : (
               <div style={{
                 display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)",
-                gap: 18, marginBottom: 32,
+                gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+                gap: 24, marginBottom: 32,
               }}>
                 {productos.map(p => {
-                  const tipo = getCategoria(p.nombre);
-                  const info = TIPO_INFO[tipo] || { emoji: "📦", label: p.nombre, color: "#6366f1" };
                   const precioFinal = getPrecioFinal(p.precio, p.descuento);
-                  const enCarrito = carrito.filter(c => c.tipo === tipo).length;
+                  const fb = feedbacks[p.id];
+                  const count = fb?.count ?? 0;
+                  const toasts = fb?.toasts ?? [];
+                  const bounce = fb?.bounce ?? false;
 
                   return (
                     <div key={p.id} className="ped-card">
-                      {/* Imagen o banner de color */}
-                      {p.imagenUrl ? (
-                        <div style={{ width: "100%", height: 140, overflow: "hidden", position: "relative" }}>
+                      {/* Imagen */}
+                      <div style={{ position: "relative", width: "100%", paddingTop: "140%", overflow: "hidden", background: "#0d0d1a" }}>
+                        {p.descuento > 0 && (
+                          <div style={{
+                            position: "absolute", top: 12, left: 12, zIndex: 2,
+                            background: "linear-gradient(135deg,#ef4444,#dc2626)",
+                            color: "white", padding: "4px 12px", borderRadius: 99,
+                            fontSize: 12, fontWeight: 700,
+                            boxShadow: "0 2px 10px rgba(239,68,68,.4)",
+                          }}>
+                            -{p.descuento}%
+                          </div>
+                        )}
+                        {p.imagenUrl ? (
                           <img
                             src={p.imagenUrl} alt={p.nombre}
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            style={{
+                              position: "absolute", top: 0, left: 0,
+                              width: "100%", height: "100%", objectFit: "cover",
+                              transition: "transform .4s ease",
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.06)")}
+                            onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
                           />
+                        ) : (
                           <div style={{
-                            position: "absolute", inset: 0,
-                            background: "linear-gradient(to top, #0d0d1a 0%, transparent 60%)",
-                          }} />
-                        </div>
-                      ) : (
-                        <div style={{
-                          width: "100%", height: 80,
-                          background: `linear-gradient(135deg, ${info.color}22, ${info.color}08)`,
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 36, borderBottom: "1px solid #1e1b4b",
+                            position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+                            background: "linear-gradient(135deg,#1e1b4b,#0f0e1a)",
+                            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64,
+                          }}>📦</div>
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div style={{ padding: "18px 18px 12px", flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                        <h3 style={{ color: "white", fontSize: 15, fontWeight: 700, margin: 0, lineHeight: 1.3 }}>
+                          {p.nombre}
+                        </h3>
+                        <p style={{
+                          color: "#64748b", fontSize: 12, lineHeight: 1.6, flex: 1, margin: 0,
+                          display: "-webkit-box", WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical", overflow: "hidden",
                         }}>
-                          {info.emoji}
-                        </div>
-                      )}
+                          {p.descripcion}
+                        </p>
 
-                      <div style={{ padding: "16px 18px", flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-                        <div>
-                          <p style={{ color: "white", fontWeight: 700, fontSize: 15, margin: "0 0 4px" }}>{p.nombre}</p>
-                          {p.descripcion && (
-                            <p style={{
-                              color: "#475569", fontSize: 12, margin: 0, lineHeight: 1.6,
-                              display: "-webkit-box", WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical", overflow: "hidden",
-                            }}>
-                              {p.descripcion}
-                            </p>
-                          )}
-                        </div>
-
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
-                          <div>
-                            {p.descuento > 0 && (
-                              <span style={{ color: "#475569", fontSize: 12, textDecoration: "line-through", marginRight: 6 }}>
-                                Bs {p.precio.toFixed(2)}
-                              </span>
-                            )}
-                            <span style={{ color: "#34d399", fontSize: 20, fontWeight: 800 }}>
-                              Bs {precioFinal.toFixed(2)}
+                        {/* Precio */}
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                          {p.descuento > 0 && (
+                            <span style={{ color: "#475569", fontSize: 13, textDecoration: "line-through" }}>
+                              Bs {p.precio.toFixed(2)}
                             </span>
-                          </div>
-
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            {enCarrito > 0 && (
-                              <span style={{
-                                background: "rgba(99,102,241,.15)", color: "#a5b4fc",
-                                borderRadius: 99, fontSize: 11, fontWeight: 700,
-                                padding: "3px 10px", animation: "badgePop .3s ease",
-                              }}>
-                                ×{enCarrito}
-                              </span>
-                            )}
-                            <button
-                              className="ped-agregar-btn"
-                              onClick={() => agregarAlCarrito(tipo)}
-                            >
-                              ➕ Agregar
-                            </button>
-                          </div>
+                          )}
+                          <span style={{ color: "#34d399", fontSize: 22, fontWeight: 800 }}>
+                            Bs {precioFinal.toFixed(2)}
+                          </span>
                         </div>
+                      </div>
+
+                      {/* Botón comprar con toasts */}
+                      <div style={{ position: "relative" }}>
+                        {toasts.map(toast => (
+                          <div key={toast.id} style={{
+                            position: "absolute", bottom: "100%", left: "50%",
+                            marginBottom: 6,
+                            background: "#059669", color: "white",
+                            padding: "5px 16px", borderRadius: 99, fontSize: 13,
+                            fontWeight: "bold", whiteSpace: "nowrap",
+                            pointerEvents: "none",
+                            animation: "toastUp 1.8s ease forwards",
+                            zIndex: 10, boxShadow: "0 4px 14px rgba(5,150,105,.45)",
+                          }}>
+                            ✅ ¡Agregado!
+                          </div>
+                        ))}
+
+                        <button
+                          className="ped-comprar-btn"
+                          onClick={e => agregarAlCarrito(p, e)}
+                          style={{
+                            background: count > 0
+                              ? "linear-gradient(135deg,#059669,#047857)"
+                              : "linear-gradient(135deg,#10b981,#059669)",
+                            animation: bounce ? "btnBounce .3s ease" : "none",
+                          }}
+                        >
+                          <span>🛒 Comprar</span>
+                          {count > 0 && (
+                            <span style={{
+                              background: "rgba(0,0,0,.2)", borderRadius: 99,
+                              fontSize: 12, fontWeight: 700, padding: "2px 8px",
+                              animation: "badgePop .3s ease",
+                            }}>
+                              ×{count}
+                            </span>
+                          )}
+                        </button>
                       </div>
                     </div>
                   );
@@ -473,322 +476,247 @@ function ClienteHacerPedido() {
               </div>
             )}
 
-            {/* Mini-carrito */}
+            {/* Mini carrito */}
             {carrito.length > 0 && (
               <div style={{
                 background: "#0d0d1a", border: "1px solid #1e1b4b",
                 borderRadius: 16, padding: "18px 20px", marginBottom: 24,
               }}>
-                <p style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 12px" }}>
-                  Seleccionados — {carrito.length} ítem{carrito.length !== 1 ? "s" : ""}
-                </p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <p style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, margin: 0 }}>
+                    Seleccionados — {carrito.length} ítem{carrito.length !== 1 ? "s" : ""}
+                  </p>
+                  <span style={{ color: "#34d399", fontWeight: 800, fontSize: 18 }}>
+                    Bs {Math.round(total)}
+                  </span>
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {carrito.map((item, i) => {
-                    const info = TIPO_INFO[item.tipo] || { emoji: "📦", label: item.tipo, color: "#6366f1" };
+                    const precio = getPrecioFinal(item.precio, item.descuento);
                     return (
-                      <div key={i} className="ped-item-carrito">
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <span style={{
-                            background: `${info.color}20`,
-                            border: `1px solid ${info.color}40`,
-                            borderRadius: 8, padding: "4px 8px", fontSize: 16,
-                          }}>
-                            {info.emoji}
-                          </span>
-                          <span style={{ color: "#cbd5e1", fontSize: 14, fontWeight: 500 }}>{info.label}</span>
+                      <div key={i} className="ped-cart-item">
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          {item.imagenUrl && (
+                            <img src={item.imagenUrl} alt={item.nombre} style={{
+                              width: 38, height: 38, objectFit: "cover",
+                              borderRadius: 8, border: "1px solid #1e1b4b", flexShrink: 0,
+                            }} />
+                          )}
+                          <div>
+                            <p style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 13, margin: "0 0 2px" }}>{item.nombre}</p>
+                            <p style={{ color: "#34d399", fontWeight: 700, fontSize: 13, margin: 0 }}>Bs {precio.toFixed(2)}</p>
+                          </div>
                         </div>
                         <button className="ped-remove-btn" onClick={() => quitarDelCarrito(i)}>✕</button>
                       </div>
                     );
                   })}
                 </div>
+
+                {/* Adelanto sugerido */}
+                <div style={{ height: 1, background: "#1e1b4b", margin: "14px 0" }} />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ color: "#64748b", fontSize: 13 }}>Adelanto sugerido (30%)</span>
+                  <span style={{ color: "#818cf8", fontWeight: 700, fontSize: 16 }}>Bs {adelanto}</span>
+                </div>
               </div>
             )}
 
             <button
               className="ped-btn-primary"
-              onClick={() => setPaso(2)}
+              onClick={() => setPaso("pago")}
               disabled={carrito.length === 0}
               style={{ padding: "13px 28px", fontSize: 15 }}
             >
-              Siguiente: Configurar →
+              💳 Proceder al pago →
             </button>
           </div>
         )}
 
-        {/* ── PASO 2: CONFIGURAR ────────────────────────────────── */}
-        {paso === 2 && (
+        {/* ── PASO 2: PAGO ─────────────────────────────────────── */}
+        {paso === "pago" && (
           <div style={{ animation: "fadeIn .3s ease" }}>
-            <p style={{ color: "#475569", fontSize: 14, marginBottom: 24, lineHeight: 1.7 }}>
-              Completá los detalles de cada servicio.
-            </p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            {/* Lista compacta */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
               {carrito.map((item, i) => {
-                const info = TIPO_INFO[item.tipo] || { emoji: "📦", label: item.tipo, color: "#6366f1" };
+                const precio = getPrecioFinal(item.precio, item.descuento);
                 return (
-                  <div key={i} className="ped-config-card" style={{ borderLeftColor: info.color }}>
-
-                    {/* Header del ítem */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-                      <span style={{
-                        background: `${info.color}20`, border: `1px solid ${info.color}40`,
-                        borderRadius: 10, padding: "6px 10px", fontSize: 20,
-                      }}>
-                        {info.emoji}
-                      </span>
+                  <div key={i} className="ped-cart-item">
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      {item.imagenUrl && (
+                        <img src={item.imagenUrl} alt={item.nombre} style={{
+                          width: 42, height: 42, objectFit: "cover",
+                          borderRadius: 9, border: "1px solid #1e1b4b", flexShrink: 0,
+                        }} />
+                      )}
                       <div>
-                        <p style={{ color: "white", fontWeight: 700, fontSize: 15, margin: 0 }}>{info.label}</p>
-                        <p style={{ color: "#334155", fontSize: 11, margin: 0 }}>Ítem #{i + 1}</p>
+                        <p style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 14, margin: "0 0 3px" }}>{item.nombre}</p>
+                        <p style={{ color: "#34d399", fontWeight: 700, fontSize: 14, margin: 0 }}>Bs {precio.toFixed(2)}</p>
                       </div>
                     </div>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-
-                      {/* Título */}
-                      <div>
-                        <label style={labelSt}>
-                          Título {esTipoLibro(item.tipo) || esAutor(item.tipo) ? "(obligatorio)" : "(opcional)"}
-                        </label>
-                        <input
-                          className="ped-input"
-                          value={item.titulo}
-                          onChange={e => actualizarItem(i, "titulo", e.target.value)}
-                          placeholder="Escribe el título..."
-                        />
-                      </div>
-
-                      {/* Libros */}
-                      {esTipoLibro(item.tipo) && (
-                        <>
-                          <div>
-                            <label style={labelSt}>
-                              Archivo Word {item.tipo !== "libroC" ? "(obligatorio)" : "(opcional)"}
-                            </label>
-                            <label className="ped-file-label">
-                              <span style={{ fontSize: 20 }}>📄</span>
-                              <span>{item.archivoWord ? item.archivoWord.name : "Seleccionar archivo .doc / .docx"}</span>
-                              <input type="file" accept=".doc,.docx" style={{ display: "none" }}
-                                onChange={e => actualizarItem(i, "archivoWord", e.target.files?.[0] || null)} />
-                            </label>
-                          </div>
-
-                          <div>
-                            <label style={labelSt}>
-                              Archivo PDF {item.tipo !== "libroC" ? "(obligatorio)" : "(opcional)"}
-                            </label>
-                            <label className="ped-file-label">
-                              <span style={{ fontSize: 20 }}>📕</span>
-                              <span>{item.archivoPdf ? item.archivoPdf.name : "Seleccionar archivo .pdf"}</span>
-                              <input type="file" accept=".pdf" style={{ display: "none" }}
-                                onChange={e => actualizarItem(i, "archivoPdf", e.target.files?.[0] || null)} />
-                            </label>
-                          </div>
-
-                          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                            <label className="ped-checkbox-label">
-                              <input type="checkbox" checked={item.conSenapi}
-                                onChange={e => actualizarItem(i, "conSenapi", e.target.checked)} />
-                              SENAPI
-                            </label>
-                            <label className="ped-checkbox-label">
-                              <input type="checkbox" checked={item.conIsbn}
-                                onChange={e => actualizarItem(i, "conIsbn", e.target.checked)} />
-                              ISBN
-                            </label>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Director */}
-                      {esDirector(item.tipo) && (
-                        <div>
-                          <label style={labelSt}>Periodicidad</label>
-                          <select className="ped-select" value={item.periodicidad}
-                            onChange={e => actualizarItem(i, "periodicidad", e.target.value)}>
-                            <option value="3 ediciones en 3 meses">3 ediciones en 3 meses</option>
-                            <option value="3 ediciones en 1 mes">3 ediciones en 1 mes</option>
-                            <option value="3 ediciones en 6 meses">3 ediciones en 6 meses</option>
-                          </select>
-                        </div>
-                      )}
-
-                      {/* Fundador */}
-                      {esFundador(item.tipo) && (
-                        <label className="ped-checkbox-label" style={{ width: "fit-content" }}>
-                          <input type="checkbox" checked={item.asociacionEncargaTitulo}
-                            onChange={e => actualizarItem(i, "asociacionEncargaTitulo", e.target.checked)} />
-                          La asociación se encarga del título
-                        </label>
-                      )}
-
-                      {/* Autor */}
-                      {esAutor(item.tipo) && (
-                        <>
-                          <div>
-                            <label style={labelSt}>Tipo de artículo</label>
-                            <select className="ped-select" value={item.tipoAutor}
-                              onChange={e => actualizarItem(i, "tipoAutor", e.target.value)}>
-                              <option value="soloTitulo">Solo título (la asociación redacta)</option>
-                              <option value="conContenido">Título + contenido propio</option>
-                            </select>
-                          </div>
-                          {item.tipoAutor === "conContenido" && (
-                            <div>
-                              <label style={labelSt}>Archivo con contenido (opcional)</label>
-                              <label className="ped-file-label">
-                                <span style={{ fontSize: 20 }}>📄</span>
-                                <span>{item.archivoWord ? item.archivoWord.name : "Seleccionar archivo..."}</span>
-                                <input type="file" style={{ display: "none" }}
-                                  onChange={e => actualizarItem(i, "archivoWord", e.target.files?.[0] || null)} />
-                              </label>
-                            </div>
-                          )}
-                        </>
-                      )}
-
-                      {/* Notas */}
-                      <div>
-                        <label style={labelSt}>Notas adicionales (opcional)</label>
-                        <textarea
-                          className="ped-input"
-                          value={item.notas}
-                          onChange={e => actualizarItem(i, "notas", e.target.value)}
-                          rows={2}
-                          placeholder="Cualquier detalle extra..."
-                          style={{ resize: "none" }}
-                        />
-                      </div>
-                    </div>
+                    <button className="ped-remove-btn" onClick={() => quitarDelCarrito(i)}>✕</button>
                   </div>
                 );
               })}
             </div>
 
-            <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
-              <button className="ped-btn-ghost" onClick={() => setPaso(1)} style={{ padding: "12px 20px", fontSize: 14 }}>
-                ← Volver
-              </button>
-              <button className="ped-btn-primary" onClick={() => setPaso(3)} style={{ padding: "12px 24px", fontSize: 14 }}>
-                Ver resumen →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── PASO 3: CONFIRMAR ─────────────────────────────────── */}
-        {paso === 3 && (
-          <div style={{ animation: "fadeIn .3s ease" }}>
-            <p style={{ color: "#475569", fontSize: 14, marginBottom: 24 }}>
-              Revisá tu pedido antes de enviarlo.
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 28 }}>
-              {carrito.map((item, i) => {
-                const info = TIPO_INFO[item.tipo] || { emoji: "📦", label: item.tipo, color: "#6366f1" };
-                return (
-                  <div key={i} style={{
-                    background: "#0d0d1a",
-                    border: `1px solid ${info.color}30`,
-                    borderLeft: `3px solid ${info.color}`,
-                    borderRadius: 14, padding: "18px 20px",
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                      <span style={{
-                        background: `${info.color}18`, border: `1px solid ${info.color}35`,
-                        borderRadius: 8, padding: "4px 8px", fontSize: 18,
-                      }}>
-                        {info.emoji}
-                      </span>
-                      <span style={{ color: "white", fontWeight: 700, fontSize: 15 }}>{info.label}</span>
-                    </div>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                      {item.titulo && (
-                        <p style={{ color: "#cbd5e1", fontSize: 13, margin: 0 }}>
-                          <span style={{ color: "#475569" }}>Título:</span> {item.titulo}
-                        </p>
-                      )}
-                      {item.periodicidad && esDirector(item.tipo) && (
-                        <p style={{ color: "#94a3b8", fontSize: 13, margin: 0 }}>
-                          <span style={{ color: "#475569" }}>Periodicidad:</span> {item.periodicidad}
-                        </p>
-                      )}
-                      {item.tipoAutor && esAutor(item.tipo) && (
-                        <p style={{ color: "#94a3b8", fontSize: 13, margin: 0 }}>
-                          <span style={{ color: "#475569" }}>Tipo:</span> {item.tipoAutor === "soloTitulo" ? "Solo título" : "Título + contenido"}
-                        </p>
-                      )}
-                      {item.archivoWord && (
-                        <p style={{ color: "#64748b", fontSize: 12, margin: 0 }}>📄 {item.archivoWord.name}</p>
-                      )}
-                      {item.archivoPdf && (
-                        <p style={{ color: "#64748b", fontSize: 12, margin: 0 }}>📕 {item.archivoPdf.name}</p>
-                      )}
-                      {(item.conSenapi || item.conIsbn) && (
-                        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                          {item.conSenapi && (
-                            <span style={{
-                              background: "#1e3a5f", color: "#60a5fa",
-                              padding: "2px 12px", borderRadius: 99,
-                              fontSize: 11, fontWeight: 700,
-                            }}>SENAPI</span>
-                          )}
-                          {item.conIsbn && (
-                            <span style={{
-                              background: "#1a3a2a", color: "#34d399",
-                              padding: "2px 12px", borderRadius: 99,
-                              fontSize: 11, fontWeight: 700,
-                            }}>ISBN</span>
-                          )}
-                        </div>
-                      )}
-                      {item.notas && (
-                        <p style={{ color: "#475569", fontSize: 12, margin: "6px 0 0", fontStyle: "italic" }}>
-                          "{item.notas}"
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Resumen cantidad */}
+            {/* Resumen precio */}
             <div style={{
               background: "#0d0d1a", border: "1px solid #1e1b4b",
-              borderRadius: 14, padding: "16px 20px", marginBottom: 24,
-              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "16px 20px", borderRadius: 14, marginBottom: 22,
             }}>
-              <span style={{ color: "#64748b", fontSize: 14 }}>Total de servicios</span>
-              <span style={{ color: "#a5b4fc", fontWeight: 800, fontSize: 18 }}>
-                {carrito.length} ítem{carrito.length !== 1 ? "s" : ""}
-              </span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <span style={{ color: "#64748b", fontSize: 14 }}>Total</span>
+                <span style={{ color: "#34d399", fontWeight: 800, fontSize: 22 }}>Bs {Math.round(total)}</span>
+              </div>
+              <div style={{ height: 1, background: "#1e1b4b", marginBottom: 10 }} />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "#64748b", fontSize: 13 }}>Adelanto sugerido (30%)</span>
+                <span style={{ color: "#818cf8", fontWeight: 700, fontSize: 16 }}>Bs {adelanto}</span>
+              </div>
             </div>
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <button className="ped-btn-ghost" onClick={() => setPaso(2)} style={{ padding: "12px 20px", fontSize: 14 }}>
-                ← Volver
-              </button>
-              <button
-                className="ped-btn-green"
-                onClick={confirmarPedido}
-                disabled={enviando}
-                style={{
-                  flex: 1, padding: "14px 0", fontSize: 15,
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                }}
-              >
-                {enviando ? (
-                  <>
-                    <div style={{
-                      width: 18, height: 18, border: "2px solid rgba(255,255,255,.2)",
-                      borderTop: "2px solid white", borderRadius: "50%",
-                      animation: "spin .7s linear infinite",
-                    }} />
-                    Enviando...
-                  </>
-                ) : "✅ Confirmar pedido"}
+            <div style={{ background: "#0d0d1a", border: "1px solid #1e1b4b", padding: 26, borderRadius: 18 }}>
+              <h3 style={{ margin: "0 0 22px", fontSize: 17, fontWeight: 700, color: "#f1f5f9" }}>💳 Realizá tu pago</h3>
+
+              {/* QR */}
+              <div style={{
+                background: "#070710", border: "1px solid #1e1b4b",
+                padding: 22, borderRadius: 16, textAlign: "center", marginBottom: 18,
+              }}>
+                <img
+                  src="/qr-pago.jpeg" alt="QR de pago"
+                  style={{
+                    width: "100%", maxWidth: isMobile ? 200 : 260,
+                    margin: "0 auto", borderRadius: 12, display: "block",
+                    objectFit: "contain", border: "1px solid #1e1b4b",
+                  }}
+                />
+                
+                  href="/qr-pago.jpeg" download="QR_Pago_Vanguardistas.jpg"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    marginTop: 12, color: "#818cf8", fontSize: 13, textDecoration: "none",
+                    transition: "color .2s",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "#a5b4fc")}
+                  onMouseLeave={e => (e.currentTarget.style.color = "#818cf8")}
+                >
+                  📥 Descargar QR
+                </a>
+                <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 4 }}>
+                  <p style={{ color: "#475569", fontSize: 12, margin: 0 }}>Banco Unión · Cuenta: 123456789</p>
+                  <p style={{ color: "#475569", fontSize: 12, margin: 0 }}>Titular: Asociación Vanguardistas 3.0</p>
+                </div>
+              </div>
+
+              {/* Info adelanto */}
+              <div style={{
+                background: "rgba(99,102,241,.07)", border: "1px solid rgba(99,102,241,.2)",
+                padding: 16, borderRadius: 12, marginBottom: 22, textAlign: "center",
+              }}>
+                <p style={{ color: "#a5b4fc", fontSize: 15, margin: 0 }}>
+                  Pagá <strong style={{ color: "white", fontSize: 18 }}>Bs {adelanto}</strong> como adelanto (30%)
+                </p>
+              </div>
+
+              {/* Selector de modo */}
+              {!modo ? (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  {[
+                    { key: "subir", icon: "📤", title: "Subir comprobante", sub: "Foto del depósito" },
+                    { key: "declarar", icon: "📝", title: "Declarar pago", sub: "Sin comprobante" },
+                  ].map(m => (
+                    <div
+                      key={m.key}
+                      className="ped-modo-card"
+                      onClick={() => setModo(m.key as any)}
+                    >
+                      <div style={{ fontSize: 34, marginBottom: 10 }}>{m.icon}</div>
+                      <p style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 14, margin: "0 0 5px" }}>{m.title}</p>
+                      <p style={{ color: "#475569", fontSize: 12, margin: 0 }}>{m.sub}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div>
+                    <label style={labelSt}>Nombre completo</label>
+                    <input
+                      className="ped-input"
+                      placeholder="Tu nombre completo (solo letras)"
+                      value={nombreDeclarado}
+                      onChange={e => setNombreDeclarado(soloLetrasMayusculas(e.target.value))}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={labelSt}>Monto depositado (Bs)</label>
+                    <input
+                      className="ped-input"
+                      placeholder={`Ej: ${adelanto}`}
+                      type="number"
+                      value={monto}
+                      onChange={e => setMonto(e.target.value)}
+                    />
+                  </div>
+
+                  {modo === "subir" && (
+                    <div>
+                      <label style={labelSt}>Foto del comprobante</label>
+                      <label className="ped-file-label">
+                        <span style={{ fontSize: 22 }}>🖼️</span>
+                        <span>{comprobante ? comprobante.name : "Seleccionar imagen..."}</span>
+                        <input type="file" accept="image/*" style={{ display: "none" }}
+                          onChange={e => setComprobante(e.target.files?.[0] || null)} />
+                      </label>
+                    </div>
+                  )}
+
+                  {modo === "declarar" && (
+                    <div>
+                      <label style={labelSt}>Descripción (opcional)</label>
+                      <input
+                        className="ped-input"
+                        placeholder="Cualquier detalle adicional"
+                        value={descripcion}
+                        onChange={e => setDescripcion(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  <button
+                    className="ped-btn-green"
+                    onClick={modo === "subir" ? handleSubirComprobante : handleDeclararPago}
+                    disabled={enviando}
+                    style={{
+                      padding: 14, marginTop: 4, fontSize: 15,
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                    }}
+                  >
+                    {enviando ? (
+                      <>
+                        <div style={{
+                          width: 18, height: 18, border: "2px solid rgba(255,255,255,.2)",
+                          borderTop: "2px solid white", borderRadius: "50%",
+                          animation: "spin .7s linear infinite",
+                        }} />
+                        Enviando...
+                      </>
+                    ) : modo === "subir" ? "Enviar comprobante" : "Declarar pago"}
+                  </button>
+
+                  <button className="ped-btn-ghost" onClick={() => setModo(null)} style={{ padding: "11px 0", fontSize: 14 }}>
+                    ← Cambiar método
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <button className="ped-btn-ghost" onClick={() => setPaso("catalogo")} style={{ padding: "11px 20px", fontSize: 14 }}>
+                ← Volver al catálogo
               </button>
             </div>
           </div>
