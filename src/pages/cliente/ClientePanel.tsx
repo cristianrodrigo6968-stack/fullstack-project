@@ -5,7 +5,7 @@ import { useWindowSize } from "../../hooks/useWindowSize";
 import ClienteInicio from "./ClienteInicio";
 import ClienteProgreso from "./ClienteProgreso";
 import ClienteEntregas from "./ClienteEntregas";
-import ClienteDatos from "./ClienteDatos";
+
 import ClienteContenido from "./ClienteContenido";
 import ClienteMensajes from "./ClienteMensajes";
 import ClientePassword from "./ClientePassword";
@@ -140,7 +140,7 @@ function ClientePanel() {
         {section === "inicio" && <ClienteInicio />}
         {section === "progreso" && <ClienteProgreso />}
         {section === "entregas" && <ClienteEntregas />}
-        {section === "datos" && <ClienteDatos />}
+     
         {section === "contenido" && <ClienteContenido />}
         {section === "mensajes" && <ClienteMensajes />}
         {section === "password" && <ClientePassword />}
