@@ -210,6 +210,7 @@ model Producto {
   descuento   Float    @default(0)
   activo      Boolean  @default(true)
   imagenUrl   String?
+  componentes Json?
   creadoEn    DateTime @default(now())
 }
 
