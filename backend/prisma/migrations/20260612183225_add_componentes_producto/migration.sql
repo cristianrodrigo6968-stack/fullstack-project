@@ -1,1 +1,1 @@
--- This is an empty migration.
+ALTER TABLE "Producto" ADD COLUMN IF NOT EXISTS "componentes" JSONB;
