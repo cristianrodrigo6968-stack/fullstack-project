@@ -314,16 +314,8 @@ function ProductoDetalle() {
             Ir al carrito ({carrito.length})
           </button>
 
-          {/* Info adicional */}
-          <div style={{
-            background: "rgba(99,102,241,.06)", border: "1px solid rgba(99,102,241,.15)",
-            borderRadius: 12, padding: "14px 18px",
-            display: "flex", flexDirection: "column", gap: 6,
-          }}>
-            <p style={{ color: "#818cf8", fontSize: 13, margin: 0 }}>✅ Respaldo legal en Bolivia</p>
-            <p style={{ color: "#818cf8", fontSize: 13, margin: 0 }}>📞 Te contactamos para coordinar</p>
-            <p style={{ color: "#818cf8", fontSize: 13, margin: 0 }}>🏙️ El Alto, Bolivia</p>
-          </div>
+      
+  
         </div>
       </div>
 
