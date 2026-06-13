@@ -42,7 +42,6 @@ function CarritoPage() {
     setCarrito(saved ? JSON.parse(saved) : []);
   }, []);
 
-  // Eliminar un paquete completo (por productoPadreId)
   const eliminarPaquete = (productoPadreId: number) => {
     const nuevoCarrito = carrito.filter(item => item.productoPadreId !== productoPadreId);
     setCarrito(nuevoCarrito);
@@ -50,7 +49,6 @@ function CarritoPage() {
     if (nuevoCarrito.length === 0) setStep("carrito");
   };
 
-  // Agrupar ítems del carrito: los que tienen productoPadreId (componentes) se agrupan; los normales se quedan sueltos
   const agruparCarrito = () => {
     const grupos: Record<number, any[]> = {};
     const normales: any[] = [];
@@ -64,7 +62,6 @@ function CarritoPage() {
       }
     });
 
-    // Convertir grupos a array de objetos con id, items, nombre del paquete y total
     const gruposArray = Object.entries(grupos).map(([id, items]) => ({
       id: Number(id),
       items,
@@ -244,24 +241,24 @@ function CarritoPage() {
         {carrito.length > 0 && step !== "confirmacion" && (
           <>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
-              {/* Paquetes (productos con componentes) */}
+              {/* Paquetes (productos compuestos) */}
               {grupos.map(grupo => (
                 <div key={grupo.id} className="cart-item" style={{ background: "#0d0d1a", borderRadius: 14, border: "1px solid #1e1b4b", marginBottom: 10 }}>
                   <div style={{ padding: "14px 18px", borderBottom: "1px solid #1e1b4b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontWeight: "bold", color: "#f1f5f9" }}>🎁 Paquete: {grupo.nombrePaquete}</span>
-                    <button className="remove-btn" onClick={() => eliminarPaquete(grupo.id)}>✕ Eliminar paquete</button>
+                    <span style={{ fontWeight: "bold", color: "#f1f5f9" }}>🎁 {grupo.nombrePaquete}</span>
+                    <button className="remove-btn" onClick={() => eliminarPaquete(grupo.id)}>✕ Eliminar</button>
                   </div>
-                  {grupo.items.map((item, idx) => (
-                    <div key={idx} style={{ padding: "8px 18px", display: "flex", justifyContent: "space-between", borderTop: "1px solid #1e293b" }}>
-                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                        {item.imagenUrl && <img src={item.imagenUrl} alt="" style={{ width: 30, height: 30, objectFit: "cover", borderRadius: 6 }} />}
+                  {/* Lista de componentes (sin precios) */}
+                  <div style={{ padding: "8px 18px" }}>
+                    {grupo.items.map((item, idx) => (
+                      <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                        <span>✅</span>
                         <span style={{ color: "#cbd5e1", fontSize: 13 }}>{item.nombre}</span>
                       </div>
-                      <span style={{ color: "#34d399", fontWeight: "bold" }}>Bs {(item.descuento > 0 ? item.precio - (item.precio * item.descuento / 100) : item.precio).toFixed(2)}</span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                   <div style={{ padding: "10px 18px", textAlign: "right", borderTop: "1px solid #1e293b", background: "#0a0a14" }}>
-                    <span style={{ color: "#f1f5f9", fontSize: 14 }}>Total paquete: </span>
+                    <span style={{ color: "#f1f5f9", fontSize: 14 }}>Total: </span>
                     <span style={{ color: "#22c55e", fontWeight: "bold", fontSize: 16 }}>Bs {grupo.total.toFixed(2)}</span>
                   </div>
                 </div>
