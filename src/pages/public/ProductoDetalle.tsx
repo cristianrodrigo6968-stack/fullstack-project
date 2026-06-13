@@ -4,6 +4,19 @@ import { useWindowSize } from "../../hooks/useWindowSize";
 
 interface Toast { id: number; y: number; }
 
+// Función para generar nombre legible del componente
+const getComponenteLabel = (comp: any): string => {
+  if (comp.tipo === "libro") return `📖 Libro Categoría ${comp.categoria}`;
+  if (comp.tipo === "revista") {
+    const subtipoLabel = comp.subtipo === "director" ? "Director de revista" :
+                         comp.subtipo === "fundador" ? "Fundador" :
+                         comp.subtipo === "articulo_rp" ? "Artículo (redacción y publicación)" :
+                         "Artículo (solo publicación)";
+    return `📰 ${subtipoLabel}${comp.meses ? ` (${comp.meses} mes${comp.meses > 1 ? "es" : ""})` : ""}`;
+  }
+  return "📦 Otro servicio";
+};
+
 function ProductoDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -35,7 +48,7 @@ function ProductoDetalle() {
 
   useEffect(() => {
     setLoading(true);
-   fetch(`${import.meta.env.VITE_API_URL}/productos`)
+    fetch(`${import.meta.env.VITE_API_URL}/productos`)
       .then(r => r.json())
       .then((data: any[]) => {
         const encontrado = data.find(p => String(p.id) === String(id));
@@ -50,9 +63,35 @@ function ProductoDetalle() {
     localStorage.setItem("carrito", JSON.stringify(carrito));
   }, [carrito]);
 
-  const agregarAlCarrito = (p: any) => {
-    const tipo = getCategoria(p.nombre);
-    setCarrito(prev => [...prev, { ...p, tipo }]);
+  const agregarAlCarrito = (producto: any) => {
+    // Si el producto tiene componentes, agregamos cada componente como un ítem separado
+    if (producto.componentes && Array.isArray(producto.componentes) && producto.componentes.length > 0) {
+      const totalComponentes = producto.componentes.length;
+      const nuevosItems = producto.componentes.map((comp: any, idx: number) => {
+        const nombreComp = getComponenteLabel(comp);
+        // Precio: si el componente tiene precio propio, lo usamos; si no, repartimos el precio total
+        const precioUnitario = comp.precio || (producto.precio / totalComponentes);
+        const precioConDescuento = producto.descuento > 0 
+          ? precioUnitario - (precioUnitario * producto.descuento / 100)
+          : precioUnitario;
+        return {
+          id: `${producto.id}_comp_${idx}`,
+          nombre: nombreComp,
+          descripcion: `Componente de ${producto.nombre}`,
+          precio: precioConDescuento,
+          descuento: 0,
+          imagenUrl: producto.imagenUrl,
+          tipo: comp.tipo,
+          componente: true,
+          productoPadreId: producto.id,
+        };
+      });
+      setCarrito(prev => [...prev, ...nuevosItems]);
+    } else {
+      // Producto normal
+      const tipo = getCategoria(producto.nombre);
+      setCarrito(prev => [...prev, { ...producto, tipo }]);
+    }
     setVecesAgregado(prev => prev + 1);
     setBtnBounce(true);
     setTimeout(() => setBtnBounce(false), 300);
@@ -265,6 +304,23 @@ function ProductoDetalle() {
             </p>
           </div>
 
+          {/* Mostrar componentes si es producto compuesto */}
+          {producto.componentes && producto.componentes.length > 0 && (
+            <div style={{ background: "#1e293b", borderRadius: 14, padding: 20 }}>
+              <h3 style={{ color: "#f1f5f9", fontSize: 18, marginBottom: 12 }}>🎁 Esta oferta incluye:</h3>
+              <ul style={{ color: "#cbd5e1", fontSize: 14, listStyle: "none", padding: 0 }}>
+                {producto.componentes.map((comp: any, idx: number) => (
+                  <li key={idx} style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                    <span>✅</span> {getComponenteLabel(comp)}
+                  </li>
+                ))}
+              </ul>
+              <p style={{ color: "#22c55e", fontWeight: "bold", marginTop: 12 }}>
+                Precio total del paquete: Bs {precioFinal.toFixed(2)}
+              </p>
+            </div>
+          )}
+
           {/* Botón comprar */}
           <div style={{ position: "relative" }}>
             {toasts.map(toast => (
@@ -313,9 +369,6 @@ function ProductoDetalle() {
           <button className="btn-ir-carrito" onClick={() => navigate("/carrito")}>
             Ir al carrito ({carrito.length})
           </button>
-
-      
-  
         </div>
       </div>
 
