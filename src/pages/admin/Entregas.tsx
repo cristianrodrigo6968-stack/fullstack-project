@@ -16,6 +16,7 @@ interface ItemPedido {
   tipoAutor: string | null;
   asociacionEncargaTitulo: boolean;
   notas: string | null;
+  precioUnitario: number | null;   // 👈 agregar esta línea
   archivoWord: string | null;
   archivoPdf: string | null;
   estado: string;
@@ -23,8 +24,6 @@ interface ItemPedido {
   pedidoId: number;
   creadoEn: string;
 }
-
-// ─── Parser de título ────────────────────────────────────────────────────────
 
 interface DesgloseTitulo {
   tipoVisual: "libro" | "revista" | "otro";
@@ -37,76 +36,43 @@ interface DesgloseTitulo {
 function parsearTitulo(titulo: string | null, tipo: string, tipoAutor: string | null, periodicidad: string | null): DesgloseTitulo {
   const t = (titulo || "").toLowerCase();
 
-  // ── LIBRO ──
   if (tipo === "libro" || t.includes("libro")) {
     let categoria: string | null = null;
     if (t.includes("categoría a") || t.includes("categoria a")) categoria = "Categoría A";
     else if (t.includes("categoría b") || t.includes("categoria b")) categoria = "Categoría B";
     else if (t.includes("categoría c") || t.includes("categoria c")) categoria = "Categoría C";
-    return {
-      tipoVisual: "libro",
-      icono: "📖",
-      color: "#3b82f6",
-      lineaPrincipal: "Libro",
-      lineaSecundaria: categoria,
-    };
+    return { tipoVisual: "libro", icono: "📖", color: "#3b82f6", lineaPrincipal: "Libro", lineaSecundaria: categoria };
   }
 
-  // ── REVISTA / ARTÍCULO / DIRECTOR / FUNDADOR ──
   if (
     tipo === "edicion_revista" || tipo === "articulo" || tipo === "fundador" ||
     t.includes("revista") || t.includes("director") || t.includes("artículo") ||
-    t.includes("articulo") || t.includes("fundador") || t.includes("redacción") ||
-    t.includes("redaccion") || t.includes("publicación") || t.includes("publicacion")
+    t.includes("articulo") || t.includes("fundador") || t.includes("redacc") ||
+    t.includes("publicac")
   ) {
     let servicio: string | null = null;
     let duracion: string | null = null;
-
-    // Detectar tipo de servicio
     if (t.includes("director")) servicio = "Director de revista";
     else if (t.includes("fundador")) servicio = "Fundador";
     else if (t.includes("redacc")) servicio = "Artículo — Redacción y publicación";
     else if (t.includes("solo publicac") || t.includes("publicac")) servicio = "Artículo — Solo publicación";
     else if (tipoAutor) servicio = tipoAutor;
-
-    // Detectar duración
     if (t.includes("3 mes") || t.includes("tres mes")) duracion = "3 meses";
     else if (t.includes("1 mes") || t.includes("un mes")) duracion = "1 mes";
     else if (periodicidad) duracion = periodicidad;
-
     const lineaSecundaria = [servicio, duracion].filter(Boolean).join(" · ") || null;
-
-    return {
-      tipoVisual: "revista",
-      icono: "📰",
-      color: "#f59e0b",
-      lineaPrincipal: "Revista",
-      lineaSecundaria,
-    };
+    return { tipoVisual: "revista", icono: "📰", color: "#f59e0b", lineaPrincipal: "Revista", lineaSecundaria };
   }
 
-  // ── OTRO / IMPRESIÓN ──
-  return {
-    tipoVisual: "otro",
-    icono: "📦",
-    color: "#64748b",
-    lineaPrincipal: titulo || tipo,
-    lineaSecundaria: null,
-  };
+  return { tipoVisual: "otro", icono: "📦", color: "#64748b", lineaPrincipal: titulo || tipo, lineaSecundaria: null };
 }
-
-// ─── Chip de desglose ────────────────────────────────────────────────────────
 
 function ChipDesglose({ desglose }: { desglose: DesgloseTitulo }) {
   return (
     <div style={{
-      display: "inline-flex",
-      flexDirection: "column",
-      gap: 2,
-      background: `${desglose.color}15`,
-      border: `1px solid ${desglose.color}40`,
-      borderRadius: 10,
-      padding: "6px 12px",
+      display: "inline-flex", flexDirection: "column", gap: 2,
+      background: `${desglose.color}15`, border: `1px solid ${desglose.color}40`,
+      borderRadius: 10, padding: "6px 12px",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ fontSize: 15 }}>{desglose.icono}</span>
@@ -118,8 +84,6 @@ function ChipDesglose({ desglose }: { desglose: DesgloseTitulo }) {
     </div>
   );
 }
-
-// ─── Componentes auxiliares ──────────────────────────────────────────────────
 
 function Spinner() {
   return (
@@ -148,7 +112,6 @@ function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onCon
 
 const ESTADO_CONFIG: Record<string, { bg: string; color: string; border: string; label: string }> = {
   pendiente:  { bg: "rgba(148,163,184,0.1)", color: "#94a3b8", border: "#334155", label: "⏳ Pendiente"  },
-  en_proceso: { bg: "rgba(245,158,11,0.1)",  color: "#f59e0b", border: "#92400e", label: "⚙️ En proceso" },
   completado: { bg: "rgba(34,197,94,0.1)",   color: "#22c55e", border: "#166534", label: "✅ Completado" },
   entregado:  { bg: "rgba(59,130,246,0.1)",  color: "#60a5fa", border: "#1e3a5f", label: "📦 Entregado"  },
 };
@@ -162,7 +125,29 @@ function EstadoBadge({ estado }: { estado: string }) {
   );
 }
 
-// ─── Componente principal ────────────────────────────────────────────────────
+function BarraProgreso({ items }: { items: ItemPedido[] }) {
+  const total = items.length;
+  const entregados = items.filter(i => i.estado === "entregado").length;
+  const completados = items.filter(i => i.estado === "completado").length;
+  const pct = total === 0 ? 0 : Math.round(((completados + entregados) / total) * 100);
+  const color = pct === 100 ? "#22c55e" : pct > 50 ? "#3b82f6" : "#f59e0b";
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+        <span style={{ color: "#475569", fontSize: 11 }}>Progreso general</span>
+        <span style={{ color, fontSize: 12, fontWeight: 700 }}>{pct}%</span>
+      </div>
+      <div style={{ height: 8, background: "#1e293b", borderRadius: 99, overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: pct === 100 ? "#22c55e" : "linear-gradient(90deg,#3b82f6,#6366f1)", borderRadius: 99, transition: "width 0.4s ease" }} />
+      </div>
+      <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 10, color: "#94a3b8" }}>⏳ {items.filter(i => i.estado === "pendiente").length} pendientes</span>
+        <span style={{ fontSize: 10, color: "#22c55e" }}>✅ {completados} completados</span>
+        <span style={{ fontSize: 10, color: "#60a5fa" }}>📦 {entregados} entregados</span>
+      </div>
+    </div>
+  );
+}
 
 function Entregas() {
   const { token } = useAuth();
@@ -175,8 +160,8 @@ function Entregas() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
-  const [subiendoArchivo, setSubiendoArchivo] = useState<number | null>(null);
   const [notasEdit, setNotasEdit] = useState<{ [key: number]: string }>({});
+  const [actualizando, setActualizando] = useState<number | null>(null);
 
   const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 
@@ -200,8 +185,10 @@ function Entregas() {
   };
 
   const updateEstado = async (id: number, nuevoEstado: string) => {
+    setActualizando(id);
     await fetch(`${API_URL}/items-pedido/${id}`, { method: "PUT", headers, body: JSON.stringify({ estado: nuevoEstado }) });
     await loadItems();
+    setActualizando(null);
   };
 
   const updateNotas = async (id: number) => {
@@ -212,17 +199,12 @@ function Entregas() {
     await loadItems();
   };
 
-  const subirArchivo = async (id: number, tipo: "word" | "pdf", file: File) => {
-    const formData = new FormData();
-    formData.append("archivo", file);
-    formData.append("tipo", tipo);
-    setSubiendoArchivo(id);
-    try {
-      const res = await fetch(`${API_URL}/items-pedido/${id}/archivo`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
-      if (res.ok) await loadItems();
-    } finally {
-      setSubiendoArchivo(null);
+  const marcarTodosEntregados = async (clientItems: ItemPedido[]) => {
+    const pendientes = clientItems.filter(i => i.estado !== "entregado");
+    for (const item of pendientes) {
+      await fetch(`${API_URL}/items-pedido/${item.id}`, { method: "PUT", headers, body: JSON.stringify({ estado: "entregado" }) });
     }
+    await loadItems();
   };
 
   const itemsMes = items.filter(item => {
@@ -239,9 +221,9 @@ function Entregas() {
 
   const stats = [
     { label: "Pendientes",  value: itemsMes.filter(i => i.estado === "pendiente").length,  color: "#94a3b8", icon: "⏳" },
-    { label: "En proceso",  value: itemsMes.filter(i => i.estado === "en_proceso").length,  color: "#f59e0b", icon: "⚙️" },
     { label: "Completados", value: itemsMes.filter(i => i.estado === "completado").length, color: "#22c55e", icon: "✅" },
     { label: "Entregados",  value: itemsMes.filter(i => i.estado === "entregado").length,  color: "#3b82f6", icon: "📦" },
+    { label: "Clientes",    value: Object.keys(groupedByClient).length,                    color: "#a855f7", icon: "👤" },
   ];
 
   return (
@@ -256,13 +238,14 @@ function Entregas() {
         .client-header:hover { background:#1e293b; }
         .item-card { background:#1e293b; border-radius:12px; padding:16px; margin-bottom:10px; border:1px solid #334155; animation:fadeIn 0.2s ease; transition:border-color 0.2s; }
         .item-card:hover { border-color:#475569; }
-        .upload-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:8px; background:#1e293b; border:1px solid #334155; color:#94a3b8; font-size:12px; cursor:pointer; font-family:inherit; font-weight:500; transition:all 0.15s; }
-        .upload-btn:hover { border-color:#3b82f6; color:#60a5fa; }
-        .estado-select { padding:6px 10px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:white; font-size:12px; font-family:inherit; cursor:pointer; outline:none; transition:border-color 0.2s; }
-        .estado-select:focus { border-color:#3b82f6; }
         .notas-input { width:100%; padding:8px 12px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:white; font-size:13px; font-family:inherit; outline:none; box-sizing:border-box; transition:border-color 0.2s; }
         .notas-input:focus { border-color:#3b82f6; }
         .tag { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:99px; font-size:11px; font-weight:600; }
+        .btn-entregado { border:none; padding:8px 16px; border-radius:8px; background:linear-gradient(135deg,#3b82f6,#6366f1); color:white; font-weight:700; font-size:12px; cursor:pointer; font-family:inherit; transition:opacity 0.15s, transform 0.15s; }
+        .btn-entregado:hover { opacity:0.85; transform:translateY(-1px); }
+        .btn-entregado:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+        .estado-btn { padding:6px 14px; border-radius:8px; border:1px solid; font-size:12px; font-family:inherit; cursor:pointer; font-weight:600; transition:all 0.15s; }
+        .estado-btn:hover { opacity:0.8; }
       `}</style>
 
       {confirmOpen && (
@@ -284,7 +267,6 @@ function Entregas() {
         </div>
       </div>
 
-      {/* NAVEGADOR MES */}
       <div style={{ marginBottom: 24 }}>
         <NavegadorMes mesLabel={mesLabel} anio={anio} onAnterior={anterior} onSiguiente={siguiente} esActual={esActual()} />
       </div>
@@ -315,27 +297,21 @@ function Entregas() {
       ) : (
         Object.values(groupedByClient).map(({ cliente, items: clientItems }) => {
           const isSelected = selectedClientId === cliente.id;
-          const completados = clientItems.filter(i => i.estado === "completado" || i.estado === "entregado").length;
-          const progreso = Math.round((completados / clientItems.length) * 100);
-
-          // Resumen de chips para mostrar en el header del cliente
+          const todosEntregados = clientItems.every(i => i.estado === "entregado");
           const desgloses = clientItems.map(i => parsearTitulo(i.titulo, i.tipo, i.tipoAutor, i.periodicidad));
 
           return (
             <div key={cliente.id} className="client-card">
+              {/* HEADER CLIENTE */}
               <div className="client-header" onClick={() => setSelectedClientId(isSelected ? null : cliente.id)}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 0 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>👤</div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 15 }}>{cliente.nombreCompleto || "Cliente sin nombre"}</div>
-                    {/* Chips resumen en el header */}
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 14, flex: 1, minWidth: 0 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, marginTop: 2 }}>👤</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 15, marginBottom: 8 }}>{cliente.nombreCompleto || "Cliente sin nombre"}</div>
+                    {/* Chips desglose en header */}
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                       {desgloses.map((d, idx) => (
-                        <div key={idx} style={{
-                          display: "inline-flex", alignItems: "center", gap: 5,
-                          background: `${d.color}15`, border: `1px solid ${d.color}40`,
-                          borderRadius: 99, padding: "2px 10px",
-                        }}>
+                        <div key={idx} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: `${d.color}15`, border: `1px solid ${d.color}40`, borderRadius: 99, padding: "2px 10px" }}>
                           <span style={{ fontSize: 13 }}>{d.icono}</span>
                           <span style={{ color: d.color, fontSize: 11, fontWeight: 600 }}>
                             {d.lineaPrincipal}{d.lineaSecundaria ? ` · ${d.lineaSecundaria}` : ""}
@@ -343,32 +319,44 @@ function Entregas() {
                         </div>
                       ))}
                     </div>
+                    {/* Barra de progreso */}
+                    <BarraProgreso items={clientItems} />
+                    {/* Botón entregado (solo si no están todos entregados) */}
+                    {!todosEntregados && (
+                      <div onClick={e => e.stopPropagation()}>
+                        <button
+                          className="btn-entregado"
+                          onClick={() => showConfirm(
+                            `¿Marcar todos los ítems de ${cliente.nombreCompleto || "este cliente"} como entregados?`,
+                            () => marcarTodosEntregados(clientItems)
+                          )}
+                        >
+                          📦 Marcar todo como entregado
+                        </button>
+                      </div>
+                    )}
+                    {todosEntregados && (
+                      <span style={{ fontSize: 12, color: "#60a5fa", fontWeight: 600 }}>📦 Todo entregado</span>
+                    )}
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-                  {!isMobile && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ width: 80, height: 6, background: "#1e293b", borderRadius: 99, overflow: "hidden" }}>
-                        <div style={{ width: `${progreso}%`, height: "100%", background: progreso === 100 ? "#22c55e" : "linear-gradient(90deg,#3b82f6,#6366f1)", borderRadius: 99, transition: "width 0.3s" }} />
-                      </div>
-                      <span style={{ color: "#475569", fontSize: 12, minWidth: 32 }}>{progreso}%</span>
-                    </div>
-                  )}
-                  <span style={{ color: "#334155", fontSize: 20, transition: "transform 0.2s", transform: isSelected ? "rotate(180deg)" : "none" }}>▼</span>
-                </div>
+                <span style={{ color: "#334155", fontSize: 20, transition: "transform 0.2s", transform: isSelected ? "rotate(180deg)" : "none", flexShrink: 0, alignSelf: "flex-start", marginTop: 10 }}>▼</span>
               </div>
 
+              {/* ITEMS EXPANDIDOS */}
               {isSelected && (
                 <div style={{ padding: "12px 16px 16px" }}>
                   {clientItems.map(item => {
                     const desglose = parsearTitulo(item.titulo, item.tipo, item.tipoAutor, item.periodicidad);
+                    const esPendiente = item.estado === "pendiente";
+                    const esCompletado = item.estado === "completado";
+                    const esEntregado = item.estado === "entregado";
                     return (
                       <div key={item.id} className="item-card">
-                        {/* CABECERA ITEM con chip de desglose */}
+                        {/* Cabecera item */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
                           <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                             <ChipDesglose desglose={desglose} />
-                            {/* Título original como subtexto si existe y es distinto */}
                             {item.titulo && (
                               <div style={{ paddingTop: 4 }}>
                                 <div style={{ color: "#64748b", fontSize: 11 }}>{item.titulo}</div>
@@ -378,17 +366,23 @@ function Entregas() {
                           <EstadoBadge estado={item.estado} />
                         </div>
 
-                        {/* TAGS */}
-                        {(item.conSenapi || item.conIsbn || item.periodicidad || item.tipoAutor) && (
+                        {/* Tags SENAPI / ISBN */}
+                        {(item.conSenapi || item.conIsbn) && (
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
                             {item.conSenapi && <span className="tag" style={{ background: "rgba(168,85,247,0.1)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.2)" }}>🔖 SENAPI</span>}
                             {item.conIsbn && <span className="tag" style={{ background: "rgba(59,130,246,0.1)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.2)" }}>📘 ISBN</span>}
-                            {item.periodicidad && <span className="tag" style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)" }}>🔄 {item.periodicidad}</span>}
-                            {item.tipoAutor && <span className="tag" style={{ background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }}>✍️ {item.tipoAutor}</span>}
                           </div>
                         )}
 
-                        {/* NOTAS */}
+                        {/* Precio unitario */}
+                        {item.precioUnitario !== undefined && item.precioUnitario !== null && (
+                          <div style={{ background: "#0f172a", padding: "6px 12px", borderRadius: 8, border: "1px solid #1e293b", marginBottom: 12, display: "inline-block" }}>
+                            <span style={{ color: "#64748b", fontSize: 11 }}>Precio unitario: </span>
+                            <span style={{ color: "#22c55e", fontWeight: 700, fontSize: 13 }}>Bs {(item.precioUnitario as number).toFixed(2)}</span>
+                          </div>
+                        )}
+
+                        {/* Notas */}
                         <div style={{ marginBottom: 12 }}>
                           {notasEdit[item.id] !== undefined ? (
                             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -414,35 +408,41 @@ function Entregas() {
                           )}
                         </div>
 
-                        {/* ARCHIVOS + ESTADO */}
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                          {item.archivoWord && (
-                            <a href={item.archivoWord} target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)", color: "#60a5fa", fontSize: 12, textDecoration: "none", fontWeight: 500 }}>📄 Word</a>
-                          )}
-                          {item.archivoPdf && (
-                            <a href={item.archivoPdf} target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 12, textDecoration: "none", fontWeight: 500 }}>📑 PDF</a>
-                          )}
-                          <label className="upload-btn">
-                            📎 Subir Word
-                            <input type="file" accept=".doc,.docx" style={{ display: "none" }} onChange={e => e.target.files?.[0] && subirArchivo(item.id, "word", e.target.files[0])} disabled={subiendoArchivo === item.id} />
-                          </label>
-                          <label className="upload-btn">
-                            📎 Subir PDF
-                            <input type="file" accept=".pdf" style={{ display: "none" }} onChange={e => e.target.files?.[0] && subirArchivo(item.id, "pdf", e.target.files[0])} disabled={subiendoArchivo === item.id} />
-                          </label>
-                          {subiendoArchivo === item.id && <Spinner />}
-                          <select
-                            value={item.estado}
-                            onChange={e => updateEstado(item.id, e.target.value)}
-                            className="estado-select"
-                            style={{ marginLeft: "auto" }}
-                          >
-                            <option value="pendiente">⏳ Pendiente</option>
-                            <option value="en_proceso">⚙️ En proceso</option>
-                            <option value="completado">✅ Completado</option>
-                            <option value="entregado">📦 Entregado</option>
-                          </select>
-                        </div>
+                        {/* Botones de estado — solo Pendiente y Completado */}
+                        {!esEntregado && (
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                            <button
+                              className="estado-btn"
+                              disabled={esPendiente || actualizando === item.id}
+                              onClick={() => updateEstado(item.id, "pendiente")}
+                              style={{
+                                background: esPendiente ? "rgba(148,163,184,0.15)" : "transparent",
+                                borderColor: esPendiente ? "#94a3b8" : "#334155",
+                                color: esPendiente ? "#94a3b8" : "#475569",
+                              }}
+                            >
+                              ⏳ Pendiente
+                            </button>
+                            <button
+                              className="estado-btn"
+                              disabled={esCompletado || actualizando === item.id}
+                              onClick={() => updateEstado(item.id, "completado")}
+                              style={{
+                                background: esCompletado ? "rgba(34,197,94,0.15)" : "transparent",
+                                borderColor: esCompletado ? "#22c55e" : "#334155",
+                                color: esCompletado ? "#22c55e" : "#475569",
+                              }}
+                            >
+                              ✅ Completado
+                            </button>
+                            {actualizando === item.id && <Spinner />}
+                          </div>
+                        )}
+                        {esEntregado && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 12, color: "#60a5fa", fontWeight: 600 }}>📦 Entregado</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

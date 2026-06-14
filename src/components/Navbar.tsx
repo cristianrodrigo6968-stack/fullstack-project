@@ -27,21 +27,24 @@ function Navbar() {
   const isActive = (path: string) => location.pathname === path;
 
   // Carrito update
-  useEffect(() => {
-    const update = () => {
-      try {
-        const c = JSON.parse(localStorage.getItem("carrito") || "[]");
-        setCarritoCount(c.length);
-      } catch { setCarritoCount(0); }
-    };
-    update();
-    window.addEventListener("storage", update);
-    const interval = setInterval(update, 1000);
-    return () => {
-      window.removeEventListener("storage", update);
-      clearInterval(interval);
-    };
-  }, []);
+useEffect(() => {
+  const update = () => {
+    try {
+      const c = JSON.parse(localStorage.getItem("carrito") || "[]");
+      // Contar igual que agruparCarrito(): paquetes como 1 + sueltos individualmente
+      const ids = new Set(c.filter((i: any) => i.productoPadreId).map((i: any) => i.productoPadreId));
+      const sueltos = c.filter((i: any) => !i.productoPadreId).length;
+      setCarritoCount(ids.size + sueltos);
+    } catch { setCarritoCount(0); }
+  };
+  update();
+  window.addEventListener("storage", update);
+  const interval = setInterval(update, 1000);
+  return () => {
+    window.removeEventListener("storage", update);
+    clearInterval(interval);
+  };
+}, []);
 
   // Scroll shadow
   useEffect(() => {
