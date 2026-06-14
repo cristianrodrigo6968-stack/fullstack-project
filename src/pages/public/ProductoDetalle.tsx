@@ -84,7 +84,7 @@ function ProductoDetalle() {
           tipo: comp.tipo,
           componente: true,
           productoPadreId: producto.id,
-          nombrePadre: producto.nombre,   // 👈 NUEVO: guarda el nombre del producto padre para agrupar en el carrito
+          nombrePadre: producto.nombre,   // 👈 Línea importante para agrupar en el carrito
         };
       });
       setCarrito(prev => [...prev, ...nuevosItems]);

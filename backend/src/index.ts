@@ -614,7 +614,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
   }
 
-  // CORRECCIÓN: evitar IDs artificiales
+  // ***** LÓGICA CORREGIDA: usar los datos del frontend directamente *****
   let montoTotal = 0;
   const itemsParaPedido: any[] = [];
 
@@ -624,41 +624,21 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
       console.log("📦 Carrito recibido en verificación:", JSON.stringify(carrito, null, 2));
 
       if (Array.isArray(carrito) && carrito.length > 0) {
-        // Filtrar IDs reales (numéricos y que no contengan "_comp_")
-        const idsReales = carrito
-          .map((item: any) => item.id)
-          .filter((id: any) => id != null && typeof id === 'number' && !String(id).includes('_comp_'));
-
-        let productosBD: any[] = [];
-        let productoPorId = new Map();
-        if (idsReales.length > 0) {
-          productosBD = await prisma.producto.findMany({ where: { id: { in: idsReales } } });
-          productoPorId = new Map(productosBD.map(p => [p.id, p]));
-        }
-
         for (const item of carrito) {
           let precioFinal: number | null = null;
           let nombreProducto = item.nombre || "Producto desconocido";
+          let tipo = item.tipo || "producto";
 
-          // Usar el precio enviado por el frontend (prioridad)
+          // Siempre usar el precio enviado por el frontend
           if (typeof item.precioUnitario === 'number' && !isNaN(item.precioUnitario) && item.precioUnitario > 0) {
             precioFinal = item.precioUnitario;
             console.log(`✅ Usando precio del frontend para ${nombreProducto}: ${precioFinal}`);
-          }
-          // Solo si es un ID real y no vino el precio, fallback a BD
-          else if (item.id && typeof item.id === 'number' && !String(item.id).includes('_comp_') && productoPorId.has(item.id)) {
-            const producto = productoPorId.get(item.id);
-            nombreProducto = producto.nombre;
-            precioFinal = producto.descuento > 0
-              ? producto.precio - (producto.precio * producto.descuento / 100)
-              : producto.precio;
-            console.log(`⚠️ Precio no enviado, usando BD para ${nombreProducto}: ${precioFinal}`);
           }
 
           if (precioFinal !== null && precioFinal > 0) {
             montoTotal += precioFinal;
             itemsParaPedido.push({
-              tipo: item.tipo || "producto",
+              tipo: tipo,
               titulo: nombreProducto,
               notas: `Precio unitario: Bs ${precioFinal.toFixed(2)}`,
               precioUnitario: precioFinal,
@@ -823,7 +803,7 @@ app.post(
   }
 );
 
-// ===================== ACTUALIZACIÓN FORMULARIO CLIENTE (CORREGIDO) =====================
+// ===================== ACTUALIZACIÓN FORMULARIO CLIENTE =====================
 app.put("/clients/form/:token", async (req, res) => {
   const client = await prisma.client.findUnique({ where: { token: req.params.token } });
   if (!client) return res.status(404).json({ error: "Link no válido" });
