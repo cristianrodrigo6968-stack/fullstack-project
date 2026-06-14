@@ -74,6 +74,9 @@ function CarritoPage() {
 
   const { grupos, normales } = agruparCarrito();
 
+  // Calcular cantidad de ítems "reales" (cada paquete cuenta como 1)
+  const totalItems = grupos.length + normales.length;
+
   const total = (() => {
     const totalGrupos = grupos.reduce((sum, g) => sum + g.total, 0);
     const totalNormales = normales.reduce((sum, i) => sum + (i.descuento > 0 ? i.precio - (i.precio * i.descuento / 100) : i.precio), 0);
@@ -241,14 +244,12 @@ function CarritoPage() {
         {carrito.length > 0 && step !== "confirmacion" && (
           <>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
-              {/* Paquetes (productos compuestos) */}
               {grupos.map(grupo => (
                 <div key={grupo.id} className="cart-item" style={{ background: "#0d0d1a", borderRadius: 14, border: "1px solid #1e1b4b", marginBottom: 10 }}>
                   <div style={{ padding: "14px 18px", borderBottom: "1px solid #1e1b4b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontWeight: "bold", color: "#f1f5f9" }}>🎁 {grupo.nombrePaquete}</span>
-                    <button className="remove-btn" onClick={() => eliminarPaquete(grupo.id)}>✕ Eliminar</button>
+                    <button className="remove-btn" onClick={() => eliminarPaquete(grupo.id)}>✕ Eliminar paquete</button>
                   </div>
-                  {/* Lista de componentes (sin precios) */}
                   <div style={{ padding: "8px 18px" }}>
                     {grupo.items.map((item, idx) => (
                       <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -264,7 +265,6 @@ function CarritoPage() {
                 </div>
               ))}
 
-              {/* Productos normales (sin componentes) */}
               {normales.map((item, i) => {
                 const precio = item.descuento > 0 ? item.precio - (item.precio * item.descuento / 100) : item.precio;
                 return (
