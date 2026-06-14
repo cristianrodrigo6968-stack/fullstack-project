@@ -19,7 +19,6 @@ import AdminProductos from "./pages/admin/AdminProductos";
 import AdminMensajes from "./pages/admin/AdminMensajes";
 import Clients from "./pages/admin/Clients";
 import Entregas from "./pages/admin/Entregas";
-
 import Magazines from "./pages/admin/Magazines";
 import Books from "./pages/admin/Books";
 import Articles from "./pages/admin/Articles";

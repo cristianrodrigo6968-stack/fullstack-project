@@ -73,10 +73,7 @@ function CarritoPage() {
   };
 
   const { grupos, normales } = agruparCarrito();
-
-  // Calcular cantidad de ítems "reales" (cada paquete cuenta como 1)
   const totalItems = grupos.length + normales.length;
-
   const total = (() => {
     const totalGrupos = grupos.reduce((sum, g) => sum + g.total, 0);
     const totalNormales = normales.reduce((sum, i) => sum + (i.descuento > 0 ? i.precio - (i.precio * i.descuento / 100) : i.precio), 0);

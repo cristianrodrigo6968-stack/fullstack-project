@@ -402,7 +402,6 @@ app.delete("/projects/:id", auth, async (req, res) => {
 });
 
 // ===================== PRODUCTOS =====================
-// ===================== PRODUCTOS =====================
 app.get("/productos", async (req, res) => {
   res.json(await prisma.producto.findMany({ where: { activo: true } }));
 });
@@ -465,6 +464,7 @@ app.delete("/productos/:id", auth, async (req, res) => {
   await prisma.producto.delete({ where: { id: Number(req.params.id) } });
   res.json({ ok: true });
 });
+
 // ===================== PAGOS (cliente anónimo) =====================
 app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
   try {
@@ -552,7 +552,7 @@ app.delete("/pagos/:id", auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ===================== VERIFICAR PAGO =====================
+// ===================== VERIFICAR PAGO (CORREGIDO) =====================
 app.put("/pagos/:id/verificar", auth, async (req, res) => {
   const id = Number(req.params.id);
   const pago = await prisma.pago.findUnique({ where: { id } });
@@ -614,39 +614,57 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
   }
 
+  // CORRECCIÓN: evitar IDs artificiales
   let montoTotal = 0;
   const itemsParaPedido: any[] = [];
+
   if (pago.productos) {
     try {
       const carrito = JSON.parse(pago.productos);
+      console.log("📦 Carrito recibido en verificación:", JSON.stringify(carrito, null, 2));
+
       if (Array.isArray(carrito) && carrito.length > 0) {
-        const ids = carrito.map((item: any) => item.id).filter((id: any) => id != null);
+        // Filtrar IDs reales (numéricos y que no contengan "_comp_")
+        const idsReales = carrito
+          .map((item: any) => item.id)
+          .filter((id: any) => id != null && typeof id === 'number' && !String(id).includes('_comp_'));
+
         let productosBD: any[] = [];
         let productoPorId = new Map();
-        if (ids.length > 0) {
-          productosBD = await prisma.producto.findMany({ where: { id: { in: ids } } });
+        if (idsReales.length > 0) {
+          productosBD = await prisma.producto.findMany({ where: { id: { in: idsReales } } });
           productoPorId = new Map(productosBD.map(p => [p.id, p]));
         }
+
         for (const item of carrito) {
           let precioFinal: number | null = null;
           let nombreProducto = item.nombre || "Producto desconocido";
+
+          // Usar el precio enviado por el frontend (prioridad)
           if (typeof item.precioUnitario === 'number' && !isNaN(item.precioUnitario) && item.precioUnitario > 0) {
             precioFinal = item.precioUnitario;
-          } else if (item.id && productoPorId.has(item.id)) {
+            console.log(`✅ Usando precio del frontend para ${nombreProducto}: ${precioFinal}`);
+          }
+          // Solo si es un ID real y no vino el precio, fallback a BD
+          else if (item.id && typeof item.id === 'number' && !String(item.id).includes('_comp_') && productoPorId.has(item.id)) {
             const producto = productoPorId.get(item.id);
             nombreProducto = producto.nombre;
             precioFinal = producto.descuento > 0
               ? producto.precio - (producto.precio * producto.descuento / 100)
               : producto.precio;
+            console.log(`⚠️ Precio no enviado, usando BD para ${nombreProducto}: ${precioFinal}`);
           }
+
           if (precioFinal !== null && precioFinal > 0) {
             montoTotal += precioFinal;
             itemsParaPedido.push({
-              tipo: "producto",
+              tipo: item.tipo || "producto",
               titulo: nombreProducto,
               notas: `Precio unitario: Bs ${precioFinal.toFixed(2)}`,
               precioUnitario: precioFinal,
             });
+          } else {
+            console.error(`❌ No se pudo determinar precio para item:`, item);
           }
         }
       }
@@ -654,10 +672,20 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
       console.error("Error parseando productos del pago:", err);
     }
   }
+
   if (montoTotal === 0 && itemsParaPedido.length === 0) {
     montoTotal = pago.monto;
-    itemsParaPedido.push({ tipo: "desconocido", titulo: "Pago sin productos específicos", precioUnitario: pago.monto });
+    itemsParaPedido.push({
+      tipo: "desconocido",
+      titulo: "Pago sin productos específicos",
+      precioUnitario: pago.monto,
+      notas: "",
+    });
+    console.log("⚠️ No se encontraron productos, usando fallback genérico");
   }
+
+  console.log("💰 Monto total calculado:", montoTotal);
+  console.log("📋 Items para pedido:", itemsParaPedido);
 
   const nuevoPedido = await prisma.pedido.create({
     data: {
@@ -723,12 +751,10 @@ app.get("/clients", auth, async (req, res) => {
   res.json(await prisma.client.findMany({ orderBy: { createdAt: "desc" } }));
 });
 
-// ===================== FORMULARIO: OBTENER (VERIFICAR LINK) =====================
 app.get("/clients/form/:token", async (req, res) => {
   const client = await prisma.client.findUnique({ where: { token: req.params.token } });
   if (!client) return res.status(404).json({ error: "Link no válido" });
   if (new Date() > client.expiresAt) return res.status(410).json({ error: "Este link ha expirado" });
-  // Si ya tiene credenciales y el formulario fue llenado, el link ya no debe servir
   if (client.clientUsername && client.status === "formulario llenado") {
     return res.status(410).json({ error: "Este link ya fue utilizado y no puede volver a enviarse." });
   }
@@ -746,7 +772,6 @@ app.post("/clients", auth, async (req, res) => {
   );
 });
 
-// ===================== RUTA SUBIR FOTOS Y DOCUMENTOS =====================
 app.post(
   "/clients/form/:token/fotos",
   upload.fields([
@@ -803,7 +828,6 @@ app.put("/clients/form/:token", async (req, res) => {
   const client = await prisma.client.findUnique({ where: { token: req.params.token } });
   if (!client) return res.status(404).json({ error: "Link no válido" });
   if (new Date() > client.expiresAt) return res.status(410).json({ error: "Este link ha expirado" });
-  // Si ya tiene credenciales y el formulario fue llenado, no permitir reenvío
   if (client.clientUsername && client.status === "formulario llenado") {
     return res.status(410).json({ error: "Este link ya fue utilizado y no puede volver a enviarse." });
   }
@@ -828,7 +852,6 @@ app.put("/clients/form/:token", async (req, res) => {
     },
   });
 
-  // Generar credenciales solo si no existen
   let credentials = undefined;
   if (!updated.clientUsername) {
     const nombresArray = (updated.nombres || "").split(" ");
@@ -866,10 +889,9 @@ app.put("/clients/form/:token", async (req, res) => {
     credentials = { username, password };
   }
 
-  // Marcar el link como expirado (ya no podrá usarse)
   await prisma.client.update({
     where: { id: updated.id },
-    data: { expiresAt: new Date(0) }, // Fecha pasada
+    data: { expiresAt: new Date(0) },
   });
 
   let pdfBase64: string | null = null;
@@ -915,7 +937,6 @@ app.put("/clients/form/:token", async (req, res) => {
 
   res.json({ client: updated, credentials, pdfBase64 });
 
-  // El resto del flujo (tareas, entregas) igual que antes
   await prisma.clienteTask.deleteMany({ where: { clienteId: updated.id } });
   await prisma.entrega.deleteMany({ where: { clienteId: updated.id } });
 
