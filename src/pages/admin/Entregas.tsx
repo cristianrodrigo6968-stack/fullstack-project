@@ -24,6 +24,103 @@ interface ItemPedido {
   creadoEn: string;
 }
 
+// ─── Parser de título ────────────────────────────────────────────────────────
+
+interface DesgloseTitulo {
+  tipoVisual: "libro" | "revista" | "otro";
+  icono: string;
+  color: string;
+  lineaPrincipal: string;
+  lineaSecundaria: string | null;
+}
+
+function parsearTitulo(titulo: string | null, tipo: string, tipoAutor: string | null, periodicidad: string | null): DesgloseTitulo {
+  const t = (titulo || "").toLowerCase();
+
+  // ── LIBRO ──
+  if (tipo === "libro" || t.includes("libro")) {
+    let categoria: string | null = null;
+    if (t.includes("categoría a") || t.includes("categoria a")) categoria = "Categoría A";
+    else if (t.includes("categoría b") || t.includes("categoria b")) categoria = "Categoría B";
+    else if (t.includes("categoría c") || t.includes("categoria c")) categoria = "Categoría C";
+    return {
+      tipoVisual: "libro",
+      icono: "📖",
+      color: "#3b82f6",
+      lineaPrincipal: "Libro",
+      lineaSecundaria: categoria,
+    };
+  }
+
+  // ── REVISTA / ARTÍCULO / DIRECTOR / FUNDADOR ──
+  if (
+    tipo === "edicion_revista" || tipo === "articulo" || tipo === "fundador" ||
+    t.includes("revista") || t.includes("director") || t.includes("artículo") ||
+    t.includes("articulo") || t.includes("fundador") || t.includes("redacción") ||
+    t.includes("redaccion") || t.includes("publicación") || t.includes("publicacion")
+  ) {
+    let servicio: string | null = null;
+    let duracion: string | null = null;
+
+    // Detectar tipo de servicio
+    if (t.includes("director")) servicio = "Director de revista";
+    else if (t.includes("fundador")) servicio = "Fundador";
+    else if (t.includes("redacc")) servicio = "Artículo — Redacción y publicación";
+    else if (t.includes("solo publicac") || t.includes("publicac")) servicio = "Artículo — Solo publicación";
+    else if (tipoAutor) servicio = tipoAutor;
+
+    // Detectar duración
+    if (t.includes("3 mes") || t.includes("tres mes")) duracion = "3 meses";
+    else if (t.includes("1 mes") || t.includes("un mes")) duracion = "1 mes";
+    else if (periodicidad) duracion = periodicidad;
+
+    const lineaSecundaria = [servicio, duracion].filter(Boolean).join(" · ") || null;
+
+    return {
+      tipoVisual: "revista",
+      icono: "📰",
+      color: "#f59e0b",
+      lineaPrincipal: "Revista",
+      lineaSecundaria,
+    };
+  }
+
+  // ── OTRO / IMPRESIÓN ──
+  return {
+    tipoVisual: "otro",
+    icono: "📦",
+    color: "#64748b",
+    lineaPrincipal: titulo || tipo,
+    lineaSecundaria: null,
+  };
+}
+
+// ─── Chip de desglose ────────────────────────────────────────────────────────
+
+function ChipDesglose({ desglose }: { desglose: DesgloseTitulo }) {
+  return (
+    <div style={{
+      display: "inline-flex",
+      flexDirection: "column",
+      gap: 2,
+      background: `${desglose.color}15`,
+      border: `1px solid ${desglose.color}40`,
+      borderRadius: 10,
+      padding: "6px 12px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ fontSize: 15 }}>{desglose.icono}</span>
+        <span style={{ color: desglose.color, fontWeight: 700, fontSize: 13 }}>{desglose.lineaPrincipal}</span>
+      </div>
+      {desglose.lineaSecundaria && (
+        <div style={{ color: "#94a3b8", fontSize: 11, paddingLeft: 21 }}>{desglose.lineaSecundaria}</div>
+      )}
+    </div>
+  );
+}
+
+// ─── Componentes auxiliares ──────────────────────────────────────────────────
+
 function Spinner() {
   return (
     <>
@@ -49,18 +146,11 @@ function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onCon
   );
 }
 
-const TIPO_CONFIG: Record<string, { icon: string; label: string; color: string }> = {
-  edicion_revista: { icon: "📘", label: "Edición de Revista", color: "#6366f1" },
-  articulo:        { icon: "📝", label: "Artículo",           color: "#f59e0b" },
-  libro:           { icon: "📚", label: "Libro",              color: "#3b82f6" },
-  fundador:        { icon: "🏆", label: "Fundador",           color: "#a855f7" },
-};
-
 const ESTADO_CONFIG: Record<string, { bg: string; color: string; border: string; label: string }> = {
-  pendiente:   { bg: "rgba(148,163,184,0.1)",  color: "#94a3b8", border: "#334155",  label: "⏳ Pendiente"   },
-  en_proceso:  { bg: "rgba(245,158,11,0.1)",   color: "#f59e0b", border: "#92400e",  label: "⚙️ En proceso"  },
-  completado:  { bg: "rgba(34,197,94,0.1)",    color: "#22c55e", border: "#166534",  label: "✅ Completado"  },
-  entregado:   { bg: "rgba(59,130,246,0.1)",   color: "#60a5fa", border: "#1e3a5f",  label: "📦 Entregado"   },
+  pendiente:  { bg: "rgba(148,163,184,0.1)", color: "#94a3b8", border: "#334155", label: "⏳ Pendiente"  },
+  en_proceso: { bg: "rgba(245,158,11,0.1)",  color: "#f59e0b", border: "#92400e", label: "⚙️ En proceso" },
+  completado: { bg: "rgba(34,197,94,0.1)",   color: "#22c55e", border: "#166534", label: "✅ Completado" },
+  entregado:  { bg: "rgba(59,130,246,0.1)",  color: "#60a5fa", border: "#1e3a5f", label: "📦 Entregado"  },
 };
 
 function EstadoBadge({ estado }: { estado: string }) {
@@ -71,6 +161,8 @@ function EstadoBadge({ estado }: { estado: string }) {
     </span>
   );
 }
+
+// ─── Componente principal ────────────────────────────────────────────────────
 
 function Entregas() {
   const { token } = useAuth();
@@ -174,7 +266,11 @@ function Entregas() {
       `}</style>
 
       {confirmOpen && (
-        <ConfirmModal message={confirmMessage} onConfirm={() => { confirmAction(); setConfirmOpen(false); }} onCancel={() => setConfirmOpen(false)} />
+        <ConfirmModal
+          message={confirmMessage}
+          onConfirm={() => { confirmAction(); setConfirmOpen(false); }}
+          onCancel={() => setConfirmOpen(false)}
+        />
       )}
 
       {/* HEADER */}
@@ -207,7 +303,9 @@ function Entregas() {
       {/* LISTA */}
       {loading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {[1, 2, 3].map(i => <div key={i} style={{ background: "#0f172a", borderRadius: 16, height: 80, border: "1px solid #1e293b", opacity: 0.5, animation: "pulse 1.5s ease-in-out infinite" }} />)}
+          {[1, 2, 3].map(i => (
+            <div key={i} style={{ background: "#0f172a", borderRadius: 16, height: 80, border: "1px solid #1e293b", opacity: 0.5, animation: "pulse 1.5s ease-in-out infinite" }} />
+          ))}
         </div>
       ) : Object.keys(groupedByClient).length === 0 ? (
         <div style={{ background: "#0f172a", border: "1px dashed #1e293b", borderRadius: 16, padding: "60px 40px", textAlign: "center" }}>
@@ -220,19 +318,34 @@ function Entregas() {
           const completados = clientItems.filter(i => i.estado === "completado" || i.estado === "entregado").length;
           const progreso = Math.round((completados / clientItems.length) * 100);
 
+          // Resumen de chips para mostrar en el header del cliente
+          const desgloses = clientItems.map(i => parsearTitulo(i.titulo, i.tipo, i.tipoAutor, i.periodicidad));
+
           return (
             <div key={cliente.id} className="client-card">
               <div className="client-header" onClick={() => setSelectedClientId(isSelected ? null : cliente.id)}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 0 }}>
                   <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>👤</div>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 15 }}>{cliente.nombreCompleto || "Cliente sin nombre"}</div>
-                    <div style={{ color: "#475569", fontSize: 12, marginTop: 2 }}>
-                      {clientItems.length} ítem{clientItems.length !== 1 ? "s" : ""} · {completados} completado{completados !== 1 ? "s" : ""}
+                    {/* Chips resumen en el header */}
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                      {desgloses.map((d, idx) => (
+                        <div key={idx} style={{
+                          display: "inline-flex", alignItems: "center", gap: 5,
+                          background: `${d.color}15`, border: `1px solid ${d.color}40`,
+                          borderRadius: 99, padding: "2px 10px",
+                        }}>
+                          <span style={{ fontSize: 13 }}>{d.icono}</span>
+                          <span style={{ color: d.color, fontSize: 11, fontWeight: 600 }}>
+                            {d.lineaPrincipal}{d.lineaSecundaria ? ` · ${d.lineaSecundaria}` : ""}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
                   {!isMobile && (
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <div style={{ width: 80, height: 6, background: "#1e293b", borderRadius: 99, overflow: "hidden" }}>
@@ -248,20 +361,24 @@ function Entregas() {
               {isSelected && (
                 <div style={{ padding: "12px 16px 16px" }}>
                   {clientItems.map(item => {
-                    const tipoCfg = TIPO_CONFIG[item.tipo] || { icon: "📋", label: item.tipo, color: "#64748b" };
+                    const desglose = parsearTitulo(item.titulo, item.tipo, item.tipoAutor, item.periodicidad);
                     return (
                       <div key={item.id} className="item-card">
+                        {/* CABECERA ITEM con chip de desglose */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${tipoCfg.color}20`, border: `1px solid ${tipoCfg.color}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{tipoCfg.icon}</div>
-                            <div>
-                              <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 14 }}>{item.titulo || tipoCfg.label}</div>
-                              <div style={{ color: tipoCfg.color, fontSize: 11, fontWeight: 600, marginTop: 1 }}>{tipoCfg.label}</div>
-                            </div>
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                            <ChipDesglose desglose={desglose} />
+                            {/* Título original como subtexto si existe y es distinto */}
+                            {item.titulo && (
+                              <div style={{ paddingTop: 4 }}>
+                                <div style={{ color: "#64748b", fontSize: 11 }}>{item.titulo}</div>
+                              </div>
+                            )}
                           </div>
                           <EstadoBadge estado={item.estado} />
                         </div>
 
+                        {/* TAGS */}
                         {(item.conSenapi || item.conIsbn || item.periodicidad || item.tipoAutor) && (
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
                             {item.conSenapi && <span className="tag" style={{ background: "rgba(168,85,247,0.1)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.2)" }}>🔖 SENAPI</span>}
@@ -271,28 +388,55 @@ function Entregas() {
                           </div>
                         )}
 
+                        {/* NOTAS */}
                         <div style={{ marginBottom: 12 }}>
                           {notasEdit[item.id] !== undefined ? (
                             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                              <input value={notasEdit[item.id]} onChange={e => setNotasEdit(prev => ({ ...prev, [item.id]: e.target.value }))} className="notas-input" placeholder="Notas de producción..." />
+                              <input
+                                value={notasEdit[item.id]}
+                                onChange={e => setNotasEdit(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                className="notas-input"
+                                placeholder="Notas de producción..."
+                              />
                               <button onClick={() => updateNotas(item.id)} style={{ background: "linear-gradient(135deg,#22c55e,#16a34a)", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", cursor: "pointer", fontSize: 13, fontFamily: "inherit", whiteSpace: "nowrap" }}>💾 Guardar</button>
                               <button onClick={() => setNotasEdit(prev => { const n = { ...prev }; delete n[item.id]; return n; })} style={{ background: "#1e293b", border: "1px solid #334155", padding: "8px 12px", borderRadius: 8, color: "#94a3b8", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>✕</button>
                             </div>
                           ) : (
                             <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#0f172a", padding: "8px 12px", borderRadius: 8, border: "1px solid #1e293b" }}>
                               <span style={{ fontSize: 13, color: item.notas ? "#cbd5e1" : "#475569", flex: 1 }}>📝 {item.notas || "Sin notas de producción"}</span>
-                              <button onClick={() => setNotasEdit(prev => ({ ...prev, [item.id]: item.notas || "" }))} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 12, fontFamily: "inherit", padding: "2px 6px", borderRadius: 4, transition: "color 0.15s" }} onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"} onMouseLeave={e => e.currentTarget.style.color = "#475569"}>✏️ Editar</button>
+                              <button
+                                onClick={() => setNotasEdit(prev => ({ ...prev, [item.id]: item.notas || "" }))}
+                                style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 12, fontFamily: "inherit", padding: "2px 6px", borderRadius: 4 }}
+                                onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+                                onMouseLeave={e => e.currentTarget.style.color = "#475569"}
+                              >✏️ Editar</button>
                             </div>
                           )}
                         </div>
 
+                        {/* ARCHIVOS + ESTADO */}
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                          {item.archivoWord && <a href={item.archivoWord} target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)", color: "#60a5fa", fontSize: 12, textDecoration: "none", fontWeight: 500 }}>📄 Word</a>}
-                          {item.archivoPdf && <a href={item.archivoPdf} target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 12, textDecoration: "none", fontWeight: 500 }}>📑 PDF</a>}
-                          <label className="upload-btn">📎 Subir Word<input type="file" accept=".doc,.docx" style={{ display: "none" }} onChange={e => e.target.files?.[0] && subirArchivo(item.id, "word", e.target.files[0])} disabled={subiendoArchivo === item.id} /></label>
-                          <label className="upload-btn">📎 Subir PDF<input type="file" accept=".pdf" style={{ display: "none" }} onChange={e => e.target.files?.[0] && subirArchivo(item.id, "pdf", e.target.files[0])} disabled={subiendoArchivo === item.id} /></label>
+                          {item.archivoWord && (
+                            <a href={item.archivoWord} target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)", color: "#60a5fa", fontSize: 12, textDecoration: "none", fontWeight: 500 }}>📄 Word</a>
+                          )}
+                          {item.archivoPdf && (
+                            <a href={item.archivoPdf} target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 12, textDecoration: "none", fontWeight: 500 }}>📑 PDF</a>
+                          )}
+                          <label className="upload-btn">
+                            📎 Subir Word
+                            <input type="file" accept=".doc,.docx" style={{ display: "none" }} onChange={e => e.target.files?.[0] && subirArchivo(item.id, "word", e.target.files[0])} disabled={subiendoArchivo === item.id} />
+                          </label>
+                          <label className="upload-btn">
+                            📎 Subir PDF
+                            <input type="file" accept=".pdf" style={{ display: "none" }} onChange={e => e.target.files?.[0] && subirArchivo(item.id, "pdf", e.target.files[0])} disabled={subiendoArchivo === item.id} />
+                          </label>
                           {subiendoArchivo === item.id && <Spinner />}
-                          <select value={item.estado} onChange={e => updateEstado(item.id, e.target.value)} className="estado-select" style={{ marginLeft: "auto" }}>
+                          <select
+                            value={item.estado}
+                            onChange={e => updateEstado(item.id, e.target.value)}
+                            className="estado-select"
+                            style={{ marginLeft: "auto" }}
+                          >
                             <option value="pendiente">⏳ Pendiente</option>
                             <option value="en_proceso">⚙️ En proceso</option>
                             <option value="completado">✅ Completado</option>
