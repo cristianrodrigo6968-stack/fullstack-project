@@ -222,12 +222,9 @@ function Entregas() {
 
           return (
             <div key={cliente.id} className="client-card">
-              {/* Header cliente */}
               <div className="client-header" onClick={() => setSelectedClientId(isSelected ? null : cliente.id)}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
-                    👤
-                  </div>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>👤</div>
                   <div>
                     <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 15 }}>{cliente.nombreCompleto || "Cliente sin nombre"}</div>
                     <div style={{ color: "#475569", fontSize: 12, marginTop: 2 }}>
@@ -236,41 +233,35 @@ function Entregas() {
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  {/* Barra de progreso */}
-                  <div style={{ display: isMobile ? "none" : "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 80, height: 6, background: "#1e293b", borderRadius: 99, overflow: "hidden" }}>
-                      <div style={{ width: `${progreso}%`, height: "100%", background: progreso === 100 ? "#22c55e" : "linear-gradient(90deg,#3b82f6,#6366f1)", borderRadius: 99, transition: "width 0.3s" }} />
+                  {!isMobile && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 80, height: 6, background: "#1e293b", borderRadius: 99, overflow: "hidden" }}>
+                        <div style={{ width: `${progreso}%`, height: "100%", background: progreso === 100 ? "#22c55e" : "linear-gradient(90deg,#3b82f6,#6366f1)", borderRadius: 99, transition: "width 0.3s" }} />
+                      </div>
+                      <span style={{ color: "#475569", fontSize: 12, minWidth: 32 }}>{progreso}%</span>
                     </div>
-                    <span style={{ color: "#475569", fontSize: 12, minWidth: 32 }}>{progreso}%</span>
-                  </div>
+                  )}
                   <span style={{ color: "#334155", fontSize: 20, transition: "transform 0.2s", transform: isSelected ? "rotate(180deg)" : "none" }}>▼</span>
                 </div>
               </div>
 
-              {/* Items */}
               {isSelected && (
                 <div style={{ padding: "12px 16px 16px" }}>
                   {clientItems.map(item => {
                     const tipoCfg = TIPO_CONFIG[item.tipo] || { icon: "📋", label: item.tipo, color: "#64748b" };
                     return (
                       <div key={item.id} className="item-card">
-                        {/* Top row */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${tipoCfg.color}20`, border: `1px solid ${tipoCfg.color}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-                              {tipoCfg.icon}
-                            </div>
+                            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${tipoCfg.color}20`, border: `1px solid ${tipoCfg.color}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{tipoCfg.icon}</div>
                             <div>
-                              <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 14 }}>
-                                {item.titulo || tipoCfg.label}
-                              </div>
+                              <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 14 }}>{item.titulo || tipoCfg.label}</div>
                               <div style={{ color: tipoCfg.color, fontSize: 11, fontWeight: 600, marginTop: 1 }}>{tipoCfg.label}</div>
                             </div>
                           </div>
                           <EstadoBadge estado={item.estado} />
                         </div>
 
-                        {/* Tags */}
                         {(item.conSenapi || item.conIsbn || item.periodicidad || item.tipoAutor) && (
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
                             {item.conSenapi && <span className="tag" style={{ background: "rgba(168,85,247,0.1)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.2)" }}>🔖 SENAPI</span>}
@@ -280,55 +271,27 @@ function Entregas() {
                           </div>
                         )}
 
-                        {/* Notas */}
                         <div style={{ marginBottom: 12 }}>
                           {notasEdit[item.id] !== undefined ? (
                             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                              <input
-                                value={notasEdit[item.id]}
-                                onChange={e => setNotasEdit(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                className="notas-input"
-                                placeholder="Notas de producción..."
-                              />
+                              <input value={notasEdit[item.id]} onChange={e => setNotasEdit(prev => ({ ...prev, [item.id]: e.target.value }))} className="notas-input" placeholder="Notas de producción..." />
                               <button onClick={() => updateNotas(item.id)} style={{ background: "linear-gradient(135deg,#22c55e,#16a34a)", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", cursor: "pointer", fontSize: 13, fontFamily: "inherit", whiteSpace: "nowrap" }}>💾 Guardar</button>
                               <button onClick={() => setNotasEdit(prev => { const n = { ...prev }; delete n[item.id]; return n; })} style={{ background: "#1e293b", border: "1px solid #334155", padding: "8px 12px", borderRadius: 8, color: "#94a3b8", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>✕</button>
                             </div>
                           ) : (
                             <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#0f172a", padding: "8px 12px", borderRadius: 8, border: "1px solid #1e293b" }}>
-                              <span style={{ fontSize: 13, color: item.notas ? "#cbd5e1" : "#475569", flex: 1 }}>
-                                📝 {item.notas || "Sin notas de producción"}
-                              </span>
-                              <button onClick={() => setNotasEdit(prev => ({ ...prev, [item.id]: item.notas || "" }))} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 12, fontFamily: "inherit", padding: "2px 6px", borderRadius: 4, transition: "color 0.15s" }}
-                                onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
-                                onMouseLeave={e => e.currentTarget.style.color = "#475569"}>
-                                ✏️ Editar
-                              </button>
+                              <span style={{ fontSize: 13, color: item.notas ? "#cbd5e1" : "#475569", flex: 1 }}>📝 {item.notas || "Sin notas de producción"}</span>
+                              <button onClick={() => setNotasEdit(prev => ({ ...prev, [item.id]: item.notas || "" }))} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 12, fontFamily: "inherit", padding: "2px 6px", borderRadius: 4, transition: "color 0.15s" }} onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"} onMouseLeave={e => e.currentTarget.style.color = "#475569"}>✏️ Editar</button>
                             </div>
                           )}
                         </div>
 
-                        {/* Acciones */}
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                          {item.archivoWord && (
-                            <a href={item.archivoWord} target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)", color: "#60a5fa", fontSize: 12, textDecoration: "none", fontWeight: 500 }}>
-                              📄 Word
-                            </a>
-                          )}
-                          {item.archivoPdf && (
-                            <a href={item.archivoPdf} target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 12, textDecoration: "none", fontWeight: 500 }}>
-                              📑 PDF
-                            </a>
-                          )}
-                          <label className="upload-btn">
-                            📎 Subir Word
-                            <input type="file" accept=".doc,.docx" style={{ display: "none" }} onChange={e => e.target.files?.[0] && subirArchivo(item.id, "word", e.target.files[0])} disabled={subiendoArchivo === item.id} />
-                          </label>
-                          <label className="upload-btn">
-                            📎 Subir PDF
-                            <input type="file" accept=".pdf" style={{ display: "none" }} onChange={e => e.target.files?.[0] && subirArchivo(item.id, "pdf", e.target.files[0])} disabled={subiendoArchivo === item.id} />
-                          </label>
+                          {item.archivoWord && <a href={item.archivoWord} target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)", color: "#60a5fa", fontSize: 12, textDecoration: "none", fontWeight: 500 }}>📄 Word</a>}
+                          {item.archivoPdf && <a href={item.archivoPdf} target="_blank" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 12, textDecoration: "none", fontWeight: 500 }}>📑 PDF</a>}
+                          <label className="upload-btn">📎 Subir Word<input type="file" accept=".doc,.docx" style={{ display: "none" }} onChange={e => e.target.files?.[0] && subirArchivo(item.id, "word", e.target.files[0])} disabled={subiendoArchivo === item.id} /></label>
+                          <label className="upload-btn">📎 Subir PDF<input type="file" accept=".pdf" style={{ display: "none" }} onChange={e => e.target.files?.[0] && subirArchivo(item.id, "pdf", e.target.files[0])} disabled={subiendoArchivo === item.id} /></label>
                           {subiendoArchivo === item.id && <Spinner />}
-
                           <select value={item.estado} onChange={e => updateEstado(item.id, e.target.value)} className="estado-select" style={{ marginLeft: "auto" }}>
                             <option value="pendiente">⏳ Pendiente</option>
                             <option value="en_proceso">⚙️ En proceso</option>
