@@ -89,7 +89,8 @@ function CarritoPage() {
     setStep("pago");
   };
 
-    const getProductosPayload = () => {
+   const getProductosPayload = () => {
+  console.log("🛒 Carrito al enviar:", JSON.stringify(carrito, null, 2));
   return carrito.map(p => ({
     id: p.id,
     nombre: p.nombre,
@@ -97,7 +98,6 @@ function CarritoPage() {
     precioUnitario: p.descuento > 0 ? p.precio - (p.precio * p.descuento / 100) : p.precio,
   }));
 };
-
   const handleSubirComprobante = async () => {
     if (!comprobante || !nombreDeclarado || !monto || !celular || !ci) {
       alert("Completá todos los campos antes de enviar.");
