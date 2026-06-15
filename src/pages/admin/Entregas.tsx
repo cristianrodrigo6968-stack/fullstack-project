@@ -16,7 +16,7 @@ interface ItemPedido {
   tipoAutor: string | null;
   asociacionEncargaTitulo: boolean;
   notas: string | null;
-  precioUnitario: number | null;   // 👈 agregar esta línea
+  precioUnitario: number | null;
   archivoWord: string | null;
   archivoPdf: string | null;
   estado: string;
@@ -45,7 +45,7 @@ function parsearTitulo(titulo: string | null, tipo: string, tipoAutor: string | 
   }
 
   if (
-    tipo === "edicion_revista" || tipo === "articulo" || tipo === "fundador" ||
+    tipo === "edicion_revista" || tipo === "articulo" || tipo === "fundador" || tipo === "revista" ||
     t.includes("revista") || t.includes("director") || t.includes("artículo") ||
     t.includes("articulo") || t.includes("fundador") || t.includes("redacc") ||
     t.includes("publicac")
@@ -162,6 +162,7 @@ function Entregas() {
   const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
   const [notasEdit, setNotasEdit] = useState<{ [key: number]: string }>({});
   const [actualizando, setActualizando] = useState<number | null>(null);
+  const [eliminandoId, setEliminandoId] = useState<number | null>(null);
 
   const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 
@@ -197,6 +198,13 @@ function Entregas() {
     await fetch(`${API_URL}/items-pedido/${id}`, { method: "PUT", headers, body: JSON.stringify({ notas }) });
     setNotasEdit(prev => { const n = { ...prev }; delete n[id]; return n; });
     await loadItems();
+  };
+
+  const eliminarItem = async (id: number) => {
+    setEliminandoId(id);
+    await fetch(`${API_URL}/items-pedido/${id}`, { method: "DELETE", headers });
+    await loadItems();
+    setEliminandoId(null);
   };
 
   const marcarTodosEntregados = async (clientItems: ItemPedido[]) => {
@@ -245,7 +253,8 @@ function Entregas() {
         .btn-entregado:hover { opacity:0.85; transform:translateY(-1px); }
         .btn-entregado:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
         .estado-btn { padding:6px 14px; border-radius:8px; border:1px solid; font-size:12px; font-family:inherit; cursor:pointer; font-weight:600; transition:all 0.15s; }
-        .estado-btn:hover { opacity:0.8; }
+        .estado-btn:hover:not(:disabled) { opacity:0.8; }
+        .estado-btn:disabled { opacity:0.4; cursor:not-allowed; }
       `}</style>
 
       {confirmOpen && (
@@ -321,7 +330,7 @@ function Entregas() {
                     </div>
                     {/* Barra de progreso */}
                     <BarraProgreso items={clientItems} />
-                    {/* Botón entregado (solo si no están todos entregados) */}
+                    {/* Botón entregado */}
                     {!todosEntregados && (
                       <div onClick={e => e.stopPropagation()}>
                         <button
@@ -374,44 +383,84 @@ function Entregas() {
                           </div>
                         )}
 
-                      
-                       {/* Notas */}
+                        {/* Notas */}
+                        <div style={{ marginBottom: 12 }}>
+                          {notasEdit[item.id] !== undefined ? (
+                            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                              <input
+                                value={notasEdit[item.id]}
+                                onChange={e => setNotasEdit(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                className="notas-input"
+                                placeholder="Notas de producción..."
+                              />
+                              <button onClick={() => updateNotas(item.id)} style={{ background: "linear-gradient(135deg,#22c55e,#16a34a)", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", cursor: "pointer", fontSize: 13, fontFamily: "inherit", whiteSpace: "nowrap" }}>💾 Guardar</button>
+                              <button onClick={() => setNotasEdit(prev => { const n = { ...prev }; delete n[item.id]; return n; })} style={{ background: "#1e293b", border: "1px solid #334155", padding: "8px 12px", borderRadius: 8, color: "#94a3b8", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>✕</button>
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#0f172a", padding: "8px 12px", borderRadius: 8, border: "1px solid #1e293b" }}>
+                              <span style={{ fontSize: 13, color: item.notas ? "#cbd5e1" : "#475569", flex: 1 }}>📝 {item.notas || "Sin notas de producción"}</span>
+                              <button
+                                onClick={() => setNotasEdit(prev => ({ ...prev, [item.id]: item.notas || "" }))}
+                                style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 12, fontFamily: "inherit", padding: "2px 6px", borderRadius: 4 }}
+                                onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+                                onMouseLeave={e => e.currentTarget.style.color = "#475569"}
+                              >✏️ Editar notas</button>
+                            </div>
+                          )}
+                        </div>
 
-                        {/* Botones de estado — solo Pendiente y Completado */}
-                        {!esEntregado && (
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                            <button
-                              className="estado-btn"
-                              disabled={esPendiente || actualizando === item.id}
-                              onClick={() => updateEstado(item.id, "pendiente")}
-                              style={{
-                                background: esPendiente ? "rgba(148,163,184,0.15)" : "transparent",
-                                borderColor: esPendiente ? "#94a3b8" : "#334155",
-                                color: esPendiente ? "#94a3b8" : "#475569",
-                              }}
-                            >
-                              ⏳ Pendiente
-                            </button>
-                            <button
-                              className="estado-btn"
-                              disabled={esCompletado || actualizando === item.id}
-                              onClick={() => updateEstado(item.id, "completado")}
-                              style={{
-                                background: esCompletado ? "rgba(34,197,94,0.15)" : "transparent",
-                                borderColor: esCompletado ? "#22c55e" : "#334155",
-                                color: esCompletado ? "#22c55e" : "#475569",
-                              }}
-                            >
-                              ✅ Completado
-                            </button>
-                            {actualizando === item.id && <Spinner />}
-                          </div>
-                        )}
-                        {esEntregado && (
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {/* Botones de estado + eliminar */}
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          {!esEntregado && (
+                            <>
+                              <button
+                                className="estado-btn"
+                                disabled={esPendiente || actualizando === item.id}
+                                onClick={() => updateEstado(item.id, "pendiente")}
+                                style={{
+                                  background: esPendiente ? "rgba(148,163,184,0.15)" : "transparent",
+                                  borderColor: esPendiente ? "#94a3b8" : "#334155",
+                                  color: esPendiente ? "#94a3b8" : "#475569",
+                                }}
+                              >
+                                ⏳ Pendiente
+                              </button>
+                              <button
+                                className="estado-btn"
+                                disabled={esCompletado || actualizando === item.id}
+                                onClick={() => updateEstado(item.id, "completado")}
+                                style={{
+                                  background: esCompletado ? "rgba(34,197,94,0.15)" : "transparent",
+                                  borderColor: esCompletado ? "#22c55e" : "#334155",
+                                  color: esCompletado ? "#22c55e" : "#475569",
+                                }}
+                              >
+                                ✅ Completado
+                              </button>
+                              {actualizando === item.id && <Spinner />}
+                            </>
+                          )}
+                          {esEntregado && (
                             <span style={{ fontSize: 12, color: "#60a5fa", fontWeight: 600 }}>📦 Entregado</span>
-                          </div>
-                        )}
+                          )}
+                          {/* Botón eliminar siempre visible */}
+                          <button
+                            className="estado-btn"
+                            disabled={eliminandoId === item.id}
+                            onClick={() => showConfirm(
+                              "¿Eliminar este ítem permanentemente? Esta acción no se puede deshacer.",
+                              () => eliminarItem(item.id)
+                            )}
+                            style={{
+                              background: "transparent",
+                              borderColor: "#ef4444",
+                              color: "#ef4444",
+                              marginLeft: "auto",
+                            }}
+                          >
+                            {eliminandoId === item.id ? "Eliminando..." : "🗑 Eliminar"}
+                          </button>
+                        </div>
                       </div>
                     );
                   })}

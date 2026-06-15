@@ -1634,7 +1634,12 @@ app.post("/items-pedido/:id/archivo", auth, upload.single("archivo"), async (req
   const updated = await prisma.itemPedido.update({ where: { id }, data, include: { pedido: { include: { cliente: true } } } });
   res.json({ ...updated, cliente: updated.pedido.cliente, creadoEn: updated.pedido.creadoEn });
 });
-
+app.delete("/items-pedido/:id", auth, async (req, res) => {
+  const id = Number(req.params.id);
+  await prisma.revisionItem.deleteMany({ where: { itemPedidoId: id } });
+  await prisma.itemPedido.delete({ where: { id } });
+  res.json({ ok: true });
+});
 // ===================== INICIO SERVIDOR =====================
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
