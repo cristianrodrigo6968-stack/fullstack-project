@@ -89,11 +89,50 @@ function CarritoPage() {
     setStep("pago");
   };
 
-  const getProductosPayload = () => carrito.map(p => ({
-    id: p.id,
-    nombre: p.nombre,
-    precioUnitario: p.descuento > 0 ? p.precio - (p.precio * p.descuento / 100) : p.precio,
-  }));
+    const getProductosPayload = () => {
+  const resultado: any[] = [];
+  carrito.forEach(p => {
+    const precioFinal = p.descuento > 0 ? p.precio - (p.precio * p.descuento / 100) : p.precio;
+    if (p.componentes && Array.isArray(p.componentes) && p.componentes.length > 0) {
+      // Producto combinado: dividir precio entre componentes
+      const precioPorComponente = precioFinal / p.componentes.length;
+      p.componentes.forEach((comp: any) => {
+        let nombre = "";
+        let tipo = comp.tipo || "otro";
+        if (comp.tipo === "libro") {
+          nombre = `📖 Libro Categoría ${comp.categoria || "A"}`;
+          tipo = "libro";
+        } else if (comp.tipo === "revista") {
+          const subtipo = comp.subtipo || "";
+          const meses = comp.meses ? ` (${comp.meses} mes)` : "";
+          if (subtipo === "director") nombre = `📰 Director de revista${meses}`;
+          else if (subtipo === "fundador") nombre = `📰 Fundador${meses}`;
+          else if (subtipo === "redaccion") nombre = `📰 Artículo — Redacción y publicación`;
+          else if (subtipo === "publicacion") nombre = `📰 Artículo — Solo publicación`;
+          else nombre = `📰 Revista${meses}`;
+          tipo = "revista";
+        } else {
+          nombre = p.nombre;
+        }
+        resultado.push({
+          id: p.id,
+          nombre,
+          tipo,
+          precioUnitario: precioPorComponente,
+        });
+      });
+    } else {
+      // Producto simple
+      resultado.push({
+        id: p.id,
+        nombre: p.nombre,
+        tipo: p.tipo || "producto",
+        precioUnitario: precioFinal,
+      });
+    }
+  });
+  return resultado;
+};
 
   const handleSubirComprobante = async () => {
     if (!comprobante || !nombreDeclarado || !monto || !celular || !ci) {
