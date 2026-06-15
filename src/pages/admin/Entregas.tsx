@@ -374,39 +374,32 @@ function Entregas() {
                           </div>
                         )}
 
-                        {/* Precio unitario */}
-                        {item.precioUnitario !== undefined && item.precioUnitario !== null && (
-                          <div style={{ background: "#0f172a", padding: "6px 12px", borderRadius: 8, border: "1px solid #1e293b", marginBottom: 12, display: "inline-block" }}>
-                            <span style={{ color: "#64748b", fontSize: 11 }}>Precio unitario: </span>
-                            <span style={{ color: "#22c55e", fontWeight: 700, fontSize: 13 }}>Bs {(item.precioUnitario as number).toFixed(2)}</span>
-                          </div>
-                        )}
-
-                        {/* Notas */}
-                        <div style={{ marginBottom: 12 }}>
-                          {notasEdit[item.id] !== undefined ? (
-                            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                              <input
-                                value={notasEdit[item.id]}
-                                onChange={e => setNotasEdit(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                className="notas-input"
-                                placeholder="Notas de producción..."
-                              />
-                              <button onClick={() => updateNotas(item.id)} style={{ background: "linear-gradient(135deg,#22c55e,#16a34a)", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", cursor: "pointer", fontSize: 13, fontFamily: "inherit", whiteSpace: "nowrap" }}>💾 Guardar</button>
-                              <button onClick={() => setNotasEdit(prev => { const n = { ...prev }; delete n[item.id]; return n; })} style={{ background: "#1e293b", border: "1px solid #334155", padding: "8px 12px", borderRadius: 8, color: "#94a3b8", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>✕</button>
-                            </div>
-                          ) : (
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#0f172a", padding: "8px 12px", borderRadius: 8, border: "1px solid #1e293b" }}>
-                              <span style={{ fontSize: 13, color: item.notas ? "#cbd5e1" : "#475569", flex: 1 }}>📝 {item.notas || "Sin notas de producción"}</span>
-                              <button
-                                onClick={() => setNotasEdit(prev => ({ ...prev, [item.id]: item.notas || "" }))}
-                                style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 12, fontFamily: "inherit", padding: "2px 6px", borderRadius: 4 }}
-                                onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
-                                onMouseLeave={e => e.currentTarget.style.color = "#475569"}
-                              >✏️ Editar</button>
-                            </div>
-                          )}
-                        </div>
+                      
+                       {/* Notas */}
+<div style={{ marginBottom: 12 }}>
+  {notasEdit[item.id] !== undefined ? (
+    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      <input
+        value={notasEdit[item.id]}
+        onChange={e => setNotasEdit(prev => ({ ...prev, [item.id]: e.target.value }))}
+        className="notas-input"
+        placeholder="Notas de producción..."
+      />
+      <button onClick={() => updateNotas(item.id)} style={{ background: "linear-gradient(135deg,#22c55e,#16a34a)", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", cursor: "pointer", fontSize: 13, fontFamily: "inherit", whiteSpace: "nowrap" }}>💾 Guardar</button>
+      <button onClick={() => setNotasEdit(prev => { const n = { ...prev }; delete n[item.id]; return n; })} style={{ background: "#1e293b", border: "1px solid #334155", padding: "8px 12px", borderRadius: 8, color: "#94a3b8", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>✕</button>
+    </div>
+  ) : (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#0f172a", padding: "8px 12px", borderRadius: 8, border: "1px solid #1e293b" }}>
+      <span style={{ fontSize: 13, color: item.notas ? "#cbd5e1" : "#475569", flex: 1 }}>📝 {item.notas || "Sin notas de producción"}</span>
+      <button
+        onClick={() => setNotasEdit(prev => ({ ...prev, [item.id]: item.notas || "" }))}
+        style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 12, fontFamily: "inherit", padding: "2px 6px", borderRadius: 4 }}
+        onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+        onMouseLeave={e => e.currentTarget.style.color = "#475569"}
+      >✏️ Editar notas</button>
+    </div>
+  )}
+</div>
 
                         {/* Botones de estado — solo Pendiente y Completado */}
                         {!esEntregado && (
