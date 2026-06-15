@@ -35,8 +35,10 @@ interface DesgloseTitulo {
 
 function parsearTitulo(titulo: string | null, tipo: string, tipoAutor: string | null, periodicidad: string | null): DesgloseTitulo {
   const t = (titulo || "").toLowerCase();
+  const tip = (tipo || "").toLowerCase();
 
-  if (tipo === "libro" || t.includes("libro")) {
+  // LIBRO
+  if (tip === "libro" || t.includes("libro")) {
     let categoria: string | null = null;
     if (t.includes("categoría a") || t.includes("categoria a")) categoria = "Categoría A";
     else if (t.includes("categoría b") || t.includes("categoria b")) categoria = "Categoría B";
@@ -44,8 +46,9 @@ function parsearTitulo(titulo: string | null, tipo: string, tipoAutor: string | 
     return { tipoVisual: "libro", icono: "📖", color: "#3b82f6", lineaPrincipal: "Libro", lineaSecundaria: categoria };
   }
 
+  // REVISTA / ARTÍCULO / DIRECTOR / FUNDADOR
   if (
-    tipo === "edicion_revista" || tipo === "articulo" || tipo === "fundador" || tipo === "revista" ||
+    tip === "edicion_revista" || tip === "articulo" || tip === "fundador" || tip === "revista" ||
     t.includes("revista") || t.includes("director") || t.includes("artículo") ||
     t.includes("articulo") || t.includes("fundador") || t.includes("redacc") ||
     t.includes("publicac")
@@ -64,6 +67,7 @@ function parsearTitulo(titulo: string | null, tipo: string, tipoAutor: string | 
     return { tipoVisual: "revista", icono: "📰", color: "#f59e0b", lineaPrincipal: "Revista", lineaSecundaria };
   }
 
+  // OTRO
   return { tipoVisual: "otro", icono: "📦", color: "#64748b", lineaPrincipal: titulo || tipo, lineaSecundaria: null };
 }
 
@@ -160,7 +164,6 @@ function Entregas() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
-  const [notasEdit, setNotasEdit] = useState<{ [key: number]: string }>({});
   const [actualizando, setActualizando] = useState<number | null>(null);
   const [eliminandoId, setEliminandoId] = useState<number | null>(null);
 
@@ -192,19 +195,18 @@ function Entregas() {
     setActualizando(null);
   };
 
-  const updateNotas = async (id: number) => {
-    const notas = notasEdit[id];
-    if (notas === undefined) return;
-    await fetch(`${API_URL}/items-pedido/${id}`, { method: "PUT", headers, body: JSON.stringify({ notas }) });
-    setNotasEdit(prev => { const n = { ...prev }; delete n[id]; return n; });
-    await loadItems();
-  };
-
   const eliminarItem = async (id: number) => {
     setEliminandoId(id);
     await fetch(`${API_URL}/items-pedido/${id}`, { method: "DELETE", headers });
     await loadItems();
     setEliminandoId(null);
+  };
+
+  const eliminarTodosCliente = async (clientItems: ItemPedido[]) => {
+    for (const item of clientItems) {
+      await fetch(`${API_URL}/items-pedido/${item.id}`, { method: "DELETE", headers });
+    }
+    await loadItems();
   };
 
   const marcarTodosEntregados = async (clientItems: ItemPedido[]) => {
@@ -246,8 +248,6 @@ function Entregas() {
         .client-header:hover { background:#1e293b; }
         .item-card { background:#1e293b; border-radius:12px; padding:16px; margin-bottom:10px; border:1px solid #334155; animation:fadeIn 0.2s ease; transition:border-color 0.2s; }
         .item-card:hover { border-color:#475569; }
-        .notas-input { width:100%; padding:8px 12px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:white; font-size:13px; font-family:inherit; outline:none; box-sizing:border-box; transition:border-color 0.2s; }
-        .notas-input:focus { border-color:#3b82f6; }
         .tag { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:99px; font-size:11px; font-weight:600; }
         .btn-entregado { border:none; padding:8px 16px; border-radius:8px; background:linear-gradient(135deg,#3b82f6,#6366f1); color:white; font-weight:700; font-size:12px; cursor:pointer; font-family:inherit; transition:opacity 0.15s, transform 0.15s; }
         .btn-entregado:hover { opacity:0.85; transform:translateY(-1px); }
@@ -255,6 +255,9 @@ function Entregas() {
         .estado-btn { padding:6px 14px; border-radius:8px; border:1px solid; font-size:12px; font-family:inherit; cursor:pointer; font-weight:600; transition:all 0.15s; }
         .estado-btn:hover:not(:disabled) { opacity:0.8; }
         .estado-btn:disabled { opacity:0.4; cursor:not-allowed; }
+        .btn-eliminar { background:transparent; border:1px solid #ef4444; border-radius:8px; color:#ef4444; font-size:11px; font-weight:600; padding:5px 12px; cursor:pointer; font-family:inherit; transition:background 0.15s; }
+        .btn-eliminar:hover:not(:disabled) { background:rgba(239,68,68,0.1); }
+        .btn-eliminar:disabled { opacity:0.4; cursor:not-allowed; }
       `}</style>
 
       {confirmOpen && (
@@ -311,13 +314,13 @@ function Entregas() {
 
           return (
             <div key={cliente.id} className="client-card">
-              {/* HEADER CLIENTE */}
               <div className="client-header" onClick={() => setSelectedClientId(isSelected ? null : cliente.id)}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 14, flex: 1, minWidth: 0 }}>
                   <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, marginTop: 2 }}>👤</div>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 15, marginBottom: 8 }}>{cliente.nombreCompleto || "Cliente sin nombre"}</div>
-                    {/* Chips desglose en header */}
+
+                    {/* Chips desglose */}
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                       {desgloses.map((d, idx) => (
                         <div key={idx} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: `${d.color}15`, border: `1px solid ${d.color}40`, borderRadius: 99, padding: "2px 10px" }}>
@@ -328,50 +331,36 @@ function Entregas() {
                         </div>
                       ))}
                     </div>
+
                     {/* Barra de progreso */}
                     <BarraProgreso items={clientItems} />
-                    {/* Botón entregado */}
-{!todosEntregados && (
-  <div onClick={e => e.stopPropagation()}>
-    <button
-      className="btn-entregado"
-      onClick={() => showConfirm(
-        `¿Marcar todos los ítems de ${cliente.nombreCompleto || "este cliente"} como entregados?`,
-        () => marcarTodosEntregados(clientItems)
-      )}
-    >
-      📦 Marcar todo como entregado
-    </button>
-  </div>
-)}
-{todosEntregados && (
-  <span style={{ fontSize: 12, color: "#60a5fa", fontWeight: 600 }}>📦 Todo entregado</span>
-)}
-{/* Botón eliminar todos — siempre visible */}
-<div onClick={e => e.stopPropagation()} style={{ marginTop: 8 }}>
-  <button
-    style={{
-      background: "transparent", border: "1px solid #ef4444",
-      borderRadius: 8, color: "#ef4444", fontSize: 11,
-      fontWeight: 600, padding: "5px 12px", cursor: "pointer",
-      fontFamily: "inherit",
-    }}
-    onClick={() => showConfirm(
-      `¿Eliminar todos los ítems de ${cliente.nombreCompleto || "este cliente"}? Esta acción no se puede deshacer.`,
-      async () => {
-        for (const item of clientItems) {
-          await fetch(`${API_URL}/items-pedido/${item.id}`, { method: "DELETE", headers });
-        }
-        await loadItems();
-      }
-    )}
-  >
-    🗑 Eliminar todos
-  </button>
-</div>
-                    {todosEntregados && (
-                      <span style={{ fontSize: 12, color: "#60a5fa", fontWeight: 600 }}>📦 Todo entregado</span>
-                    )}
+
+                    {/* Acciones del cliente */}
+                    <div onClick={e => e.stopPropagation()} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                      {!todosEntregados && (
+                        <button
+                          className="btn-entregado"
+                          onClick={() => showConfirm(
+                            `¿Marcar todos los ítems de ${cliente.nombreCompleto || "este cliente"} como entregados?`,
+                            () => marcarTodosEntregados(clientItems)
+                          )}
+                        >
+                          📦 Marcar todo como entregado
+                        </button>
+                      )}
+                      {todosEntregados && (
+                        <span style={{ fontSize: 12, color: "#60a5fa", fontWeight: 600, alignSelf: "center" }}>📦 Todo entregado</span>
+                      )}
+                      <button
+                        className="btn-eliminar"
+                        onClick={() => showConfirm(
+                          `¿Eliminar todos los ítems de ${cliente.nombreCompleto || "este cliente"}? Esta acción no se puede deshacer.`,
+                          () => eliminarTodosCliente(clientItems)
+                        )}
+                      >
+                        🗑 Eliminar todos
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <span style={{ color: "#334155", fontSize: 20, transition: "transform 0.2s", transform: isSelected ? "rotate(180deg)" : "none", flexShrink: 0, alignSelf: "flex-start", marginTop: 10 }}>▼</span>
@@ -387,16 +376,9 @@ function Entregas() {
                     const esEntregado = item.estado === "entregado";
                     return (
                       <div key={item.id} className="item-card">
-                        {/* Cabecera item */}
+                        {/* Cabecera */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-                          <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                            <ChipDesglose desglose={desglose} />
-                            {item.titulo && (
-                              <div style={{ paddingTop: 4 }}>
-                                <div style={{ color: "#64748b", fontSize: 11 }}>{item.titulo}</div>
-                              </div>
-                            )}
-                          </div>
+                          <ChipDesglose desglose={desglose} />
                           <EstadoBadge estado={item.estado} />
                         </div>
 
@@ -407,32 +389,6 @@ function Entregas() {
                             {item.conIsbn && <span className="tag" style={{ background: "rgba(59,130,246,0.1)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.2)" }}>📘 ISBN</span>}
                           </div>
                         )}
-
-                        {/* Notas */}
-                        <div style={{ marginBottom: 12 }}>
-                          {notasEdit[item.id] !== undefined ? (
-                            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                              <input
-                                value={notasEdit[item.id]}
-                                onChange={e => setNotasEdit(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                className="notas-input"
-                                placeholder="Notas de producción..."
-                              />
-                              <button onClick={() => updateNotas(item.id)} style={{ background: "linear-gradient(135deg,#22c55e,#16a34a)", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", cursor: "pointer", fontSize: 13, fontFamily: "inherit", whiteSpace: "nowrap" }}>💾 Guardar</button>
-                              <button onClick={() => setNotasEdit(prev => { const n = { ...prev }; delete n[item.id]; return n; })} style={{ background: "#1e293b", border: "1px solid #334155", padding: "8px 12px", borderRadius: 8, color: "#94a3b8", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>✕</button>
-                            </div>
-                          ) : (
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#0f172a", padding: "8px 12px", borderRadius: 8, border: "1px solid #1e293b" }}>
-                              <span style={{ fontSize: 13, color: item.notas ? "#cbd5e1" : "#475569", flex: 1 }}>📝 {item.notas || "Sin notas de producción"}</span>
-                              <button
-                                onClick={() => setNotasEdit(prev => ({ ...prev, [item.id]: item.notas || "" }))}
-                                style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 12, fontFamily: "inherit", padding: "2px 6px", borderRadius: 4 }}
-                                onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
-                                onMouseLeave={e => e.currentTarget.style.color = "#475569"}
-                              >✏️ Editar notas</button>
-                            </div>
-                          )}
-                        </div>
 
                         {/* Botones de estado + eliminar */}
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -468,20 +424,14 @@ function Entregas() {
                           {esEntregado && (
                             <span style={{ fontSize: 12, color: "#60a5fa", fontWeight: 600 }}>📦 Entregado</span>
                           )}
-                          {/* Botón eliminar siempre visible */}
                           <button
-                            className="estado-btn"
+                            className="btn-eliminar"
                             disabled={eliminandoId === item.id}
                             onClick={() => showConfirm(
                               "¿Eliminar este ítem permanentemente? Esta acción no se puede deshacer.",
                               () => eliminarItem(item.id)
                             )}
-                            style={{
-                              background: "transparent",
-                              borderColor: "#ef4444",
-                              color: "#ef4444",
-                              marginLeft: "auto",
-                            }}
+                            style={{ marginLeft: "auto" }}
                           >
                             {eliminandoId === item.id ? "Eliminando..." : "🗑 Eliminar"}
                           </button>
