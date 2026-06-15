@@ -331,19 +331,44 @@ function Entregas() {
                     {/* Barra de progreso */}
                     <BarraProgreso items={clientItems} />
                     {/* Botón entregado */}
-                    {!todosEntregados && (
-                      <div onClick={e => e.stopPropagation()}>
-                        <button
-                          className="btn-entregado"
-                          onClick={() => showConfirm(
-                            `¿Marcar todos los ítems de ${cliente.nombreCompleto || "este cliente"} como entregados?`,
-                            () => marcarTodosEntregados(clientItems)
-                          )}
-                        >
-                          📦 Marcar todo como entregado
-                        </button>
-                      </div>
-                    )}
+{!todosEntregados && (
+  <div onClick={e => e.stopPropagation()}>
+    <button
+      className="btn-entregado"
+      onClick={() => showConfirm(
+        `¿Marcar todos los ítems de ${cliente.nombreCompleto || "este cliente"} como entregados?`,
+        () => marcarTodosEntregados(clientItems)
+      )}
+    >
+      📦 Marcar todo como entregado
+    </button>
+  </div>
+)}
+{todosEntregados && (
+  <span style={{ fontSize: 12, color: "#60a5fa", fontWeight: 600 }}>📦 Todo entregado</span>
+)}
+{/* Botón eliminar todos — siempre visible */}
+<div onClick={e => e.stopPropagation()} style={{ marginTop: 8 }}>
+  <button
+    style={{
+      background: "transparent", border: "1px solid #ef4444",
+      borderRadius: 8, color: "#ef4444", fontSize: 11,
+      fontWeight: 600, padding: "5px 12px", cursor: "pointer",
+      fontFamily: "inherit",
+    }}
+    onClick={() => showConfirm(
+      `¿Eliminar todos los ítems de ${cliente.nombreCompleto || "este cliente"}? Esta acción no se puede deshacer.`,
+      async () => {
+        for (const item of clientItems) {
+          await fetch(`${API_URL}/items-pedido/${item.id}`, { method: "DELETE", headers });
+        }
+        await loadItems();
+      }
+    )}
+  >
+    🗑 Eliminar todos
+  </button>
+</div>
                     {todosEntregados && (
                       <span style={{ fontSize: 12, color: "#60a5fa", fontWeight: 600 }}>📦 Todo entregado</span>
                     )}
