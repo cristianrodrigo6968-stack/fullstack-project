@@ -553,10 +553,26 @@ app.delete("/pagos/:id", auth, async (req, res) => {
 });
 
 // ===================== VERIFICAR PAGO (CORREGIDO) =====================
+// ===================== VERIFICAR PAGO (CORREGIDO + IDEMPOTENTE) =====================
 app.put("/pagos/:id/verificar", auth, async (req, res) => {
   const id = Number(req.params.id);
   const pago = await prisma.pago.findUnique({ where: { id } });
   if (!pago) return res.status(404).json({ error: "Pago no encontrado" });
+
+  // 🔒 Evita procesar el mismo pago dos veces (doble clic, doble request, reintento de red, etc.)
+  // Si este pago ya generó un pedido antes, devolvemos ese pedido sin crear nada nuevo.
+  if (pago.pedidoId) {
+    const pedidoExistente = await prisma.pedido.findUnique({
+      where: { id: pago.pedidoId },
+      include: { cliente: true, items: true },
+    });
+    return res.json({
+      ...pago,
+      clienteId: pedidoExistente?.clienteId,
+      pedido: pedidoExistente,
+      yaProcesado: true,
+    });
+  }
 
   await prisma.pago.update({ where: { id }, data: { estado: "verificado" } });
 
@@ -614,7 +630,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
   }
 
-  // ***** LÓGICA CORREGIDA: usar los datos del frontend directamente *****
+  // ***** LÓGICA: usar los datos del frontend directamente *****
   let montoTotal = 0;
   const itemsParaPedido: any[] = [];
 
@@ -629,7 +645,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
           let nombreProducto = item.nombre || "Producto desconocido";
           let tipo = item.tipo || "producto";
 
-          // Siempre usar el precio enviado por el frontend
           if (typeof item.precioUnitario === 'number' && !isNaN(item.precioUnitario) && item.precioUnitario > 0) {
             precioFinal = item.precioUnitario;
             console.log(`✅ Usando precio del frontend para ${nombreProducto}: ${precioFinal}`);
