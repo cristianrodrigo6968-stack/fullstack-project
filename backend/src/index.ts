@@ -551,16 +551,13 @@ app.delete("/pagos/:id", auth, async (req, res) => {
   await prisma.pago.delete({ where: { id: Number(req.params.id) } });
   res.json({ ok: true });
 });
-
-// ===================== VERIFICAR PAGO (CORREGIDO) =====================
-// ===================== VERIFICAR PAGO (CORREGIDO + IDEMPOTENTE) =====================
+// ===================== VERIFICAR PAGO (CORREGIDO + IDEMPOTENTE + ATÓMICO) =====================
 app.put("/pagos/:id/verificar", auth, async (req, res) => {
   const id = Number(req.params.id);
   const pago = await prisma.pago.findUnique({ where: { id } });
   if (!pago) return res.status(404).json({ error: "Pago no encontrado" });
 
-  // 🔒 Evita procesar el mismo pago dos veces (doble clic, doble request, reintento de red, etc.)
-  // Si este pago ya generó un pedido antes, devolvemos ese pedido sin crear nada nuevo.
+  // 🔒 LOCK ATÓMICO: si el pago ya tiene pedido, no seguimos (clic repetido más tarde).
   if (pago.pedidoId) {
     const pedidoExistente = await prisma.pedido.findUnique({
       where: { id: pago.pedidoId },
@@ -574,7 +571,38 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     });
   }
 
-  await prisma.pago.update({ where: { id }, data: { estado: "verificado" } });
+  // 🔒 LOCK ATÓMICO REAL: intentamos "reservar" este pago marcándolo como verificado
+  // SOLO SI todavía está en estado "pendiente". Esta operación es atómica a nivel de
+  // base de datos: si llegan 5 clics simultáneos, SOLO UNO logrará actualizar la fila
+  // (count === 1); el resto verá count === 0 y deberá abortar sin crear nada.
+  const lock = await prisma.pago.updateMany({
+    where: { id, estado: { not: "verificado" }, pedidoId: null },
+    data: { estado: "verificado" },
+  });
+
+  if (lock.count === 0) {
+    // Otra petición (otro clic) ya está procesando o ya procesó este pago.
+    // Esperamos un instante breve y devolvemos el estado actual (puede que el
+    // pedido todavía se esté creando en la petición "ganadora").
+    await new Promise(r => setTimeout(r, 1500));
+    const pagoActual = await prisma.pago.findUnique({ where: { id } });
+    const pedidoActual = pagoActual?.pedidoId
+      ? await prisma.pedido.findUnique({
+          where: { id: pagoActual.pedidoId },
+          include: { cliente: true, items: true },
+        })
+      : null;
+    return res.json({
+      ...pagoActual,
+      clienteId: pedidoActual?.clienteId,
+      pedido: pedidoActual,
+      yaProcesado: true,
+      mensaje: pedidoActual
+        ? "Este pago ya fue verificado."
+        : "Este pago ya se está procesando, espera un momento y refresca.",
+    });
+  }
+  // ✅ Si llegamos aquí, esta petición "ganó" el lock y es la única que va a crear el pedido.
 
   let cliente = null;
   if (pago.ci) {
@@ -734,6 +762,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
   }
   res.json({ ...pago, clienteId: cliente.id, pedido: nuevoPedido });
 });
+
 
 app.put("/pagos/:id/rechazar", auth, async (req, res) => {
   const id = Number(req.params.id);
