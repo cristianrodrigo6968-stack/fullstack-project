@@ -78,6 +78,7 @@ function EdicionCard({
 
   const NOMBRES = ["PRIMERA", "SEGUNDA", "TERCERA"];
   const numeroTexto = NOMBRES[ed.numero - 1] || `N° ${ed.numero}`;
+  const articles = ed.articles ?? [];
 
   const subirArchivo = async (file: File) => {
     setSubiendoId(ed.id);
@@ -161,7 +162,7 @@ function EdicionCard({
             {numeroTexto} EDICIÓN
           </span>
           <span style={{ color: "#94a3b8", fontSize: 13 }}>
-            {ed.articles.length} autor{ed.articles.length !== 1 ? "es" : ""}
+            {articles.length} autor{articles.length !== 1 ? "es" : ""}
           </span>
         </div>
 
@@ -216,11 +217,11 @@ function EdicionCard({
         <div style={{ padding: "0 16px 16px", borderTop: "1px solid #1e293b" }}>
 
           {/* Lista de autores */}
-          {ed.articles.length === 0 ? (
+          {articles.length === 0 ? (
             <p style={{ color: "#64748b", fontSize: 13, marginTop: 14 }}>Sin autores asignados.</p>
           ) : (
             <div style={{ marginTop: 12 }}>
-              {ed.articles.map((article, idx) => (
+              {articles.map((article, idx) => (
                 <div
                   key={article.id}
                   style={{
@@ -228,7 +229,7 @@ function EdicionCard({
                     justifyContent: "space-between",
                     alignItems: "center",
                     padding: "10px 0",
-                    borderBottom: idx < ed.articles.length - 1 ? "1px solid #1e293b" : "none",
+                    borderBottom: idx < articles.length - 1 ? "1px solid #1e293b" : "none",
                   }}
                 >
                   <div>
