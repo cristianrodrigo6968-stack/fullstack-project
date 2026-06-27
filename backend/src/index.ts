@@ -234,9 +234,22 @@ app.get("/magazines/:id", auth, async (req, res) => {
       where: { id: Number(req.params.id) },
       include: {
         director: true,
-        articles: { include: { authors: true } },
+        articles: {
+          include: {
+            authors: true,
+            cliente: true,   // ← AGREGADO
+          },
+        },
         cliente: true,
-        ediciones: { include: { items: { include: { pedido: { include: { cliente: true } } } } } },
+        ediciones: {
+          include: {
+            items: {
+              include: {
+                pedido: { include: { cliente: true } },
+              },
+            },
+          },
+        },
       },
     })
   );
@@ -301,7 +314,7 @@ app.get("/articles", auth, async (req, res) => {
   res.json(await prisma.article.findMany({ include: { authors: true, magazine: true } }));
 });
 app.post("/articles", auth, async (req, res) => {
-  const { title, authorIds, magazineId, authorName } = req.body;
+  const { title, authorIds, magazineId, authorName, clienteId } = req.body;
   let ids = authorIds || [];
   if (authorName && ids.length === 0) {
     let person = await prisma.person.findFirst({ where: { name: authorName } });
@@ -314,20 +327,25 @@ app.post("/articles", auth, async (req, res) => {
         title,
         magazineId: Number(magazineId),
         authors: { connect: ids.map((id: number) => ({ id })) },
+        clienteId: clienteId ? Number(clienteId) : null,
       },
-      include: { authors: true, magazine: true },
+      include: { authors: true, magazine: true, cliente: true },
     })
   );
 });
 app.put("/articles/:id", auth, async (req, res) => {
-  const { title, authorName } = req.body;
+  const { title, authorName, clienteId } = req.body;
   let person = await prisma.person.findFirst({ where: { name: authorName } });
   if (!person) person = await prisma.person.create({ data: { name: authorName } });
   res.json(
     await prisma.article.update({
       where: { id: Number(req.params.id) },
-      data: { title, authors: { set: [{ id: person.id }] } },
-      include: { authors: true, magazine: true },
+      data: {
+        title,
+        authors: { set: [{ id: person.id }] },
+        clienteId: clienteId !== undefined ? (clienteId ? Number(clienteId) : null) : undefined,
+      },
+      include: { authors: true, magazine: true, cliente: true },
     })
   );
 });
