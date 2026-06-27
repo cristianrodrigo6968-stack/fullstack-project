@@ -80,7 +80,7 @@ function EdicionCard({
   const numeroTexto = NOMBRES[ed.numero - 1] || `N° ${ed.numero}`;
   const articles = ed.articles ?? [];
 
-  // ─── Copiar para SENAPI ────────────────────────────────────────────
+  // ─── Copiar para SENAPI (toda la edición) ──────────────────────
   const copiarSenapi = () => {
     const participantes: string[] = [];
 
@@ -196,7 +196,7 @@ function EdicionCard({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* Botón Copiar SENAPI */}
+          {/* Botón Copiar SENAPI (toda la edición) */}
           <button
             onClick={e => {
               e.stopPropagation();
@@ -318,13 +318,39 @@ function EdicionCard({
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => eliminarAutor(article.id)}
-                    disabled={deletingArticleId === article.id}
-                    style={{ ...btnRed, fontSize: 11, padding: "4px 8px", display: "flex", alignItems: "center", gap: 4 }}
-                  >
-                    {deletingArticleId === article.id ? <Spinner /> : "🗑"}
-                  </button>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    {/* Botón copiar datos de este autor */}
+                    {article.cliente && (
+                      <button
+                        onClick={() => {
+                          const texto = `${article.cliente!.nombreCompleto || ""} ${article.cliente!.ci || ""} ${article.cliente!.extension || ""}`.trim();
+                          if (texto) {
+                            navigator.clipboard.writeText(texto);
+                            alert("📋 Datos copiados: " + texto);
+                          }
+                        }}
+                        title="Copiar datos para SENAPI"
+                        style={{
+                          background: "#6366f1",
+                          border: "none",
+                          padding: "3px 8px",
+                          borderRadius: 6,
+                          color: "white",
+                          cursor: "pointer",
+                          fontSize: 12,
+                        }}
+                      >
+                        📋
+                      </button>
+                    )}
+                    <button
+                      onClick={() => eliminarAutor(article.id)}
+                      disabled={deletingArticleId === article.id}
+                      style={{ ...btnRed, fontSize: 11, padding: "4px 8px", display: "flex", alignItems: "center", gap: 4 }}
+                    >
+                      {deletingArticleId === article.id ? <Spinner /> : "🗑"}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -422,14 +448,12 @@ function Magazines() {
 
   useEffect(() => { load(); }, []);
 
-  // Carga el detalle completo de una revista (con ediciones y artículos)
   const selectMagazine = async (m: Magazine) => {
     const res = await fetch(`${API_URL}/magazines/${m.id}`, { headers });
     if (res.ok) setSelected(await res.json());
     else setSelected(m);
   };
 
-  // Refresca solo la revista seleccionada (sin tocar la lista)
   const refreshSelected = async () => {
     if (!selected) return;
     const res = await fetch(`${API_URL}/magazines/${selected.id}`, { headers });
@@ -499,7 +523,6 @@ function Magazines() {
         Gestiona las revistas editoriales.
       </p>
 
-      {/* ── Vista de detalle ── */}
       {selected ? (
         <div>
           <button onClick={() => setSelected(null)} style={btnGray}>← Volver</button>
@@ -521,7 +544,6 @@ function Magazines() {
               </div>
             )}
 
-            {/* Ediciones con acordeón */}
             <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
               Ediciones — clic para ver autores
             </p>
@@ -586,7 +608,6 @@ function Magazines() {
         </>
       )}
 
-      {/* ── Modal crear/editar revista ── */}
       {open && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 999, padding: "20px" }}>
           <div style={{ background: "#1e293b", padding: isMobile ? 20 : 28, borderRadius: 14, width: "100%", maxWidth: 500, color: "white", maxHeight: "85vh", overflowY: "auto" }}>
