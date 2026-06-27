@@ -149,76 +149,47 @@ function Magazines() {
     setEditArticles(copy);
   };
 
-  const save = async () => {
-    if (!title || !directorName) return;
-    setSaving(true);
-    try {
-      if (editId) {
-        await fetch(`${API_URL}/magazines/${editId}`, {
-          method: "PUT",
-          headers,
-          body: JSON.stringify({ title, directorName, notas, clienteId: clienteId ? Number(clienteId) : null }),
-        });
-        for (const a of editArticles) {
-          if (a.isNew && !a.isDeleted && a.title && a.author) {
-            await fetch(`${API_URL}/articles`, {
-              method: "POST",
-              headers,
-              body: JSON.stringify({
-                title: a.title,
-                authorName: a.author,
-                magazineId: editId,
-                clienteId: a.clienteId || null,
-                edicionId: a.edicionId || null,
-              }),
-            });
-          } else if (!a.isNew && a.isDeleted && a.id) {
-            await fetch(`${API_URL}/articles/${a.id}`, { method: "DELETE", headers });
-          } else if (!a.isNew && !a.isDeleted && a.id) {
-            await fetch(`${API_URL}/articles/${a.id}`, {
-              method: "PUT",
-              headers,
-              body: JSON.stringify({
-                title: a.title,
-                authorName: a.author,
-                clienteId: a.clienteId !== undefined ? (a.clienteId || null) : undefined,
-                edicionId: a.edicionId !== undefined ? (a.edicionId || null) : undefined,
-              }),
-            });
-          }
-        }
-      } else {
-        const d = await fetch(`${API_URL}/persons`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ name: directorName }),
-        }).then(r => r.json());
-        const m = await fetch(`${API_URL}/magazines`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ title, directorId: d.id, notas, clienteId: clienteId ? Number(clienteId) : null }),
-        }).then(r => r.json());
-        for (const a of editArticles) {
-          if (!a.title || !a.author) continue;
-          await fetch(`${API_URL}/articles`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              title: a.title,
-              authorName: a.author,
-              magazineId: m.id,
-              clienteId: a.clienteId || null,
-              edicionId: a.edicionId || null,
-            }),
-          });
-        }
-      }
-      setOpen(false);
-      await load();
-    } finally {
-      setSaving(false);
+const save = async () => {
+  if (!title || !directorName) return;
+  setSaving(true);
+  try {
+    if (editId) {
+      // Editar revista existente
+      await fetch(`${API_URL}/magazines/${editId}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({
+          title,
+          directorName,
+          notas,
+          clienteId: clienteId ? Number(clienteId) : null,
+        }),
+      });
+    } else {
+      // Crear revista nueva
+      const d = await fetch(`${API_URL}/persons`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ name: directorName }),
+      }).then(r => r.json());
+
+      await fetch(`${API_URL}/magazines`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          title,
+          directorId: d.id,
+          notas,
+          clienteId: clienteId ? Number(clienteId) : null,
+        }),
+      });
     }
-  };
+    setOpen(false);
+    await load();
+  } finally {
+    setSaving(false);
+  }
+};
 
   const remove = (m: Magazine) => {
     showConfirm(`¿Eliminar "${m.title}" y todos sus artículos?`, async () => {
@@ -481,126 +452,105 @@ function Magazines() {
       )}
 
       {/* Modal crear/editar revista (se mantiene igual) */}
-      {open && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 999, padding: "20px" }}>
-          <div style={{ background: "#1e293b", padding: isMobile ? 20 : 28, borderRadius: 14, width: "100%", maxWidth: 700, color: "white", maxHeight: "85vh", overflowY: "auto" }}>
-            <h3 style={{ marginBottom: 16 }}>{editId ? "Editar revista" : "Crear revista"}</h3>
+    {open && (
+  <div style={{
+    position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
+    display: "flex", justifyContent: "center", alignItems: "center",
+    zIndex: 999, padding: "20px",
+  }}>
+    <div style={{
+      background: "#1e293b", padding: isMobile ? 20 : 28,
+      borderRadius: 14, width: "100%", maxWidth: 500,
+      color: "white", maxHeight: "85vh", overflowY: "auto",
+    }}>
+      <h3 style={{ marginBottom: 16 }}>
+        {editId ? "Editar revista" : "Crear revista"}
+      </h3>
 
-            <label style={labelStyle}>Título</label>
-            <input placeholder="Título" value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} />
+      {/* Título */}
+      <label style={labelStyle}>Título</label>
+      <input
+        placeholder="Título de la revista"
+        value={title}
+        onChange={e => setTitle(e.target.value)}
+        style={inputStyle}
+      />
 
-            <label style={labelStyle}>Director (seleccionar cliente)</label>
-            <select
-              value={clienteId}
-              onChange={e => {
-                const val = e.target.value;
-                setClienteId(val);
-                if (val) {
-                  const c = clientes.find(c => c.id.toString() === val);
-                  setDirectorName(c?.nombreCompleto || "");
-                } else {
-                  setDirectorName("");
-                }
-              }}
-              style={{ ...inputStyle, cursor: "pointer" }}
-            >
-              <option value="">-- Sin vincular --</option>
-              {clientes.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.nombreCompleto || "Sin nombre"} {c.ci ? `· CI ${c.ci}` : ""}
-                </option>
-              ))}
-            </select>
+      {/* Director */}
+      <label style={labelStyle}>Director (seleccionar cliente)</label>
+      <select
+        value={clienteId}
+        onChange={e => {
+          const val = e.target.value;
+          setClienteId(val);
+          if (val) {
+            const c = clientes.find(c => c.id.toString() === val);
+            setDirectorName(c?.nombreCompleto || "");
+          } else {
+            setDirectorName("");
+          }
+        }}
+        style={{ ...inputStyle, cursor: "pointer" }}
+      >
+        <option value="">-- Sin vincular --</option>
+        {clientes.map(c => (
+          <option key={c.id} value={c.id}>
+            {c.nombreCompleto || "Sin nombre"} {c.ci ? `· CI ${c.ci}` : ""}
+          </option>
+        ))}
+      </select>
 
-            {!clienteId && (
-              <>
-                <label style={labelStyle}>Nombre del director (manual)</label>
-                <input placeholder="Nombre del director" value={directorName} onChange={e => setDirectorName(e.target.value)} style={inputStyle} />
-              </>
-            )}
-            {clienteId && (
-              <div style={{ background: "#0f172a", padding: "10px 12px", borderRadius: 8, marginBottom: 10 }}>
-                <span style={{ color: "#94a3b8", fontSize: 13 }}>
-                  Director vinculado: <strong style={{ color: "white" }}>{directorName}</strong>
-                </span>
-              </div>
-            )}
+      {!clienteId && (
+        <>
+          <label style={labelStyle}>Nombre del director (manual)</label>
+          <input
+            placeholder="Nombre del director"
+            value={directorName}
+            onChange={e => setDirectorName(e.target.value)}
+            style={inputStyle}
+          />
+        </>
+      )}
 
-            <label style={labelStyle}>Notas (opcional)</label>
-            <textarea placeholder="Notas sobre esta revista..." value={notas} onChange={e => setNotas(e.target.value)} rows={3} style={{ ...inputStyle, resize: "none" }} />
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "16px 0 10px" }}>
-              <label style={labelStyle}>Artículos (general)</label>
-              <button onClick={addArticleRow} style={btnGray}>➕ Añadir</button>
-            </div>
-
-            {editArticles.map((a, i) => (
-              !a.isDeleted ? (
-                <div key={i} style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 8, marginBottom: 8, alignItems: isMobile ? "stretch" : "center" }}>
-                  <select
-                    value={a.clienteId ?? ""}
-                    onChange={e => {
-                      const val = e.target.value;
-                      const copy = [...editArticles];
-                      if (val === "") {
-                        copy[i].clienteId = null;
-                        copy[i].author = "";
-                      } else {
-                        const cliente = clientes.find(c => c.id === Number(val));
-                        copy[i].clienteId = Number(val);
-                        copy[i].author = cliente?.nombreCompleto || "";
-                      }
-                      setEditArticles(copy);
-                    }}
-                    style={{ ...inputStyle, marginBottom: 0, flex: 1, cursor: "pointer" }}
-                  >
-                    <option value="">-- Cliente (autor) --</option>
-                    {clientes.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.nombreCompleto || "Sin nombre"} {c.ci ? `· CI ${c.ci}` : ""}
-                      </option>
-                    ))}
-                  </select>
-
-                  {!a.clienteId && (
-                    <input
-                      placeholder="Autor"
-                      value={a.author}
-                      onChange={e => { const copy = [...editArticles]; copy[i].author = e.target.value; setEditArticles(copy); }}
-                      style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
-                    />
-                  )}
-                  {a.clienteId && (
-                    <div style={{ ...inputStyle, marginBottom: 0, flex: 1, background: "#1e293b", display: "flex", alignItems: "center", padding: "0 10px" }}>
-                      <span style={{ color: "#cbd5e1", fontSize: 14 }}>{a.author}</span>
-                    </div>
-                  )}
-
-                  <input
-                    placeholder="Título artículo"
-                    value={a.title}
-                    onChange={e => { const copy = [...editArticles]; copy[i].title = e.target.value; setEditArticles(copy); }}
-                    style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
-                  />
-                  <button onClick={() => removeArticleRow(i)} style={{ background: "#ef4444", border: "none", borderRadius: 8, color: "white", cursor: "pointer", padding: "8px 12px", fontWeight: "bold", flexShrink: 0 }}>✕</button>
-                </div>
-              ) : (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, padding: "8px 12px", background: "rgba(239,68,68,0.1)", borderRadius: 8, border: "1px dashed #ef4444" }}>
-                  <p style={{ flex: 1, color: "#64748b", fontSize: 13, textDecoration: "line-through" }}>{a.title} — {a.author}</p>
-                  <button onClick={() => restoreArticleRow(i)} style={{ background: "#334155", border: "none", borderRadius: 8, color: "white", cursor: "pointer", padding: "6px 12px", fontSize: 12 }}>Restaurar</button>
-                </div>
-              )
-            ))}
-
-            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-              <button onClick={save} disabled={saving} style={{ ...btnBlue, display: "flex", alignItems: "center", gap: 8, opacity: saving ? 0.7 : 1, minWidth: 110, justifyContent: "center", cursor: saving ? "not-allowed" : "pointer" }}>
-                {saving ? <Spinner /> : "💾 Guardar"}
-              </button>
-              <button onClick={() => setOpen(false)} style={btnRed}>Cancelar</button>
-            </div>
-          </div>
+      {clienteId && (
+        <div style={{
+          background: "#0f172a", padding: "10px 12px",
+          borderRadius: 8, marginBottom: 10,
+        }}>
+          <span style={{ color: "#94a3b8", fontSize: 13 }}>
+            Director vinculado: <strong style={{ color: "white" }}>{directorName}</strong>
+          </span>
         </div>
       )}
+
+      {/* Notas */}
+      <label style={labelStyle}>Notas (opcional)</label>
+      <textarea
+        placeholder="Notas sobre esta revista..."
+        value={notas}
+        onChange={e => setNotas(e.target.value)}
+        rows={3}
+        style={{ ...inputStyle, resize: "none" }}
+      />
+
+      {/* Botones */}
+      <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+        <button
+          onClick={save}
+          disabled={saving}
+          style={{
+            ...btnBlue, display: "flex", alignItems: "center", gap: 8,
+            opacity: saving ? 0.7 : 1, minWidth: 110, justifyContent: "center",
+            cursor: saving ? "not-allowed" : "pointer",
+          }}
+        >
+          {saving ? <Spinner /> : "💾 Guardar"}
+        </button>
+        <button onClick={() => setOpen(false)} style={btnRed}>Cancelar</button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
