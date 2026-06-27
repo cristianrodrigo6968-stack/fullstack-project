@@ -10,10 +10,24 @@ interface Person { id: number; name: string; }
 interface ArticleItem {
   id: number; title: string;
   authors: Person[];
-  cliente?: { id: number; nombreCompleto: string | null; ci: string | null; extension: string | null } | null;
+  cliente?: ClienteItem | null;
   edicion?: { id: number; numero: number } | null;
 }
-interface ClienteItem { id: number; nombreCompleto: string | null; ci: string | null; extension: string | null; }
+interface ClienteItem {
+  id: number;
+  nombreCompleto: string | null;
+  ci: string | null;
+  extension: string | null;
+  nombres: string | null;
+  apellidoPaterno: string | null;
+  apellidoMaterno: string | null;
+  sexo: string | null;
+  direccion: string | null;
+  celular: string | null;
+  email: string | null;
+  fechaNacimiento: string | null;
+  ciudad: string | null;
+}
 interface EdicionItem {
   id: number; numero: number;
   archivoUrl?: string | null;
@@ -53,7 +67,23 @@ function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onCon
   );
 }
 
-// ─── Componente de edición con acordeón inline ─────────────────────────────
+// Función auxiliar para construir el objeto JSON de SENAPI
+const buildSenapiJSON = (cliente: ClienteItem): object => {
+  return {
+    nombres: cliente.nombres || "",
+    apellidoPaterno: cliente.apellidoPaterno || "",
+    apellidoMaterno: cliente.apellidoMaterno || "",
+    sexo: cliente.sexo || "",
+    ci: cliente.ci || "",
+    extension: cliente.extension || "",
+    direccion: cliente.direccion || "",
+    celular: cliente.celular || "",
+    email: cliente.email || "",
+    fechaNacimiento: cliente.fechaNacimiento || "",
+    ciudad: cliente.ciudad || "",
+  };
+};
+
 function EdicionCard({
   ed,
   selected,
@@ -133,31 +163,19 @@ function EdicionCard({
       overflow: "hidden",
       transition: "border-color 0.2s",
     }}>
-      {/* ── Cabecera clicable ── */}
       <button
         onClick={() => setOpen(v => !v)}
         style={{
-          width: "100%",
-          background: "transparent",
-          border: "none",
-          padding: "14px 16px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          cursor: "pointer",
-          color: "white",
+          width: "100%", background: "transparent", border: "none",
+          padding: "14px 16px", display: "flex", alignItems: "center",
+          justifyContent: "space-between", cursor: "pointer", color: "white",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{
-            background: open ? "#3b82f6" : "#334155",
-            color: "white",
-            borderRadius: 6,
-            padding: "2px 10px",
-            fontSize: 11,
-            fontWeight: "bold",
-            textTransform: "uppercase",
-            transition: "background 0.2s",
+            background: open ? "#3b82f6" : "#334155", color: "white",
+            borderRadius: 6, padding: "2px 10px", fontSize: 11,
+            fontWeight: "bold", textTransform: "uppercase", transition: "background 0.2s",
           }}>
             {numeroTexto} EDICIÓN
           </span>
@@ -167,7 +185,6 @@ function EdicionCard({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* Botón subir / descargar archivo (sin cambios) */}
           {ed.archivoUrl ? (
             <>
               <a
@@ -176,8 +193,7 @@ function EdicionCard({
                 onClick={e => e.stopPropagation()}
                 style={{
                   background: "#22c55e", padding: "4px 10px", borderRadius: 6,
-                  color: "white", fontWeight: "bold", fontSize: 11,
-                  textDecoration: "none",
+                  color: "white", fontWeight: "bold", fontSize: 11, textDecoration: "none",
                 }}
               >
                 📥
@@ -199,33 +215,23 @@ function EdicionCard({
               <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) subirArchivo(f); }} />
             </label>
           )}
-
-          {/* Chevron */}
           <span style={{
             fontSize: 16, color: "#94a3b8",
             transform: open ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.2s",
-            display: "inline-block",
+            transition: "transform 0.2s", display: "inline-block",
           }}>
             ▾
           </span>
         </div>
       </button>
 
-      {/* ── Contenido desplegable ── */}
       {open && (
         <div style={{ padding: "0 16px 16px", borderTop: "1px solid #1e293b" }}>
-
-          {/* ─── Director (con botón copiar) ────────────────── */}
+          {/* Director con botón copiar JSON */}
           <div style={{
-            background: "#1e293b",
-            padding: 12,
-            borderRadius: 8,
-            marginTop: 12,
-            marginBottom: 12,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            background: "#1e293b", padding: 12, borderRadius: 8,
+            marginTop: 12, marginBottom: 12,
+            display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
             <div>
               <p style={{ color: "#64748b", fontSize: 11, margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 0.5 }}>
@@ -242,22 +248,15 @@ function EdicionCard({
             {selected.cliente && (
               <button
                 onClick={() => {
-                  const texto = `${selected.cliente!.nombreCompleto || ""} ${selected.cliente!.ci || ""} ${selected.cliente!.extension || ""}`.trim();
-                  if (texto) {
-                    navigator.clipboard.writeText(texto);
-                    alert("📋 Datos copiados: " + texto);
-                  }
+                  const obj = buildSenapiJSON(selected.cliente!);
+                  navigator.clipboard.writeText(JSON.stringify(obj, null, 2));
+                  alert("📋 Datos del director copiados en formato JSON");
                 }}
                 title="Copiar datos del director"
                 style={{
-                  background: "#6366f1",
-                  border: "none",
-                  padding: "6px 10px",
-                  borderRadius: 6,
-                  color: "white",
-                  cursor: "pointer",
-                  fontSize: 13,
-                  fontWeight: "bold",
+                  background: "#6366f1", border: "none", padding: "6px 10px",
+                  borderRadius: 6, color: "white", cursor: "pointer",
+                  fontSize: 13, fontWeight: "bold",
                 }}
               >
                 📋
@@ -265,7 +264,6 @@ function EdicionCard({
             )}
           </div>
 
-          {/* Lista de autores */}
           {articles.length === 0 ? (
             <p style={{ color: "#64748b", fontSize: 13, marginTop: 14 }}>Sin autores asignados.</p>
           ) : (
@@ -274,10 +272,8 @@ function EdicionCard({
                 <div
                   key={article.id}
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "10px 0",
+                    display: "flex", justifyContent: "space-between",
+                    alignItems: "center", padding: "10px 0",
                     borderBottom: idx < articles.length - 1 ? "1px solid #1e293b" : "none",
                   }}
                 >
@@ -295,25 +291,18 @@ function EdicionCard({
                     )}
                   </div>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    {/* Botón copiar datos de este autor */}
                     {article.cliente && (
                       <button
                         onClick={() => {
-                          const texto = `${article.cliente!.nombreCompleto || ""} ${article.cliente!.ci || ""} ${article.cliente!.extension || ""}`.trim();
-                          if (texto) {
-                            navigator.clipboard.writeText(texto);
-                            alert("📋 Datos copiados: " + texto);
-                          }
+                          const obj = buildSenapiJSON(article.cliente!);
+                          navigator.clipboard.writeText(JSON.stringify(obj, null, 2));
+                          alert("📋 Datos del autor copiados en formato JSON");
                         }}
                         title="Copiar datos para SENAPI"
                         style={{
-                          background: "#6366f1",
-                          border: "none",
-                          padding: "3px 8px",
-                          borderRadius: 6,
-                          color: "white",
-                          cursor: "pointer",
-                          fontSize: 12,
+                          background: "#6366f1", border: "none",
+                          padding: "3px 8px", borderRadius: 6,
+                          color: "white", cursor: "pointer", fontSize: 12,
                         }}
                       >
                         📋
@@ -332,16 +321,9 @@ function EdicionCard({
             </div>
           )}
 
-          {/* Formulario inline para agregar autor */}
           <div style={{
-            marginTop: 14,
-            background: "#1e293b",
-            borderRadius: 8,
-            padding: 12,
-            display: "flex",
-            gap: 8,
-            flexWrap: "wrap",
-            alignItems: "center",
+            marginTop: 14, background: "#1e293b", borderRadius: 8,
+            padding: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center",
           }}>
             <select
               value={nuevoClienteId}
@@ -380,7 +362,6 @@ function EdicionCard({
   );
 }
 
-// ─── Componente principal ──────────────────────────────────────────────────
 function Magazines() {
   const { token } = useAuth();
   const { isMobile } = useWindowSize();
