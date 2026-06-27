@@ -80,6 +80,35 @@ function EdicionCard({
   const numeroTexto = NOMBRES[ed.numero - 1] || `N° ${ed.numero}`;
   const articles = ed.articles ?? [];
 
+  // ─── Copiar para SENAPI ────────────────────────────────────────────
+  const copiarSenapi = () => {
+    const participantes: string[] = [];
+
+    if (selected.cliente) {
+      const dir = selected.cliente;
+      participantes.push(
+        `${dir.nombreCompleto || ""} ${dir.ci || ""} ${dir.extension || ""}`.trim()
+      );
+    }
+
+    articles.forEach(article => {
+      if (article.cliente) {
+        const a = article.cliente;
+        participantes.push(
+          `${a.nombreCompleto || ""} ${a.ci || ""} ${a.extension || ""}`.trim()
+        );
+      }
+    });
+
+    if (participantes.length === 0) {
+      alert("No hay participantes con datos para copiar.");
+      return;
+    }
+
+    navigator.clipboard.writeText(participantes.join("\n"));
+    alert("📋 Datos copiados para SENAPI");
+  };
+
   const subirArchivo = async (file: File) => {
     setSubiendoId(ed.id);
     try {
@@ -167,6 +196,30 @@ function EdicionCard({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* Botón Copiar SENAPI */}
+          <button
+            onClick={e => {
+              e.stopPropagation();
+              copiarSenapi();
+            }}
+            title="Copiar datos para SENAPI"
+            style={{
+              background: "#6366f1",
+              border: "none",
+              padding: "4px 10px",
+              borderRadius: 6,
+              color: "white",
+              fontWeight: "bold",
+              fontSize: 11,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            📋 SENAPI
+          </button>
+
           {/* Botón subir / descargar archivo */}
           {ed.archivoUrl ? (
             <>
@@ -215,6 +268,26 @@ function EdicionCard({
       {/* ── Contenido desplegable ── */}
       {open && (
         <div style={{ padding: "0 16px 16px", borderTop: "1px solid #1e293b" }}>
+
+          {/* ─── Director ──────────────────────────────────────── */}
+          <div style={{
+            background: "#1e293b",
+            padding: 12,
+            borderRadius: 8,
+            marginTop: 12,
+            marginBottom: 12,
+          }}>
+            <p style={{ color: "#64748b", fontSize: 11, margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Director
+            </p>
+            {selected.cliente ? (
+              <p style={{ color: "white", fontWeight: "bold", margin: 0 }}>
+                {selected.cliente.nombreCompleto} · CI {selected.cliente.ci} · {selected.cliente.extension}
+              </p>
+            ) : (
+              <p style={{ color: "#64748b", margin: 0 }}>Sin director vinculado</p>
+            )}
+          </div>
 
           {/* Lista de autores */}
           {articles.length === 0 ? (
