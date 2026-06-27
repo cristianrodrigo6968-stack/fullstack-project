@@ -424,7 +424,6 @@ app.post("/productos", auth, upload.single("imagen"), async (req, res) => {
   try {
     if (componentes) componentesData = JSON.parse(componentes);
   } catch { /* ignorar */ }
-
   const producto = await prisma.producto.create({
     data: {
       nombre,
@@ -465,7 +464,7 @@ app.delete("/productos/:id", auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ===================== PAGOS (cliente anónimo) =====================
+// ===================== PAGOS =====================
 app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
   try {
     const { nombreDeclarado, monto, tipo, descripcion, productos, celular, ci } = req.body;
@@ -501,7 +500,6 @@ app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
   }
 });
 
-// ===================== PAGOS MANUAL (admin) =====================
 app.post("/pagos/manual", auth, async (req, res) => {
   const { nombreDeclarado, monto, pedidoId, celular, ci } = req.body;
   const pago = await prisma.pago.create({
@@ -530,7 +528,6 @@ app.post("/pagos/manual", auth, async (req, res) => {
   res.json(pago);
 });
 
-// ===================== GET PAGOS =====================
 app.get("/pagos", auth, async (req, res) => {
   const pagos = await prisma.pago.findMany({
     orderBy: { creadoEn: "desc" },
@@ -551,58 +548,14 @@ app.delete("/pagos/:id", auth, async (req, res) => {
   await prisma.pago.delete({ where: { id: Number(req.params.id) } });
   res.json({ ok: true });
 });
-// ===================== VERIFICAR PAGO (CORREGIDO + IDEMPOTENTE + ATÓMICO) =====================
+
+// ===================== VERIFICAR PAGO (CORREGIDO) =====================
 app.put("/pagos/:id/verificar", auth, async (req, res) => {
   const id = Number(req.params.id);
   const pago = await prisma.pago.findUnique({ where: { id } });
   if (!pago) return res.status(404).json({ error: "Pago no encontrado" });
 
-  // 🔒 LOCK ATÓMICO: si el pago ya tiene pedido, no seguimos (clic repetido más tarde).
-  if (pago.pedidoId) {
-    const pedidoExistente = await prisma.pedido.findUnique({
-      where: { id: pago.pedidoId },
-      include: { cliente: true, items: true },
-    });
-    return res.json({
-      ...pago,
-      clienteId: pedidoExistente?.clienteId,
-      pedido: pedidoExistente,
-      yaProcesado: true,
-    });
-  }
-
-  // 🔒 LOCK ATÓMICO REAL: intentamos "reservar" este pago marcándolo como verificado
-  // SOLO SI todavía está en estado "pendiente". Esta operación es atómica a nivel de
-  // base de datos: si llegan 5 clics simultáneos, SOLO UNO logrará actualizar la fila
-  // (count === 1); el resto verá count === 0 y deberá abortar sin crear nada.
-  const lock = await prisma.pago.updateMany({
-    where: { id, estado: { not: "verificado" }, pedidoId: null },
-    data: { estado: "verificado" },
-  });
-
-  if (lock.count === 0) {
-    // Otra petición (otro clic) ya está procesando o ya procesó este pago.
-    // Esperamos un instante breve y devolvemos el estado actual (puede que el
-    // pedido todavía se esté creando en la petición "ganadora").
-    await new Promise(r => setTimeout(r, 1500));
-    const pagoActual = await prisma.pago.findUnique({ where: { id } });
-    const pedidoActual = pagoActual?.pedidoId
-      ? await prisma.pedido.findUnique({
-          where: { id: pagoActual.pedidoId },
-          include: { cliente: true, items: true },
-        })
-      : null;
-    return res.json({
-      ...pagoActual,
-      clienteId: pedidoActual?.clienteId,
-      pedido: pedidoActual,
-      yaProcesado: true,
-      mensaje: pedidoActual
-        ? "Este pago ya fue verificado."
-        : "Este pago ya se está procesando, espera un momento y refresca.",
-    });
-  }
-  // ✅ Si llegamos aquí, esta petición "ganó" el lock y es la única que va a crear el pedido.
+  await prisma.pago.update({ where: { id }, data: { estado: "verificado" } });
 
   let cliente = null;
   if (pago.ci) {
@@ -658,7 +611,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
   }
 
-  // ***** LÓGICA: usar los datos del frontend directamente *****
+  // *** CORRECCIÓN CLAVE: usar los precios enviados por el frontend ***
   let montoTotal = 0;
   const itemsParaPedido: any[] = [];
 
@@ -668,20 +621,41 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
       console.log("📦 Carrito recibido en verificación:", JSON.stringify(carrito, null, 2));
 
       if (Array.isArray(carrito) && carrito.length > 0) {
+        // Extraer IDs reales (numéricos y que no contengan "_comp_")
+        const idsReales = carrito
+          .map((item: any) => item.id)
+          .filter((id: any) => id != null && typeof id === 'number' && !String(id).includes('_comp_'));
+
+        let productosBD: any[] = [];
+        let productoPorId = new Map();
+        if (idsReales.length > 0) {
+          productosBD = await prisma.producto.findMany({ where: { id: { in: idsReales } } });
+          productoPorId = new Map(productosBD.map(p => [p.id, p]));
+        }
+
         for (const item of carrito) {
           let precioFinal: number | null = null;
           let nombreProducto = item.nombre || "Producto desconocido";
-          let tipo = item.tipo || "producto";
 
+          // Priorizar precio enviado por el frontend (para componentes)
           if (typeof item.precioUnitario === 'number' && !isNaN(item.precioUnitario) && item.precioUnitario > 0) {
             precioFinal = item.precioUnitario;
             console.log(`✅ Usando precio del frontend para ${nombreProducto}: ${precioFinal}`);
+          }
+          // Fallback solo para IDs reales (productos normales)
+          else if (item.id && typeof item.id === 'number' && !String(item.id).includes('_comp_') && productoPorId.has(item.id)) {
+            const producto = productoPorId.get(item.id);
+            nombreProducto = producto.nombre;
+            precioFinal = producto.descuento > 0
+              ? producto.precio - (producto.precio * producto.descuento / 100)
+              : producto.precio;
+            console.log(`⚠️ Precio no enviado, usando BD para ${nombreProducto}: ${precioFinal}`);
           }
 
           if (precioFinal !== null && precioFinal > 0) {
             montoTotal += precioFinal;
             itemsParaPedido.push({
-              tipo: tipo,
+              tipo: item.tipo || "producto",
               titulo: nombreProducto,
               notas: `Precio unitario: Bs ${precioFinal.toFixed(2)}`,
               precioUnitario: precioFinal,
@@ -762,7 +736,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
   }
   res.json({ ...pago, clienteId: cliente.id, pedido: nuevoPedido });
 });
-
 
 app.put("/pagos/:id/rechazar", auth, async (req, res) => {
   const id = Number(req.params.id);
@@ -847,7 +820,6 @@ app.post(
   }
 );
 
-// ===================== ACTUALIZACIÓN FORMULARIO CLIENTE =====================
 app.put("/clients/form/:token", async (req, res) => {
   const client = await prisma.client.findUnique({ where: { token: req.params.token } });
   if (!client) return res.status(404).json({ error: "Link no válido" });
@@ -855,13 +827,11 @@ app.put("/clients/form/:token", async (req, res) => {
   if (client.clientUsername && client.status === "formulario llenado") {
     return res.status(410).json({ error: "Este link ya fue utilizado y no puede volver a enviarse." });
   }
-
   const {
     ci, nombres, apellidoPaterno, apellidoMaterno, sexo, ciudad, nombreCompleto,
     direccion, fechaNacimiento, extension, profesion, celular, email,
     pideLibros, cantLibros, pideArticulos, cantArticulos, pideDirector, pideFundador, notasServicio,
   } = req.body;
-
   const updated = await prisma.client.update({
     where: { token: req.params.token },
     data: {
@@ -875,7 +845,6 @@ app.put("/clients/form/:token", async (req, res) => {
       status: "formulario llenado",
     },
   });
-
   let credentials = undefined;
   if (!updated.clientUsername) {
     const nombresArray = (updated.nombres || "").split(" ");
@@ -884,47 +853,29 @@ app.put("/clients/form/:token", async (req, res) => {
       .replace(/\s+/g, "")
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
-
     let username = baseUsername;
     let counter = 1;
-    while (
-      await prisma.client.findFirst({
-        where: { clientUsername: username, NOT: { id: updated.id } },
-      })
-    ) {
+    while (await prisma.client.findFirst({ where: { clientUsername: username, NOT: { id: updated.id } } })) {
       username = `${baseUsername}${counter}`;
       counter++;
     }
-
     const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let password = "";
-    for (let i = 0; i < 8; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
+    for (let i = 0; i < 8; i++) password += chars.charAt(Math.floor(Math.random() * chars.length));
     const hashedPassword = await bcrypt.hash(password, 10);
     await prisma.client.update({
       where: { id: updated.id },
-      data: {
-        clientUsername: username,
-        clientPassword: hashedPassword,
-        credencialesGeneradaAt: new Date(),
-      },
+      data: { clientUsername: username, clientPassword: hashedPassword, credencialesGeneradaAt: new Date() },
     });
     credentials = { username, password };
   }
-
-  await prisma.client.update({
-    where: { id: updated.id },
-    data: { expiresAt: new Date(0) },
-  });
-
+  await prisma.client.update({ where: { id: updated.id }, data: { expiresAt: new Date(0) } });
   let pdfBase64: string | null = null;
   const pedidoActivo = await prisma.pedido.findFirst({
     where: { clienteId: updated.id, estado: { not: "completado" } },
     orderBy: { creadoEn: "desc" },
     include: { items: true },
   });
-
   if (pedidoActivo) {
     const itemsParaPDF = pedidoActivo.items.map((item) => ({
       titulo: item.titulo || "Producto",
@@ -933,10 +884,7 @@ app.put("/clients/form/:token", async (req, res) => {
     }));
     const reciboData = {
       cliente: {
-        nombreCompleto:
-          updated.nombreCompleto ||
-          [updated.nombres, updated.apellidoPaterno, updated.apellidoMaterno].filter(Boolean).join(" ") ||
-          "Cliente",
+        nombreCompleto: updated.nombreCompleto || [updated.nombres, updated.apellidoPaterno, updated.apellidoMaterno].filter(Boolean).join(" ") || "Cliente",
         ci: updated.ci || "",
         celular: updated.celular || "",
         email: updated.email || "",
@@ -958,12 +906,9 @@ app.put("/clients/form/:token", async (req, res) => {
       console.error("Error generando PDF en formulario:", err);
     }
   }
-
   res.json({ client: updated, credentials, pdfBase64 });
-
   await prisma.clienteTask.deleteMany({ where: { clienteId: updated.id } });
   await prisma.entrega.deleteMany({ where: { clienteId: updated.id } });
-
   const tareas: any[] = [];
   if (pideDirector) {
     for (let i = 1; i <= 3; i++) {
@@ -988,27 +933,19 @@ app.put("/clients/form/:token", async (req, res) => {
       tareas.push({ tipo: "articulo", descripcion: `Artículo ${i} — ${nombreCompleto}`, clienteId: updated.id });
     }
   }
-
   if (pideLibros && cantLibros > 0) {
     for (let i = 1; i <= cantLibros; i++) {
       tareas.push({ tipo: "libro", descripcion: `Libro ${i} — ${nombreCompleto}`, clienteId: updated.id });
     }
   }
-
   if (tareas.length > 0) await prisma.clienteTask.createMany({ data: tareas });
   await prisma.entrega.create({ data: { estado: "pendiente", clienteId: updated.id } });
 });
 
-// ===================== CLIENTES: ACTUALIZAR ESTADO, PROGRESO, REGENERAR, ELIMINAR =====================
+// ===================== CLIENTES: CRUD =====================
 app.put("/clients/:id", auth, async (req, res) => {
-  res.json(
-    await prisma.client.update({
-      where: { id: Number(req.params.id) },
-      data: { status: req.body.status },
-    })
-  );
+  res.json(await prisma.client.update({ where: { id: Number(req.params.id) }, data: { status: req.body.status } }));
 });
-
 app.put("/clients/:id/progreso", auth, async (req, res) => {
   const { librosHechos, articulosHechos, edicionesHechas } = req.body;
   res.json(
@@ -1022,19 +959,12 @@ app.put("/clients/:id/progreso", auth, async (req, res) => {
     })
   );
 });
-
 app.put("/clients/:id/regenerar", auth, async (req, res) => {
   const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 4);
-  res.json(
-    await prisma.client.update({
-      where: { id: Number(req.params.id) },
-      data: { token, expiresAt },
-    })
-  );
+  res.json(await prisma.client.update({ where: { id: Number(req.params.id) }, data: { token, expiresAt } }));
 });
-
 app.delete("/clients/:id", auth, async (req, res) => {
   const id = Number(req.params.id);
   await prisma.magazine.updateMany({ where: { clienteId: id }, data: { clienteId: null } });
@@ -1045,65 +975,49 @@ app.delete("/clients/:id", auth, async (req, res) => {
   await prisma.entrega.deleteMany({ where: { clienteId: id } });
   await prisma.clienteArchivo.deleteMany({ where: { clienteId: id } });
   const pedidos = await prisma.pedido.findMany({ where: { clienteId: id }, select: { id: true } });
-  const pedidoIds = pedidos.map((p) => p.id);
+  const pedidoIds = pedidos.map(p => p.id);
   const items = await prisma.itemPedido.findMany({ where: { pedidoId: { in: pedidoIds } }, select: { id: true } });
-  const itemIds = items.map((i) => i.id);
+  const itemIds = items.map(i => i.id);
   await prisma.revisionItem.deleteMany({ where: { itemPedidoId: { in: itemIds } } });
   await prisma.itemPedido.deleteMany({ where: { pedidoId: { in: pedidoIds } } });
   await prisma.pedido.deleteMany({ where: { clienteId: id } });
   await prisma.client.delete({ where: { id } });
   res.json({ ok: true });
 });
-
 app.get("/clients/:id/credenciales", auth, async (req, res) => {
   const id = Number(req.params.id);
   const cliente = await prisma.client.findUnique({ where: { id }, select: { clientUsername: true } });
   if (!cliente) return res.status(404).json({ error: "Cliente no encontrado" });
   res.json({ clientUsername: cliente.clientUsername });
 });
-
 app.post("/clients/:id/regenerar-credenciales", auth, async (req, res) => {
   const id = Number(req.params.id);
   const cliente = await prisma.client.findUnique({ where: { id } });
   if (!cliente) return res.status(404).json({ error: "Cliente no encontrado" });
-
   const nombresArray = (cliente.nombres || "").split(" ");
   const apellidoPaternoRaw = (cliente.apellidoPaterno || "").toLowerCase();
   let username = `${nombresArray[0] || ""}.${apellidoPaternoRaw}`
     .replace(/\s+/g, "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
-
   let counter = 1;
   while (await prisma.client.findFirst({ where: { clientUsername: username, NOT: { id } } })) {
     username = `${username.replace(/\d+$/, "")}${counter}`;
     counter++;
   }
-
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let password = "";
   for (let i = 0; i < 8; i++) password += chars.charAt(Math.floor(Math.random() * chars.length));
   const hashedPassword = await bcrypt.hash(password, 10);
-  await prisma.client.update({
-    where: { id },
-    data: { clientUsername: username, clientPassword: hashedPassword, credencialesGeneradaAt: new Date() },
-  });
-
+  await prisma.client.update({ where: { id }, data: { clientUsername: username, clientPassword: hashedPassword, credencialesGeneradaAt: new Date() } });
   const LINK_PORTAL = process.env.CLIENT_PORTAL_URL || "https://tudominio.com/cliente";
-  const nombreCompleto =
-    cliente.nombreCompleto ||
-    [cliente.nombres, cliente.apellidoPaterno, cliente.apellidoMaterno].filter(Boolean).join(" ") ||
-    "Cliente";
+  const nombreCompleto = cliente.nombreCompleto || [cliente.nombres, cliente.apellidoPaterno, cliente.apellidoMaterno].filter(Boolean).join(" ") || "Cliente";
   const emailCliente = cliente.email || "";
   const celularCliente = cliente.celular || "";
-
   setTimeout(() => {
-    enviarCorreo({ email: emailCliente, nombreCompleto, username, password, linkPortal: LINK_PORTAL })
-      .catch((err) => console.error("Error enviando correo:", err));
-    enviarWhatsAppCliente(celularCliente, nombreCompleto, username, password, LINK_PORTAL)
-      .catch((err) => console.error("Error enviando WhatsApp:", err));
+    enviarCorreo({ email: emailCliente, nombreCompleto, username, password, linkPortal: LINK_PORTAL }).catch(err => console.error("Error enviando correo:", err));
+    enviarWhatsAppCliente(celularCliente, nombreCompleto, username, password, LINK_PORTAL).catch(err => console.error("Error enviando WhatsApp:", err));
   }, 5000);
-
   res.json({ clientUsername: username, clientPassword: password });
 });
 
@@ -1678,12 +1592,7 @@ app.post("/items-pedido/:id/archivo", auth, upload.single("archivo"), async (req
   const updated = await prisma.itemPedido.update({ where: { id }, data, include: { pedido: { include: { cliente: true } } } });
   res.json({ ...updated, cliente: updated.pedido.cliente, creadoEn: updated.pedido.creadoEn });
 });
-app.delete("/items-pedido/:id", auth, async (req, res) => {
-  const id = Number(req.params.id);
-  await prisma.revisionItem.deleteMany({ where: { itemPedidoId: id } });
-  await prisma.itemPedido.delete({ where: { id } });
-  res.json({ ok: true });
-});
+
 // ===================== INICIO SERVIDOR =====================
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
