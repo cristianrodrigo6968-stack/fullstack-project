@@ -349,6 +349,13 @@ function Magazines() {
 
   useEffect(() => { load(); }, []);
 
+  // Carga el detalle completo de una revista (con ediciones y artículos)
+  const selectMagazine = async (m: Magazine) => {
+    const res = await fetch(`${API_URL}/magazines/${m.id}`, { headers });
+    if (res.ok) setSelected(await res.json());
+    else setSelected(m);
+  };
+
   // Refresca solo la revista seleccionada (sin tocar la lista)
   const refreshSelected = async () => {
     if (!selected) return;
@@ -489,7 +496,7 @@ function Magazines() {
                     </p>
                   )}
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button onClick={() => setSelected(m)} style={btnBlue}>Ver</button>
+                    <button onClick={() => selectMagazine(m)} style={btnBlue}>Ver</button>
                     <button onClick={() => openEdit(m)} style={btnYellow}>Editar</button>
                     <button
                       onClick={() => remove(m)}
