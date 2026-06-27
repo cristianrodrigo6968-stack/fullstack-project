@@ -175,8 +175,6 @@ function Magazines() {
     } finally { setSubiendoId(null); }
   };
 
-  const clientesDirector = clientes.filter((c: any) => c.pideDirector);
-
   // Participantes (para vista detalle y copiar SENAPI)
   const participantes = selected ? [
     ...(selected.cliente ? [{
@@ -363,15 +361,52 @@ function Magazines() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 999, padding: "20px" }}>
           <div style={{ background: "#1e293b", padding: isMobile ? 20 : 28, borderRadius: 14, width: "100%", maxWidth: 700, color: "white", maxHeight: "85vh", overflowY: "auto" }}>
             <h3 style={{ marginBottom: 16 }}>{editId ? "Editar revista" : "Crear revista"}</h3>
+
             <label style={labelStyle}>Título</label>
             <input placeholder="Título" value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} />
-            <label style={labelStyle}>Director</label>
-            <input placeholder="Nombre del director" value={directorName} onChange={e => setDirectorName(e.target.value)} style={inputStyle} />
-            <label style={labelStyle}>Vincular con cliente (opcional)</label>
-            <select value={clienteId} onChange={e => { setClienteId(e.target.value); const c = clientesDirector.find(c => c.id.toString() === e.target.value); if (c) setDirectorName((c as any).nombreCompleto || ""); }} style={{ ...inputStyle, cursor: "pointer" }}>
+
+            <label style={labelStyle}>Director (seleccionar cliente)</label>
+            <select
+              value={clienteId}
+              onChange={e => {
+                const val = e.target.value;
+                setClienteId(val);
+                if (val) {
+                  const c = clientes.find(c => c.id.toString() === val);
+                  setDirectorName(c?.nombreCompleto || "");
+                } else {
+                  setDirectorName("");
+                }
+              }}
+              style={{ ...inputStyle, cursor: "pointer" }}
+            >
               <option value="">-- Sin vincular --</option>
-              {clientesDirector.map(c => <option key={c.id} value={c.id}>{c.nombreCompleto || "Sin nombre"}</option>)}
+              {clientes.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.nombreCompleto || "Sin nombre"} {c.ci ? `· CI ${c.ci}` : ""}
+                </option>
+              ))}
             </select>
+
+            {!clienteId && (
+              <>
+                <label style={labelStyle}>Nombre del director (manual)</label>
+                <input
+                  placeholder="Nombre del director"
+                  value={directorName}
+                  onChange={e => setDirectorName(e.target.value)}
+                  style={inputStyle}
+                />
+              </>
+            )}
+            {clienteId && (
+              <div style={{ background: "#0f172a", padding: "10px 12px", borderRadius: 8, marginBottom: 10 }}>
+                <span style={{ color: "#94a3b8", fontSize: 13 }}>
+                  Director vinculado: <strong style={{ color: "white" }}>{directorName}</strong>
+                </span>
+              </div>
+            )}
+
             <label style={labelStyle}>Notas (opcional)</label>
             <textarea placeholder="Notas sobre esta revista..." value={notas} onChange={e => setNotas(e.target.value)} rows={3} style={{ ...inputStyle, resize: "none" }} />
 
@@ -379,9 +414,11 @@ function Magazines() {
               <label style={labelStyle}>Artículos</label>
               <button onClick={addArticleRow} style={btnGray}>➕ Añadir</button>
             </div>
+
             {editArticles.map((a, i) => (
               !a.isDeleted ? (
                 <div key={i} style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 8, marginBottom: 8, alignItems: isMobile ? "stretch" : "center" }}>
+                  {/* Selector de cliente (autor) */}
                   <select
                     value={a.clienteId ?? ""}
                     onChange={e => {
@@ -406,8 +443,29 @@ function Magazines() {
                       </option>
                     ))}
                   </select>
-                  <input placeholder="Autor" value={a.author} onChange={e => { const copy = [...editArticles]; copy[i].author = e.target.value; setEditArticles(copy); }} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
-                  <input placeholder="Título artículo" value={a.title} onChange={e => { const copy = [...editArticles]; copy[i].title = e.target.value; setEditArticles(copy); }} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
+
+                  {/* Si no hay cliente, mostrar campo para autor manual */}
+                  {!a.clienteId && (
+                    <input
+                      placeholder="Autor"
+                      value={a.author}
+                      onChange={e => { const copy = [...editArticles]; copy[i].author = e.target.value; setEditArticles(copy); }}
+                      style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+                    />
+                  )}
+                  {/* Si hay cliente, mostrar nombre en modo solo lectura */}
+                  {a.clienteId && (
+                    <div style={{ ...inputStyle, marginBottom: 0, flex: 1, background: "#1e293b", display: "flex", alignItems: "center", padding: "0 10px" }}>
+                      <span style={{ color: "#cbd5e1", fontSize: 14 }}>{a.author}</span>
+                    </div>
+                  )}
+
+                  <input
+                    placeholder="Título artículo"
+                    value={a.title}
+                    onChange={e => { const copy = [...editArticles]; copy[i].title = e.target.value; setEditArticles(copy); }}
+                    style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+                  />
                   <button onClick={() => removeArticleRow(i)} style={{ background: "#ef4444", border: "none", borderRadius: 8, color: "white", cursor: "pointer", padding: "8px 12px", fontWeight: "bold", flexShrink: 0 }}>✕</button>
                 </div>
               ) : (
@@ -417,6 +475,7 @@ function Magazines() {
                 </div>
               )
             ))}
+
             <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
               <button onClick={save} disabled={saving} style={{ ...btnBlue, display: "flex", alignItems: "center", gap: 8, opacity: saving ? 0.7 : 1, minWidth: 110, justifyContent: "center", cursor: saving ? "not-allowed" : "pointer" }}>
                 {saving ? <Spinner /> : "💾 Guardar"}
