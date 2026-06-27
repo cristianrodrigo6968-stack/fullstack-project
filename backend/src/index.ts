@@ -316,9 +316,38 @@ app.put("/magazines/:id", auth, async (req, res) => {
 
 app.delete("/magazines/:id", auth, async (req, res) => {
   const id = Number(req.params.id);
-  await prisma.article.deleteMany({ where: { magazineId: id } });
-  await prisma.magazine.delete({ where: { id } });
-  res.json({ ok: true });
+
+  try {
+    // 1. Eliminar artículos de la revista (incluye los que están en ediciones)
+    await prisma.article.deleteMany({ where: { magazineId: id } });
+
+    // 2. Desvincular ítems de pedido de las ediciones de esta revista
+    const ediciones = await prisma.edicion.findMany({
+      where: { magazineId: id },
+      select: { id: true },
+    });
+    const edicionIds = ediciones.map(e => e.id);
+    if (edicionIds.length > 0) {
+      await prisma.itemPedido.updateMany({
+        where: { edicionId: { in: edicionIds } },
+        data: { edicionId: null },
+      });
+    }
+
+    // 3. Eliminar las ediciones
+    await prisma.edicion.deleteMany({ where: { magazineId: id } });
+
+    // 4. Eliminar entregas asociadas a la revista
+    await prisma.entrega.deleteMany({ where: { magazineId: id } });
+
+    // 5. Finalmente eliminar la revista
+    await prisma.magazine.delete({ where: { id } });
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("Error al eliminar revista:", error);
+    res.status(500).json({ error: "Error interno al eliminar la revista" });
+  }
 });
 
 // ===================== ARTICLES =====================
