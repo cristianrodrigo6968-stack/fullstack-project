@@ -5,19 +5,18 @@ import { useMesActual } from "../../hooks/useMesActual";
 import NavegadorMes from "../../components/NavegadorMes";
 
 const API_URL = import.meta.env.VITE_API_URL;
+
 interface Person { id: number; name: string; }
-interface Article { id: number; title: string; authors: Person[]; }
-interface Cliente { id: number; nombreCompleto: string | null; }
+interface Article { id: number; title: string; authors: Person[]; cliente?: { id: number; nombreCompleto: string | null; ci: string | null; extension: string | null } | null; }
+interface ClienteItem { id: number; nombreCompleto: string | null; ci: string | null; extension: string | null; }
 interface Edicion {
-  id: number;
-  numero: number;
+  id: number; numero: number;
   items: { id: number; titulo: string | null; pedido: { cliente: { nombreCompleto: string | null; nombres: string | null; apellidoPaterno: string | null } } }[];
 }
-
 interface Magazine {
   id: number; title: string; director: Person;
   articles: Article[]; notas: string | null;
-  cliente: Cliente | null; createdAt: string;
+  cliente: ClienteItem | null; createdAt: string;
   archivoUrl: string | null;
   ediciones: Edicion[];
 }
@@ -53,7 +52,7 @@ function Magazines() {
   const { mesLabel, anio, anterior, siguiente, esActual, filtrarPorMes } = useMesActual();
 
   const [magazines, setMagazines] = useState<Magazine[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [clientes, setClientes] = useState<ClienteItem[]>([]);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [selected, setSelected] = useState<Magazine | null>(null);
@@ -69,7 +68,7 @@ function Magazines() {
   const [directorName, setDirectorName] = useState("");
   const [notas, setNotas] = useState("");
   const [clienteId, setClienteId] = useState("");
-  const [editArticles, setEditArticles] = useState<{ id?: number; author: string; title: string; isNew?: boolean; isDeleted?: boolean }[]>([{ author: "", title: "", isNew: true }]);
+  const [editArticles, setEditArticles] = useState<{ id?: number; author: string; title: string; isNew?: boolean; isDeleted?: boolean; clienteId?: number | null }[]>([{ author: "", title: "", isNew: true, clienteId: null }]);
   const [newAuthor, setNewAuthor] = useState("");
   const [newArticle, setNewArticle] = useState("");
   const [subiendoId, setSubiendoId] = useState<number | null>(null);
@@ -94,11 +93,11 @@ function Magazines() {
 
   const magazinesMes = filtrarPorMes(magazines);
 
-  const openCreate = () => { setEditId(null); setTitle(""); setDirectorName(""); setNotas(""); setClienteId(""); setEditArticles([{ author: "", title: "", isNew: true }]); setOpen(true); };
+  const openCreate = () => { setEditId(null); setTitle(""); setDirectorName(""); setNotas(""); setClienteId(""); setEditArticles([{ author: "", title: "", isNew: true, clienteId: null }]); setOpen(true); };
 
-  const openEdit = (m: Magazine) => { setEditId(m.id); setTitle(m.title); setDirectorName(m.director?.name || ""); setNotas(m.notas || ""); setClienteId(m.cliente?.id?.toString() || ""); setEditArticles(m.articles.map(a => ({ id: a.id, author: a.authors[0]?.name || "", title: a.title, isNew: false, isDeleted: false }))); setOpen(true); };
+  const openEdit = (m: Magazine) => { setEditId(m.id); setTitle(m.title); setDirectorName(m.director?.name || ""); setNotas(m.notas || ""); setClienteId(m.cliente?.id?.toString() || ""); setEditArticles(m.articles.map(a => ({ id: a.id, author: a.authors[0]?.name || "", title: a.title, isNew: false, isDeleted: false, clienteId: a.cliente?.id ?? null }))); setOpen(true); };
 
-  const addArticleRow = () => setEditArticles([...editArticles, { author: "", title: "", isNew: true }]);
+  const addArticleRow = () => setEditArticles([...editArticles, { author: "", title: "", isNew: true, clienteId: null }]);
 
   const removeArticleRow = (i: number) => { const copy = [...editArticles]; if (copy[i].isNew) copy.splice(i, 1); else copy[i].isDeleted = true; setEditArticles(copy); };
 
@@ -111,17 +110,16 @@ function Magazines() {
       if (editId) {
         await fetch(`${API_URL}/magazines/${editId}`, { method: "PUT", headers, body: JSON.stringify({ title, directorName, notas, clienteId: clienteId ? Number(clienteId) : null }) });
         for (const a of editArticles) {
-          if (a.isNew && !a.isDeleted && a.title && a.author) await fetch(`${API_URL}/articles`, { method: "POST", headers, body: JSON.stringify({ title: a.title, authorName: a.author, magazineId: editId }) });
+          if (a.isNew && !a.isDeleted && a.title && a.author) await fetch(`${API_URL}/articles`, { method: "POST", headers, body: JSON.stringify({ title: a.title, authorName: a.author, magazineId: editId, clienteId: a.clienteId || null }) });
           else if (!a.isNew && a.isDeleted && a.id) await fetch(`${API_URL}/articles/${a.id}`, { method: "DELETE", headers });
-          else if (!a.isNew && !a.isDeleted && a.id) await fetch(`${API_URL}/articles/${a.id}`, { method: "PUT", headers, body: JSON.stringify({ title: a.title, authorName: a.author }) });
+          else if (!a.isNew && !a.isDeleted && a.id) await fetch(`${API_URL}/articles/${a.id}`, { method: "PUT", headers, body: JSON.stringify({ title: a.title, authorName: a.author, clienteId: a.clienteId !== undefined ? (a.clienteId || null) : undefined }) });
         }
       } else {
-        // Crear revista (las 3 ediciones se crean en el backend automáticamente)
         const d = await fetch(`${API_URL}/persons`, { method: "POST", headers, body: JSON.stringify({ name: directorName }) }).then(r => r.json());
         const m = await fetch(`${API_URL}/magazines`, { method: "POST", headers, body: JSON.stringify({ title, directorId: d.id, notas, clienteId: clienteId ? Number(clienteId) : null }) }).then(r => r.json());
         for (const a of editArticles) {
           if (!a.title || !a.author) continue;
-          await fetch(`${API_URL}/articles`, { method: "POST", headers, body: JSON.stringify({ title: a.title, authorName: a.author, magazineId: m.id }) });
+          await fetch(`${API_URL}/articles`, { method: "POST", headers, body: JSON.stringify({ title: a.title, authorName: a.author, magazineId: m.id, clienteId: a.clienteId || null }) });
         }
       }
       setOpen(false);
@@ -179,6 +177,28 @@ function Magazines() {
 
   const clientesDirector = clientes.filter((c: any) => c.pideDirector);
 
+  // Participantes (para vista detalle y copiar SENAPI)
+  const participantes = selected ? [
+    ...(selected.cliente ? [{
+      nombre: selected.cliente.nombreCompleto || "",
+      ci: selected.cliente.ci || "",
+      extension: selected.cliente.extension || "",
+    }] : []),
+    ...selected.articles
+      .filter(a => a.cliente)
+      .map(a => ({
+        nombre: a.cliente!.nombreCompleto || "",
+        ci: a.cliente!.ci || "",
+        extension: a.cliente!.extension || "",
+      }))
+  ] : [];
+
+  const copiarSenapi = () => {
+    const texto = participantes.map(p => `${p.nombre} ${p.ci} ${p.extension}`).join("\n");
+    navigator.clipboard.writeText(texto);
+    alert("📋 Datos copiados para SENAPI");
+  };
+
   return (
     <div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -196,6 +216,23 @@ function Magazines() {
             <p style={{ color: "#94a3b8", marginBottom: 4 }}>Director: {selected.director?.name}</p>
             {selected.cliente && <div style={{ display: "inline-block", background: "#312e81", color: "#a78bfa", padding: "3px 12px", borderRadius: 99, fontSize: 12, marginBottom: 12 }}>👤 {selected.cliente.nombreCompleto}</div>}
             {selected.notas && <div style={{ background: "#0f172a", padding: 14, borderRadius: 10, marginBottom: 16, borderLeft: "4px solid #f59e0b" }}><p style={{ color: "#64748b", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>Notas</p><p style={{ color: "white", fontSize: 14 }}>{selected.notas}</p></div>}
+
+            {/* Participantes y SENAPI */}
+            {participantes.length > 0 && (
+              <div style={{ background: "#0f172a", padding: 16, borderRadius: 10, marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                  <h3 style={{ margin: 0, color: "#94a3b8", fontSize: 13, textTransform: "uppercase", letterSpacing: 1 }}>👥 Participantes</h3>
+                  <button onClick={copiarSenapi} style={{ background: "#3b82f6", border: "none", padding: "6px 14px", borderRadius: 8, color: "white", fontSize: 12, fontWeight: "bold", cursor: "pointer" }}>📋 Copiar para SENAPI</button>
+                </div>
+                {participantes.map((p, i) => (
+                  <div key={i} style={{ display: "flex", gap: 24, marginBottom: 6, color: "#cbd5e1", fontSize: 14 }}>
+                    <span style={{ width: 200 }}>{p.nombre}</span>
+                    <span style={{ width: 100 }}>CI: {p.ci}</span>
+                    <span>Ext: {p.extension}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Ediciones */}
             <h3 style={{ marginTop: 20, marginBottom: 12 }}>Ediciones ({selected.ediciones?.length || 0})</h3>
@@ -247,6 +284,7 @@ function Magazines() {
                 <div>
                   <p style={{ color: "white", fontWeight: "bold" }}>{a.title}</p>
                   <p style={{ color: "#94a3b8", fontSize: 13 }}>{a.authors.map(x => x.name).join(", ")}</p>
+                  {a.cliente && <p style={{ color: "#60a5fa", fontSize: 12 }}>👤 {a.cliente.nombreCompleto} · CI {a.cliente.ci}</p>}
                 </div>
                 <button onClick={() => deleteArticle(a.id)} disabled={deletingArticleId === a.id} style={{ ...btnRed, display: "flex", alignItems: "center", gap: 6, minWidth: 100, justifyContent: "center", opacity: deletingArticleId === a.id ? 0.7 : 1 }}>
                   {deletingArticleId === a.id ? <Spinner /> : "🗑 Eliminar"}
@@ -323,7 +361,7 @@ function Magazines() {
 
       {open && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 999, padding: "20px" }}>
-          <div style={{ background: "#1e293b", padding: isMobile ? 20 : 28, borderRadius: 14, width: "100%", maxWidth: 560, color: "white", maxHeight: "85vh", overflowY: "auto" }}>
+          <div style={{ background: "#1e293b", padding: isMobile ? 20 : 28, borderRadius: 14, width: "100%", maxWidth: 700, color: "white", maxHeight: "85vh", overflowY: "auto" }}>
             <h3 style={{ marginBottom: 16 }}>{editId ? "Editar revista" : "Crear revista"}</h3>
             <label style={labelStyle}>Título</label>
             <input placeholder="Título" value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} />
@@ -344,6 +382,30 @@ function Magazines() {
             {editArticles.map((a, i) => (
               !a.isDeleted ? (
                 <div key={i} style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 8, marginBottom: 8, alignItems: isMobile ? "stretch" : "center" }}>
+                  <select
+                    value={a.clienteId ?? ""}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const copy = [...editArticles];
+                      if (val === "") {
+                        copy[i].clienteId = null;
+                        copy[i].author = "";
+                      } else {
+                        const cliente = clientes.find(c => c.id === Number(val));
+                        copy[i].clienteId = Number(val);
+                        copy[i].author = cliente?.nombreCompleto || "";
+                      }
+                      setEditArticles(copy);
+                    }}
+                    style={{ ...inputStyle, marginBottom: 0, flex: 1, cursor: "pointer" }}
+                  >
+                    <option value="">-- Cliente (autor) --</option>
+                    {clientes.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombreCompleto || "Sin nombre"} {c.ci ? `· CI ${c.ci}` : ""}
+                      </option>
+                    ))}
+                  </select>
                   <input placeholder="Autor" value={a.author} onChange={e => { const copy = [...editArticles]; copy[i].author = e.target.value; setEditArticles(copy); }} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
                   <input placeholder="Título artículo" value={a.title} onChange={e => { const copy = [...editArticles]; copy[i].title = e.target.value; setEditArticles(copy); }} style={{ ...inputStyle, marginBottom: 0, flex: 1 }} />
                   <button onClick={() => removeArticleRow(i)} style={{ background: "#ef4444", border: "none", borderRadius: 8, color: "white", cursor: "pointer", padding: "8px 12px", fontWeight: "bold", flexShrink: 0 }}>✕</button>

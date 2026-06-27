@@ -71,6 +71,8 @@ model Article {
   magazineId Int
   magazine   Magazine @relation(fields: [magazineId], references: [id])
   authors    Person[] @relation("ArticleAuthors")
+  clienteId  Int?
+  cliente    Client?  @relation(fields: [clienteId], references: [id])
 }
 
 model Book {
@@ -143,7 +145,7 @@ model Client {
   archivos          ClienteArchivo[]
   pagos             Pago[]
   pedidos           Pedido[]
-
+  articles          Article[]  
   @@unique([ci, extension])
 }
 
