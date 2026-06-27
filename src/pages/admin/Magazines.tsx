@@ -53,6 +53,258 @@ function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onCon
   );
 }
 
+// ─── Componente de edición con acordeón inline ─────────────────────────────
+function EdicionCard({
+  ed,
+  selected,
+  clientes,
+  headers,
+  headersAuth,
+  onRefresh,
+}: {
+  ed: EdicionItem;
+  selected: Magazine;
+  clientes: ClienteItem[];
+  headers: Record<string, string>;
+  headersAuth: Record<string, string>;
+  onRefresh: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [subiendoId, setSubiendoId] = useState<number | null>(null);
+  const [deletingArticleId, setDeletingArticleId] = useState<number | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [nuevoClienteId, setNuevoClienteId] = useState("");
+  const [nuevoTitulo, setNuevoTitulo] = useState("");
+
+  const NOMBRES = ["PRIMERA", "SEGUNDA", "TERCERA"];
+  const numeroTexto = NOMBRES[ed.numero - 1] || `N° ${ed.numero}`;
+
+  const subirArchivo = async (file: File) => {
+    setSubiendoId(ed.id);
+    try {
+      const formData = new FormData();
+      formData.append("archivo", file);
+      await fetch(`${API_URL}/ediciones/${ed.id}/archivo`, {
+        method: "POST",
+        headers: headersAuth,
+        body: formData,
+      });
+      onRefresh();
+    } finally {
+      setSubiendoId(null);
+    }
+  };
+
+  const agregarAutor = async () => {
+    if (!nuevoClienteId || !nuevoTitulo) return;
+    setAdding(true);
+    const cliente = clientes.find(c => c.id === Number(nuevoClienteId));
+    await fetch(`${API_URL}/articles`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        title: nuevoTitulo,
+        authorName: cliente?.nombreCompleto || "",
+        magazineId: selected.id,
+        clienteId: Number(nuevoClienteId),
+        edicionId: ed.id,
+      }),
+    });
+    setNuevoClienteId("");
+    setNuevoTitulo("");
+    setAdding(false);
+    onRefresh();
+  };
+
+  const eliminarAutor = async (articleId: number) => {
+    setDeletingArticleId(articleId);
+    await fetch(`${API_URL}/articles/${articleId}`, { method: "DELETE", headers });
+    setDeletingArticleId(null);
+    onRefresh();
+  };
+
+  return (
+    <div style={{
+      background: "#0f172a",
+      borderRadius: 12,
+      marginBottom: 14,
+      border: open ? "1px solid #3b82f6" : "1px solid #1e293b",
+      overflow: "hidden",
+      transition: "border-color 0.2s",
+    }}>
+      {/* ── Cabecera clicable ── */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: "100%",
+          background: "transparent",
+          border: "none",
+          padding: "14px 16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          cursor: "pointer",
+          color: "white",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{
+            background: open ? "#3b82f6" : "#334155",
+            color: "white",
+            borderRadius: 6,
+            padding: "2px 10px",
+            fontSize: 11,
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            transition: "background 0.2s",
+          }}>
+            {numeroTexto} EDICIÓN
+          </span>
+          <span style={{ color: "#94a3b8", fontSize: 13 }}>
+            {ed.articles.length} autor{ed.articles.length !== 1 ? "es" : ""}
+          </span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* Botón subir / descargar archivo */}
+          {ed.archivoUrl ? (
+            <>
+              <a
+                href={ed.archivoUrl.replace("/upload/", "/upload/fl_attachment/")}
+                target="_blank" rel="noreferrer"
+                onClick={e => e.stopPropagation()}
+                style={{
+                  background: "#22c55e", padding: "4px 10px", borderRadius: 6,
+                  color: "white", fontWeight: "bold", fontSize: 11,
+                  textDecoration: "none",
+                }}
+              >
+                📥
+              </a>
+              <label
+                onClick={e => e.stopPropagation()}
+                style={{ background: "#334155", padding: "4px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11 }}
+              >
+                🔄
+                <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) subirArchivo(f); }} />
+              </label>
+            </>
+          ) : (
+            <label
+              onClick={e => e.stopPropagation()}
+              style={{ background: "#3b82f6", padding: "4px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 4 }}
+            >
+              {subiendoId === ed.id ? <Spinner /> : "📤 Subir"}
+              <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) subirArchivo(f); }} />
+            </label>
+          )}
+
+          {/* Chevron */}
+          <span style={{
+            fontSize: 16, color: "#94a3b8",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.2s",
+            display: "inline-block",
+          }}>
+            ▾
+          </span>
+        </div>
+      </button>
+
+      {/* ── Contenido desplegable ── */}
+      {open && (
+        <div style={{ padding: "0 16px 16px", borderTop: "1px solid #1e293b" }}>
+
+          {/* Lista de autores */}
+          {ed.articles.length === 0 ? (
+            <p style={{ color: "#64748b", fontSize: 13, marginTop: 14 }}>Sin autores asignados.</p>
+          ) : (
+            <div style={{ marginTop: 12 }}>
+              {ed.articles.map((article, idx) => (
+                <div
+                  key={article.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "10px 0",
+                    borderBottom: idx < ed.articles.length - 1 ? "1px solid #1e293b" : "none",
+                  }}
+                >
+                  <div>
+                    <span style={{ color: "#e2e8f0", fontSize: 14 }}>
+                      📝 {article.title}
+                    </span>
+                    <span style={{ color: "#94a3b8", fontSize: 12, marginLeft: 8 }}>
+                      — {article.authors.map(a => a.name).join(", ")}
+                    </span>
+                    {article.cliente?.ci && (
+                      <span style={{ color: "#60a5fa", fontSize: 11, marginLeft: 8 }}>
+                        · CI {article.cliente.ci}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => eliminarAutor(article.id)}
+                    disabled={deletingArticleId === article.id}
+                    style={{ ...btnRed, fontSize: 11, padding: "4px 8px", display: "flex", alignItems: "center", gap: 4 }}
+                  >
+                    {deletingArticleId === article.id ? <Spinner /> : "🗑"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Formulario inline para agregar autor */}
+          <div style={{
+            marginTop: 14,
+            background: "#1e293b",
+            borderRadius: 8,
+            padding: 12,
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}>
+            <select
+              value={nuevoClienteId}
+              onChange={e => setNuevoClienteId(e.target.value)}
+              style={{ ...inputStyle, flex: "1 1 160px", marginBottom: 0 }}
+            >
+              <option value="">— Cliente (autor) —</option>
+              {clientes.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.nombreCompleto || "Sin nombre"}{c.ci ? ` · ${c.ci}` : ""}
+                </option>
+              ))}
+            </select>
+            <input
+              placeholder="Título del artículo"
+              value={nuevoTitulo}
+              onChange={e => setNuevoTitulo(e.target.value)}
+              style={{ ...inputStyle, flex: "2 1 180px", marginBottom: 0 }}
+            />
+            <button
+              onClick={agregarAutor}
+              disabled={adding || !nuevoClienteId || !nuevoTitulo}
+              style={{
+                ...btnBlue,
+                opacity: (!nuevoClienteId || !nuevoTitulo) ? 0.5 : 1,
+                cursor: (!nuevoClienteId || !nuevoTitulo) ? "not-allowed" : "pointer",
+                display: "flex", alignItems: "center", gap: 6,
+              }}
+            >
+              {adding ? <Spinner /> : "➕ Agregar"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Componente principal ──────────────────────────────────────────────────
 function Magazines() {
   const { token } = useAuth();
   const { isMobile } = useWindowSize();
@@ -73,21 +325,15 @@ function Magazines() {
   const [directorName, setDirectorName] = useState("");
   const [notas, setNotas] = useState("");
   const [clienteId, setClienteId] = useState("");
-  const [subiendoId, setSubiendoId] = useState<number | null>(null);
-
-  // Modal para editar edición
-  const [edicionModalOpen, setEdicionModalOpen] = useState(false);
-  const [edicionModalId, setEdicionModalId] = useState<number | null>(null);
-  const [edicionModalNumero, setEdicionModalNumero] = useState(1);
-  const [edicionModalClienteId, setEdicionModalClienteId] = useState("");
-  const [edicionModalTitulo, setEdicionModalTitulo] = useState("");
-  const [edicionModalAdding, setEdicionModalAdding] = useState(false);
-  const [edicionModalDeletingId, setEdicionModalDeletingId] = useState<number | null>(null);
 
   const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
   const headersAuth = { Authorization: `Bearer ${token}` };
 
-  const showConfirm = (message: string, action: () => void) => { setConfirmMessage(message); setConfirmAction(() => action); setConfirmOpen(true); };
+  const showConfirm = (message: string, action: () => void) => {
+    setConfirmMessage(message);
+    setConfirmAction(() => action);
+    setConfirmOpen(true);
+  };
 
   const load = async () => {
     setLoadingMags(true);
@@ -102,20 +348,22 @@ function Magazines() {
 
   useEffect(() => { load(); }, []);
 
+  // Refresca solo la revista seleccionada (sin tocar la lista)
+  const refreshSelected = async () => {
+    if (!selected) return;
+    const res = await fetch(`${API_URL}/magazines/${selected.id}`, { headers });
+    if (res.ok) setSelected(await res.json());
+  };
+
   const magazinesMes = filtrarPorMes(magazines);
 
   const openCreate = () => {
-    setEditId(null);
-    setTitle("");
-    setDirectorName("");
-    setNotas("");
-    setClienteId("");
+    setEditId(null); setTitle(""); setDirectorName(""); setNotas(""); setClienteId("");
     setOpen(true);
   };
 
   const openEdit = (m: Magazine) => {
-    setEditId(m.id);
-    setTitle(m.title);
+    setEditId(m.id); setTitle(m.title);
     setDirectorName(m.director?.name || "");
     setNotas(m.notas || "");
     setClienteId(m.cliente?.id?.toString() || "");
@@ -134,13 +382,11 @@ function Magazines() {
         });
       } else {
         const d = await fetch(`${API_URL}/persons`, {
-          method: "POST",
-          headers,
+          method: "POST", headers,
           body: JSON.stringify({ name: directorName }),
         }).then(r => r.json());
         await fetch(`${API_URL}/magazines`, {
-          method: "POST",
-          headers,
+          method: "POST", headers,
           body: JSON.stringify({ title, directorId: d.id, notas, clienteId: clienteId ? Number(clienteId) : null }),
         });
       }
@@ -160,78 +406,19 @@ function Magazines() {
     });
   };
 
-  const subirArchivoEdicion = async (edicionId: number, file: File) => {
-    setSubiendoId(edicionId);
-    try {
-      const formData = new FormData();
-      formData.append("archivo", file);
-      await fetch(`${API_URL}/ediciones/${edicionId}/archivo`, {
-        method: "POST",
-        headers: headersAuth,
-        body: formData,
-      });
-      if (selected) {
-        const res = await fetch(`${API_URL}/magazines/${selected.id}`, { headers });
-        if (res.ok) setSelected(await res.json());
-      }
-    } finally {
-      setSubiendoId(null);
-    }
-  };
-
-  const abrirEdicionModal = (edicionId: number, numero: number) => {
-    setEdicionModalId(edicionId);
-    setEdicionModalNumero(numero);
-    setEdicionModalOpen(true);
-  };
-
-  const cerrarEdicionModal = () => {
-    setEdicionModalOpen(false);
-    setEdicionModalId(null);
-    setEdicionModalClienteId("");
-    setEdicionModalTitulo("");
-  };
-
-  const agregarAutorAEdicion = async () => {
-    if (!edicionModalClienteId || !edicionModalTitulo || !edicionModalId || !selected) return;
-    setEdicionModalAdding(true);
-    const cliente = clientes.find(c => c.id === Number(edicionModalClienteId));
-    await fetch(`${API_URL}/articles`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        title: edicionModalTitulo,
-        authorName: cliente?.nombreCompleto || "",
-        magazineId: selected.id,
-        clienteId: Number(edicionModalClienteId),
-        edicionId: edicionModalId,
-      }),
-    });
-    setEdicionModalClienteId("");
-    setEdicionModalTitulo("");
-    setEdicionModalAdding(false);
-    const res = await fetch(`${API_URL}/magazines/${selected.id}`, { headers });
-    if (res.ok) setSelected(await res.json());
-  };
-
-  const eliminarAutorDeEdicion = async (articleId: number) => {
-    setEdicionModalDeletingId(articleId);
-    await fetch(`${API_URL}/articles/${articleId}`, { method: "DELETE", headers });
-    setEdicionModalDeletingId(null);
-    if (selected) {
-      const res = await fetch(`${API_URL}/magazines/${selected.id}`, { headers });
-      if (res.ok) setSelected(await res.json());
-    }
-  };
-
   return (
     <div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      {confirmOpen && <ConfirmModal message={confirmMessage} onConfirm={confirmAction} onCancel={() => setConfirmOpen(false)} />}
+      {confirmOpen && (
+        <ConfirmModal message={confirmMessage} onConfirm={confirmAction} onCancel={() => setConfirmOpen(false)} />
+      )}
 
       <h1 style={{ marginBottom: 8, fontSize: isMobile ? 22 : 28 }}>📘 Revistas</h1>
-      <p style={{ color: "#94a3b8", marginBottom: 24, fontSize: isMobile ? 13 : 15 }}>Gestiona las revistas editoriales.</p>
+      <p style={{ color: "#94a3b8", marginBottom: 24, fontSize: isMobile ? 13 : 15 }}>
+        Gestiona las revistas editoriales.
+      </p>
 
+      {/* ── Vista de detalle ── */}
       {selected ? (
         <div>
           <button onClick={() => setSelected(null)} style={btnGray}>← Volver</button>
@@ -239,86 +426,40 @@ function Magazines() {
           <div style={{ background: "#1e293b", padding: isMobile ? 16 : 24, borderRadius: 14, marginTop: 20 }}>
             <h2 style={{ marginBottom: 6, fontSize: isMobile ? 18 : 24 }}>{selected.title}</h2>
             <p style={{ color: "#94a3b8", marginBottom: 4 }}>Director: {selected.director?.name}</p>
+
             {selected.cliente && (
               <div style={{ display: "inline-block", background: "#312e81", color: "#a78bfa", padding: "3px 12px", borderRadius: 99, fontSize: 12, marginBottom: 12 }}>
                 👤 {selected.cliente.nombreCompleto}
               </div>
             )}
+
             {selected.notas && (
-              <div style={{ background: "#0f172a", padding: 14, borderRadius: 10, marginBottom: 16, borderLeft: "4px solid #f59e0b" }}>
+              <div style={{ background: "#0f172a", padding: 14, borderRadius: 10, marginBottom: 20, borderLeft: "4px solid #f59e0b" }}>
                 <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>Notas</p>
-                <p style={{ color: "white", fontSize: 14 }}>{selected.notas}</p>
+                <p style={{ color: "white", fontSize: 14, margin: 0 }}>{selected.notas}</p>
               </div>
             )}
 
-            {/* Ediciones */}
-            {selected.ediciones?.map(ed => {
-              const numeroTexto = ["PRIMERA", "SEGUNDA", "TERCERA"][ed.numero - 1] || `N° ${ed.numero}`;
+            {/* Ediciones con acordeón */}
+            <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+              Ediciones — clic para ver autores
+            </p>
 
-              return (
-                <div key={ed.id} style={{ background: "#0f172a", padding: 16, borderRadius: 10, marginBottom: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <h3 style={{ margin: 0, color: "white", fontSize: 16, textTransform: "uppercase" }}>
-                      {numeroTexto} EDICIÓN
-                    </h3>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      {ed.archivoUrl ? (
-                        <>
-                          <a
-                            href={ed.archivoUrl?.replace("/upload/", "/upload/fl_attachment/")}
-                            target="_blank" rel="noreferrer"
-                            style={{
-                              background: "#22c55e", border: "none", padding: "4px 10px", borderRadius: 6,
-                              color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11,
-                              textDecoration: "none",
-                            }}
-                          >
-                            📥 Descargar
-                          </a>
-                          <label style={{
-                            background: "#334155", border: "none", padding: "4px 10px", borderRadius: 6,
-                            color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11,
-                          }}>
-                            🔄
-                            <input
-                              type="file" accept=".pdf,.pub,.docx"
-                              style={{ display: "none" }}
-                              onChange={(e) => {
-                                const f = e.target.files?.[0];
-                                if (f) subirArchivoEdicion(ed.id, f);
-                              }}
-                            />
-                          </label>
-                        </>
-                      ) : (
-                        <label style={{
-                          background: "#3b82f6", border: "none", padding: "4px 10px", borderRadius: 6,
-                          color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11,
-                          display: "inline-flex", alignItems: "center", gap: 4,
-                        }}>
-                          {subiendoId === ed.id ? <Spinner /> : "📤 Subir"}
-                          <input
-                            type="file" accept=".pdf,.pub,.docx"
-                            style={{ display: "none" }}
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (f) subirArchivoEdicion(ed.id, f);
-                            }}
-                          />
-                        </label>
-                      )}
-                    </div>
-                  </div>
+            {selected.ediciones?.length === 0 && (
+              <p style={{ color: "#64748b", fontSize: 13 }}>Sin ediciones registradas.</p>
+            )}
 
-                  <button
-                    onClick={() => abrirEdicionModal(ed.id, ed.numero)}
-                    style={{ ...btnGray, marginTop: 12, fontSize: 12, padding: "6px 12px" }}
-                  >
-                    ✏️ Editar
-                  </button>
-                </div>
-              );
-            })}
+            {selected.ediciones?.map(ed => (
+              <EdicionCard
+                key={ed.id}
+                ed={ed}
+                selected={selected}
+                clientes={clientes}
+                headers={headers}
+                headersAuth={headersAuth}
+                onRefresh={refreshSelected}
+              />
+            ))}
           </div>
         </div>
       ) : (
@@ -341,12 +482,19 @@ function Magazines() {
                   <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>Director: {m.director?.name}</p>
                   {m.cliente && <p style={{ color: "#a78bfa", fontSize: 12, marginBottom: 4 }}>👤 {m.cliente.nombreCompleto}</p>}
                   <p style={{ color: "#64748b", fontSize: 13, marginBottom: 8 }}>{m.articles.length} artículo(s) total</p>
-                  {m.notas && <p style={{ color: "#f59e0b", fontSize: 12, marginBottom: 8, background: "#422006", padding: "4px 10px", borderRadius: 6 }}>📝 {m.notas.length > 50 ? m.notas.substring(0, 50) + "..." : m.notas}</p>}
-
+                  {m.notas && (
+                    <p style={{ color: "#f59e0b", fontSize: 12, marginBottom: 8, background: "#422006", padding: "4px 10px", borderRadius: 6 }}>
+                      📝 {m.notas.length > 50 ? m.notas.substring(0, 50) + "..." : m.notas}
+                    </p>
+                  )}
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button onClick={() => setSelected(m)} style={btnBlue}>Ver</button>
                     <button onClick={() => openEdit(m)} style={btnYellow}>Editar</button>
-                    <button onClick={() => remove(m)} disabled={deletingId === m.id} style={{ ...btnRed, display: "flex", alignItems: "center", gap: 6, minWidth: 50, justifyContent: "center", opacity: deletingId === m.id ? 0.7 : 1 }}>
+                    <button
+                      onClick={() => remove(m)}
+                      disabled={deletingId === m.id}
+                      style={{ ...btnRed, display: "flex", alignItems: "center", gap: 6, minWidth: 50, justifyContent: "center", opacity: deletingId === m.id ? 0.7 : 1 }}
+                    >
                       {deletingId === m.id ? <Spinner /> : "🗑"}
                     </button>
                   </div>
@@ -357,29 +505,14 @@ function Magazines() {
         </>
       )}
 
-      {/* Modal crear/editar revista */}
+      {/* ── Modal crear/editar revista ── */}
       {open && (
-        <div style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
-          display: "flex", justifyContent: "center", alignItems: "center",
-          zIndex: 999, padding: "20px",
-        }}>
-          <div style={{
-            background: "#1e293b", padding: isMobile ? 20 : 28,
-            borderRadius: 14, width: "100%", maxWidth: 500,
-            color: "white", maxHeight: "85vh", overflowY: "auto",
-          }}>
-            <h3 style={{ marginBottom: 16 }}>
-              {editId ? "Editar revista" : "Crear revista"}
-            </h3>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 999, padding: "20px" }}>
+          <div style={{ background: "#1e293b", padding: isMobile ? 20 : 28, borderRadius: 14, width: "100%", maxWidth: 500, color: "white", maxHeight: "85vh", overflowY: "auto" }}>
+            <h3 style={{ marginBottom: 16 }}>{editId ? "Editar revista" : "Crear revista"}</h3>
 
             <label style={labelStyle}>Título</label>
-            <input
-              placeholder="Título de la revista"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              style={inputStyle}
-            />
+            <input placeholder="Título de la revista" value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} />
 
             <label style={labelStyle}>Director (seleccionar cliente)</label>
             <select
@@ -407,20 +540,12 @@ function Magazines() {
             {!clienteId && (
               <>
                 <label style={labelStyle}>Nombre del director (manual)</label>
-                <input
-                  placeholder="Nombre del director"
-                  value={directorName}
-                  onChange={e => setDirectorName(e.target.value)}
-                  style={inputStyle}
-                />
+                <input placeholder="Nombre del director" value={directorName} onChange={e => setDirectorName(e.target.value)} style={inputStyle} />
               </>
             )}
 
             {clienteId && (
-              <div style={{
-                background: "#0f172a", padding: "10px 12px",
-                borderRadius: 8, marginBottom: 10,
-              }}>
+              <div style={{ background: "#0f172a", padding: "10px 12px", borderRadius: 8, marginBottom: 10 }}>
                 <span style={{ color: "#94a3b8", fontSize: 13 }}>
                   Director vinculado: <strong style={{ color: "white" }}>{directorName}</strong>
                 </span>
@@ -428,129 +553,17 @@ function Magazines() {
             )}
 
             <label style={labelStyle}>Notas (opcional)</label>
-            <textarea
-              placeholder="Notas sobre esta revista..."
-              value={notas}
-              onChange={e => setNotas(e.target.value)}
-              rows={3}
-              style={{ ...inputStyle, resize: "none" }}
-            />
+            <textarea placeholder="Notas sobre esta revista..." value={notas} onChange={e => setNotas(e.target.value)} rows={3} style={{ ...inputStyle, resize: "none" }} />
 
             <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
               <button
-                onClick={save}
-                disabled={saving}
-                style={{
-                  ...btnBlue, display: "flex", alignItems: "center", gap: 8,
-                  opacity: saving ? 0.7 : 1, minWidth: 110, justifyContent: "center",
-                  cursor: saving ? "not-allowed" : "pointer",
-                }}
+                onClick={save} disabled={saving}
+                style={{ ...btnBlue, display: "flex", alignItems: "center", gap: 8, opacity: saving ? 0.7 : 1, minWidth: 110, justifyContent: "center", cursor: saving ? "not-allowed" : "pointer" }}
               >
                 {saving ? <Spinner /> : "💾 Guardar"}
               </button>
               <button onClick={() => setOpen(false)} style={btnRed}>Cancelar</button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal para editar edición */}
-      {edicionModalOpen && selected && edicionModalId && (
-        <div style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
-          display: "flex", justifyContent: "center", alignItems: "center",
-          zIndex: 9999, padding: "20px",
-        }}>
-          <div style={{
-            background: "#1e293b", padding: 28, borderRadius: 16,
-            width: "100%", maxWidth: 700, maxHeight: "85vh",
-            overflowY: "auto", color: "white",
-          }}>
-            <h2 style={{ marginBottom: 6 }}>
-              {selected.title} — {["PRIMERA", "SEGUNDA", "TERCERA"][edicionModalNumero - 1]} EDICIÓN
-            </h2>
-
-            <div style={{ background: "#0f172a", padding: 16, borderRadius: 10, marginBottom: 20 }}>
-              <p style={{ color: "#64748b", fontSize: 11, marginBottom: 6, textTransform: "uppercase" }}>Director</p>
-              {selected.cliente ? (
-                <p style={{ color: "white", fontWeight: "bold" }}>
-                  {selected.cliente.nombreCompleto} · CI {selected.cliente.ci} · {selected.cliente.extension}
-                </p>
-              ) : (
-                <p style={{ color: "#64748b" }}>Sin director vinculado</p>
-              )}
-            </div>
-
-            <div style={{ background: "#0f172a", padding: 16, borderRadius: 10, marginBottom: 20 }}>
-              <h3 style={{ color: "#94a3b8", fontSize: 13, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 12px" }}>Autores</h3>
-
-              {selected.ediciones?.find(e => e.id === edicionModalId)?.articles?.length === 0 ? (
-                <p style={{ color: "#64748b", fontSize: 13 }}>Sin autores asignados.</p>
-              ) : (
-                selected.ediciones?.find(e => e.id === edicionModalId)?.articles?.map(article => (
-                  <div key={article.id} style={{
-                    padding: "8px 0", borderBottom: "1px solid #1e293b",
-                    display: "flex", justifyContent: "space-between", alignItems: "center",
-                  }}>
-                    <div>
-                      <span style={{ color: "#cbd5e1", fontSize: 13 }}>📝 {article.title}</span>
-                      <span style={{ color: "#94a3b8", fontSize: 12, marginLeft: 8 }}>
-                        — {article.authors.map(a => a.name).join(", ")}
-                      </span>
-                      {article.cliente && (
-                        <span style={{ color: "#60a5fa", fontSize: 11, marginLeft: 8 }}>
-                          · CI {article.cliente.ci}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => eliminarAutorDeEdicion(article.id)}
-                      disabled={edicionModalDeletingId === article.id}
-                      style={{
-                        ...btnRed, fontSize: 11, padding: "3px 8px",
-                        display: "flex", alignItems: "center", gap: 4,
-                      }}
-                    >
-                      {edicionModalDeletingId === article.id ? <Spinner /> : "🗑"}
-                    </button>
-                  </div>
-                ))
-              )}
-
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <select
-                  value={edicionModalClienteId}
-                  onChange={e => setEdicionModalClienteId(e.target.value)}
-                  style={{ ...inputStyle, flex: 1, marginBottom: 0, cursor: "pointer" }}
-                >
-                  <option value="">-- Cliente (autor) --</option>
-                  {clientes.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombreCompleto || "Sin nombre"} {c.ci ? `· CI ${c.ci}` : ""}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  placeholder="Título del artículo"
-                  value={edicionModalTitulo}
-                  onChange={e => setEdicionModalTitulo(e.target.value)}
-                  style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
-                />
-                <button
-                  onClick={agregarAutorAEdicion}
-                  disabled={edicionModalAdding || !edicionModalClienteId || !edicionModalTitulo}
-                  style={{
-                    ...btnBlue,
-                    opacity: (!edicionModalClienteId || !edicionModalTitulo) ? 0.5 : 1,
-                    cursor: (!edicionModalClienteId || !edicionModalTitulo) ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {edicionModalAdding ? <Spinner /> : "➕"}
-                </button>
-              </div>
-            </div>
-
-            <button onClick={cerrarEdicionModal} style={btnGray}>Cerrar</button>
           </div>
         </div>
       )}
