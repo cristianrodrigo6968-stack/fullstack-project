@@ -7,18 +7,25 @@ import NavegadorMes from "../../components/NavegadorMes";
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface Person { id: number; name: string; }
-interface Article { id: number; title: string; authors: Person[]; cliente?: { id: number; nombreCompleto: string | null; ci: string | null; extension: string | null } | null; }
+interface ArticleItem {
+  id: number; title: string;
+  authors: Person[];
+  cliente?: { id: number; nombreCompleto: string | null; ci: string | null; extension: string | null } | null;
+  edicion?: { id: number; numero: number } | null;
+}
 interface ClienteItem { id: number; nombreCompleto: string | null; ci: string | null; extension: string | null; }
-interface Edicion {
+interface EdicionItem {
   id: number; numero: number;
+  archivoUrl?: string | null;
+  articles: ArticleItem[];
   items: { id: number; titulo: string | null; pedido: { cliente: { nombreCompleto: string | null; nombres: string | null; apellidoPaterno: string | null } } }[];
 }
 interface Magazine {
   id: number; title: string; director: Person;
-  articles: Article[]; notas: string | null;
+  articles: ArticleItem[]; notas: string | null;
   cliente: ClienteItem | null; createdAt: string;
   archivoUrl: string | null;
-  ediciones: Edicion[];
+  ediciones: EdicionItem[];
 }
 
 function Spinner() {
@@ -57,7 +64,6 @@ function Magazines() {
   const [editId, setEditId] = useState<number | null>(null);
   const [selected, setSelected] = useState<Magazine | null>(null);
   const [saving, setSaving] = useState(false);
-  const [addingArticle, setAddingArticle] = useState(false);
   const [loadingMags, setLoadingMags] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deletingArticleId, setDeletingArticleId] = useState<number | null>(null);
@@ -68,10 +74,14 @@ function Magazines() {
   const [directorName, setDirectorName] = useState("");
   const [notas, setNotas] = useState("");
   const [clienteId, setClienteId] = useState("");
-  const [editArticles, setEditArticles] = useState<{ id?: number; author: string; title: string; isNew?: boolean; isDeleted?: boolean; clienteId?: number | null }[]>([{ author: "", title: "", isNew: true, clienteId: null }]);
-  const [newAuthor, setNewAuthor] = useState("");
-  const [newArticle, setNewArticle] = useState("");
+  const [editArticles, setEditArticles] = useState<{ id?: number; author: string; title: string; isNew?: boolean; isDeleted?: boolean; clienteId?: number | null; edicionId?: number | null }[]>([{ author: "", title: "", isNew: true, clienteId: null, edicionId: null }]);
   const [subiendoId, setSubiendoId] = useState<number | null>(null);
+
+  // Para agregar artículo a edición específica en vista detalle
+  const [addingToEdicionId, setAddingToEdicionId] = useState<number | null>(null);
+  const [newArticleClienteId, setNewArticleClienteId] = useState("");
+  const [newArticleTitle, setNewArticleTitle] = useState("");
+  const [addingArticle, setAddingArticle] = useState(false);
 
   const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
   const headersAuth = { Authorization: `Bearer ${token}` };
@@ -93,105 +103,212 @@ function Magazines() {
 
   const magazinesMes = filtrarPorMes(magazines);
 
-  const openCreate = () => { setEditId(null); setTitle(""); setDirectorName(""); setNotas(""); setClienteId(""); setEditArticles([{ author: "", title: "", isNew: true, clienteId: null }]); setOpen(true); };
+  const openCreate = () => {
+    setEditId(null);
+    setTitle("");
+    setDirectorName("");
+    setNotas("");
+    setClienteId("");
+    setEditArticles([{ author: "", title: "", isNew: true, clienteId: null, edicionId: null }]);
+    setOpen(true);
+  };
 
-  const openEdit = (m: Magazine) => { setEditId(m.id); setTitle(m.title); setDirectorName(m.director?.name || ""); setNotas(m.notas || ""); setClienteId(m.cliente?.id?.toString() || ""); setEditArticles(m.articles.map(a => ({ id: a.id, author: a.authors[0]?.name || "", title: a.title, isNew: false, isDeleted: false, clienteId: a.cliente?.id ?? null }))); setOpen(true); };
+  const openEdit = (m: Magazine) => {
+    setEditId(m.id);
+    setTitle(m.title);
+    setDirectorName(m.director?.name || "");
+    setNotas(m.notas || "");
+    setClienteId(m.cliente?.id?.toString() || "");
+    // Cargar artículos existentes (pueden estar en ediciones)
+    setEditArticles(
+      m.articles.map(a => ({
+        id: a.id,
+        author: a.authors[0]?.name || "",
+        title: a.title,
+        isNew: false,
+        isDeleted: false,
+        clienteId: a.cliente?.id ?? null,
+        edicionId: a.edicion?.id ?? null,
+      }))
+    );
+    setOpen(true);
+  };
 
-  const addArticleRow = () => setEditArticles([...editArticles, { author: "", title: "", isNew: true, clienteId: null }]);
+  const addArticleRow = () => setEditArticles([...editArticles, { author: "", title: "", isNew: true, clienteId: null, edicionId: null }]);
 
-  const removeArticleRow = (i: number) => { const copy = [...editArticles]; if (copy[i].isNew) copy.splice(i, 1); else copy[i].isDeleted = true; setEditArticles(copy); };
+  const removeArticleRow = (i: number) => {
+    const copy = [...editArticles];
+    if (copy[i].isNew) copy.splice(i, 1);
+    else copy[i].isDeleted = true;
+    setEditArticles(copy);
+  };
 
-  const restoreArticleRow = (i: number) => { const copy = [...editArticles]; copy[i].isDeleted = false; setEditArticles(copy); };
+  const restoreArticleRow = (i: number) => {
+    const copy = [...editArticles];
+    copy[i].isDeleted = false;
+    setEditArticles(copy);
+  };
 
   const save = async () => {
     if (!title || !directorName) return;
     setSaving(true);
     try {
       if (editId) {
-        await fetch(`${API_URL}/magazines/${editId}`, { method: "PUT", headers, body: JSON.stringify({ title, directorName, notas, clienteId: clienteId ? Number(clienteId) : null }) });
+        await fetch(`${API_URL}/magazines/${editId}`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({ title, directorName, notas, clienteId: clienteId ? Number(clienteId) : null }),
+        });
         for (const a of editArticles) {
-          if (a.isNew && !a.isDeleted && a.title && a.author) await fetch(`${API_URL}/articles`, { method: "POST", headers, body: JSON.stringify({ title: a.title, authorName: a.author, magazineId: editId, clienteId: a.clienteId || null }) });
-          else if (!a.isNew && a.isDeleted && a.id) await fetch(`${API_URL}/articles/${a.id}`, { method: "DELETE", headers });
-          else if (!a.isNew && !a.isDeleted && a.id) await fetch(`${API_URL}/articles/${a.id}`, { method: "PUT", headers, body: JSON.stringify({ title: a.title, authorName: a.author, clienteId: a.clienteId !== undefined ? (a.clienteId || null) : undefined }) });
+          if (a.isNew && !a.isDeleted && a.title && a.author) {
+            await fetch(`${API_URL}/articles`, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                title: a.title,
+                authorName: a.author,
+                magazineId: editId,
+                clienteId: a.clienteId || null,
+                edicionId: a.edicionId || null,
+              }),
+            });
+          } else if (!a.isNew && a.isDeleted && a.id) {
+            await fetch(`${API_URL}/articles/${a.id}`, { method: "DELETE", headers });
+          } else if (!a.isNew && !a.isDeleted && a.id) {
+            await fetch(`${API_URL}/articles/${a.id}`, {
+              method: "PUT",
+              headers,
+              body: JSON.stringify({
+                title: a.title,
+                authorName: a.author,
+                clienteId: a.clienteId !== undefined ? (a.clienteId || null) : undefined,
+                edicionId: a.edicionId !== undefined ? (a.edicionId || null) : undefined,
+              }),
+            });
+          }
         }
       } else {
-        const d = await fetch(`${API_URL}/persons`, { method: "POST", headers, body: JSON.stringify({ name: directorName }) }).then(r => r.json());
-        const m = await fetch(`${API_URL}/magazines`, { method: "POST", headers, body: JSON.stringify({ title, directorId: d.id, notas, clienteId: clienteId ? Number(clienteId) : null }) }).then(r => r.json());
+        const d = await fetch(`${API_URL}/persons`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ name: directorName }),
+        }).then(r => r.json());
+        const m = await fetch(`${API_URL}/magazines`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ title, directorId: d.id, notas, clienteId: clienteId ? Number(clienteId) : null }),
+        }).then(r => r.json());
         for (const a of editArticles) {
           if (!a.title || !a.author) continue;
-          await fetch(`${API_URL}/articles`, { method: "POST", headers, body: JSON.stringify({ title: a.title, authorName: a.author, magazineId: m.id, clienteId: a.clienteId || null }) });
+          await fetch(`${API_URL}/articles`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              title: a.title,
+              authorName: a.author,
+              magazineId: m.id,
+              clienteId: a.clienteId || null,
+              edicionId: a.edicionId || null,
+            }),
+          });
         }
       }
       setOpen(false);
       await load();
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const remove = (m: Magazine) => {
     showConfirm(`¿Eliminar "${m.title}" y todos sus artículos?`, async () => {
-      setConfirmOpen(false); setDeletingId(m.id);
-      try { await fetch(`${API_URL}/magazines/${m.id}`, { method: "DELETE", headers }); await load(); }
-      finally { setDeletingId(null); }
+      setConfirmOpen(false);
+      setDeletingId(m.id);
+      try {
+        await fetch(`${API_URL}/magazines/${m.id}`, { method: "DELETE", headers });
+        await load();
+      } finally {
+        setDeletingId(null);
+      }
     });
   };
 
-  const addArticleToMag = async () => {
-    if (!newAuthor || !newArticle || !selected) return;
+  const addArticleToEdicion = async (edicionId: number) => {
+    if (!newArticleClienteId || !newArticleTitle || !selected) return;
     setAddingArticle(true);
     try {
-      await fetch(`${API_URL}/articles`, { method: "POST", headers, body: JSON.stringify({ title: newArticle, authorName: newAuthor, magazineId: selected.id }) });
-      setNewAuthor(""); setNewArticle("");
-      const res = await fetch(`${API_URL}/magazines`, { headers });
-      const data = await res.json();
-      setMagazines(data);
-      setSelected(data.find((m: Magazine) => m.id === selected.id) || null);
-    } finally { setAddingArticle(false); }
+      const cliente = clientes.find(c => c.id === Number(newArticleClienteId));
+      await fetch(`${API_URL}/articles`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          title: newArticleTitle,
+          authorName: cliente?.nombreCompleto || "",
+          magazineId: selected.id,
+          clienteId: Number(newArticleClienteId),
+          edicionId: edicionId,
+        }),
+      });
+      setNewArticleClienteId("");
+      setNewArticleTitle("");
+      setAddingToEdicionId(null);
+      const res = await fetch(`${API_URL}/magazines/${selected.id}`, { headers });
+      if (res.ok) setSelected(await res.json());
+    } finally {
+      setAddingArticle(false);
+    }
   };
 
-  const deleteArticle = (aid: number) => {
+  const deleteArticle = async (articleId: number) => {
     showConfirm("¿Eliminar este artículo?", async () => {
-      setConfirmOpen(false); setDeletingArticleId(aid);
+      setConfirmOpen(false);
+      setDeletingArticleId(articleId);
       try {
-        await fetch(`${API_URL}/articles/${aid}`, { method: "DELETE", headers });
-        const res = await fetch(`${API_URL}/magazines`, { headers });
-        const data = await res.json();
-        setMagazines(data);
-        setSelected(data.find((m: Magazine) => m.id === selected?.id) || null);
-      } finally { setDeletingArticleId(null); }
+        await fetch(`${API_URL}/articles/${articleId}`, { method: "DELETE", headers });
+        if (selected) {
+          const res = await fetch(`${API_URL}/magazines/${selected.id}`, { headers });
+          if (res.ok) setSelected(await res.json());
+        }
+      } finally {
+        setDeletingArticleId(null);
+      }
     });
   };
 
-  const subirArchivo = async (magId: number, file: File) => {
-    setSubiendoId(magId);
+  const subirArchivoEdicion = async (edicionId: number, file: File) => {
+    setSubiendoId(edicionId);
     try {
       const formData = new FormData();
       formData.append("archivo", file);
-      await fetch(`${API_URL}/magazines/${magId}/archivo`, { method: "POST", headers: headersAuth, body: formData });
-      const res = await fetch(`${API_URL}/magazines`, { headers });
-      const data = await res.json();
-      setMagazines(data);
-      const magActualizada = data.find((m: Magazine) => m.id === magId);
-      if (magActualizada) setSelected(magActualizada);
-    } finally { setSubiendoId(null); }
+      await fetch(`${API_URL}/ediciones/${edicionId}/archivo`, {
+        method: "POST",
+        headers: headersAuth,
+        body: formData,
+      });
+      if (selected) {
+        const res = await fetch(`${API_URL}/magazines/${selected.id}`, { headers });
+        if (res.ok) setSelected(await res.json());
+      }
+    } finally {
+      setSubiendoId(null);
+    }
   };
 
-  // Participantes (para vista detalle y copiar SENAPI)
-  const participantes = selected ? [
-    ...(selected.cliente ? [{
-      nombre: selected.cliente.nombreCompleto || "",
-      ci: selected.cliente.ci || "",
-      extension: selected.cliente.extension || "",
-    }] : []),
-    ...selected.articles
-      .filter(a => a.cliente)
-      .map(a => ({
-        nombre: a.cliente!.nombreCompleto || "",
-        ci: a.cliente!.ci || "",
-        extension: a.cliente!.extension || "",
-      }))
-  ] : [];
-
-  const copiarSenapi = () => {
+  const copiarSenapi = (edicion: EdicionItem) => {
+    const participantes = [
+      ...(selected?.cliente ? [{
+        nombre: selected.cliente.nombreCompleto || "",
+        ci: selected.cliente.ci || "",
+        extension: selected.cliente.extension || "",
+      }] : []),
+      ...edicion.articles
+        .filter(a => a.cliente)
+        .map(a => ({
+          nombre: a.cliente!.nombreCompleto || "",
+          ci: a.cliente!.ci || "",
+          extension: a.cliente!.extension || "",
+        })),
+    ];
     const texto = participantes.map(p => `${p.nombre} ${p.ci} ${p.extension}`).join("\n");
     navigator.clipboard.writeText(texto);
     alert("📋 Datos copiados para SENAPI");
@@ -212,92 +329,119 @@ function Magazines() {
           <div style={{ background: "#1e293b", padding: isMobile ? 16 : 24, borderRadius: 14, marginTop: 20 }}>
             <h2 style={{ marginBottom: 6, fontSize: isMobile ? 18 : 24 }}>{selected.title}</h2>
             <p style={{ color: "#94a3b8", marginBottom: 4 }}>Director: {selected.director?.name}</p>
-            {selected.cliente && <div style={{ display: "inline-block", background: "#312e81", color: "#a78bfa", padding: "3px 12px", borderRadius: 99, fontSize: 12, marginBottom: 12 }}>👤 {selected.cliente.nombreCompleto}</div>}
-            {selected.notas && <div style={{ background: "#0f172a", padding: 14, borderRadius: 10, marginBottom: 16, borderLeft: "4px solid #f59e0b" }}><p style={{ color: "#64748b", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>Notas</p><p style={{ color: "white", fontSize: 14 }}>{selected.notas}</p></div>}
-
-            {/* Participantes y SENAPI */}
-            {participantes.length > 0 && (
-              <div style={{ background: "#0f172a", padding: 16, borderRadius: 10, marginBottom: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                  <h3 style={{ margin: 0, color: "#94a3b8", fontSize: 13, textTransform: "uppercase", letterSpacing: 1 }}>👥 Participantes</h3>
-                  <button onClick={copiarSenapi} style={{ background: "#3b82f6", border: "none", padding: "6px 14px", borderRadius: 8, color: "white", fontSize: 12, fontWeight: "bold", cursor: "pointer" }}>📋 Copiar para SENAPI</button>
-                </div>
-                {participantes.map((p, i) => (
-                  <div key={i} style={{ display: "flex", gap: 24, marginBottom: 6, color: "#cbd5e1", fontSize: 14 }}>
-                    <span style={{ width: 200 }}>{p.nombre}</span>
-                    <span style={{ width: 100 }}>CI: {p.ci}</span>
-                    <span>Ext: {p.extension}</span>
-                  </div>
-                ))}
+            {selected.cliente && (
+              <div style={{ display: "inline-block", background: "#312e81", color: "#a78bfa", padding: "3px 12px", borderRadius: 99, fontSize: 12, marginBottom: 12 }}>
+                👤 {selected.cliente.nombreCompleto}
+              </div>
+            )}
+            {selected.notas && (
+              <div style={{ background: "#0f172a", padding: 14, borderRadius: 10, marginBottom: 16, borderLeft: "4px solid #f59e0b" }}>
+                <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>Notas</p>
+                <p style={{ color: "white", fontSize: 14 }}>{selected.notas}</p>
               </div>
             )}
 
-            {/* Ediciones */}
-            <h3 style={{ marginTop: 20, marginBottom: 12 }}>Ediciones ({selected.ediciones?.length || 0})</h3>
-            {selected.ediciones?.length === 0 && <p style={{ color: "#64748b", marginBottom: 16 }}>No hay ediciones generadas.</p>}
+            {/* Ediciones con sus artículos */}
             {selected.ediciones?.map(ed => (
-              <div key={ed.id} style={{ background: "#0f172a", padding: 14, borderRadius: 10, marginBottom: 10 }}>
-                <p style={{ color: "white", fontWeight: "bold" }}>Edición {ed.numero}</p>
-                {ed.items.length === 0 ? (
-                  <p style={{ color: "#64748b", fontSize: 12 }}>Sin artículos asignados.</p>
+              <div key={ed.id} style={{ background: "#0f172a", padding: 16, borderRadius: 10, marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <h3 style={{ margin: 0, color: "white", fontSize: 16 }}>Edición {ed.numero}</h3>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => copiarSenapi(ed)}
+                      style={{ background: "#3b82f6", border: "none", padding: "4px 10px", borderRadius: 6, color: "white", fontSize: 11, fontWeight: "bold", cursor: "pointer" }}
+                    >
+                      📋 Copiar SENAPI
+                    </button>
+                    {ed.archivoUrl ? (
+                      <>
+                        <a href={ed.archivoUrl?.replace("/upload/", "/upload/fl_attachment/")} target="_blank" rel="noreferrer" style={{ background: "#22c55e", border: "none", padding: "4px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11, textDecoration: "none" }}>
+                          📥 Descargar
+                        </a>
+                        <label style={{ background: "#334155", border: "none", padding: "4px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11 }}>
+                          🔄
+                          <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivoEdicion(ed.id, f); }} />
+                        </label>
+                      </>
+                    ) : (
+                      <label style={{ background: "#3b82f6", border: "none", padding: "4px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        {subiendoId === ed.id ? <Spinner /> : "📤 Subir"}
+                        <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivoEdicion(ed.id, f); }} />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                {/* Artículos de esta edición */}
+                {ed.articles?.length === 0 ? (
+                  <p style={{ color: "#64748b", fontSize: 13, marginBottom: 12 }}>Sin artículos asignados.</p>
                 ) : (
-                  ed.items.map(item => (
-                    <div key={item.id} style={{ padding: "4px 0", borderBottom: "1px solid #1e293b", color: "#94a3b8", fontSize: 12 }}>
-                      📝 {item.titulo || "Sin título"} — {item.pedido.cliente?.nombreCompleto || [item.pedido.cliente?.nombres, item.pedido.cliente?.apellidoPaterno].filter(Boolean).join(" ") || "Autor desconocido"}
+                  ed.articles?.map(article => (
+                    <div key={article.id} style={{ padding: "6px 0", borderBottom: "1px solid #1e293b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <span style={{ color: "#cbd5e1", fontSize: 13 }}>
+                          📝 {article.title}
+                        </span>
+                        <span style={{ color: "#94a3b8", fontSize: 12, marginLeft: 8 }}>
+                          — {article.authors.map(a => a.name).join(", ")}
+                        </span>
+                        {article.cliente && (
+                          <span style={{ color: "#60a5fa", fontSize: 11, marginLeft: 8 }}>
+                            · CI {article.cliente.ci}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => deleteArticle(article.id)}
+                        disabled={deletingArticleId === article.id}
+                        style={{ ...btnRed, fontSize: 11, padding: "3px 8px", display: "flex", alignItems: "center", gap: 4 }}
+                      >
+                        {deletingArticleId === article.id ? <Spinner /> : "🗑"}
+                      </button>
                     </div>
                   ))
                 )}
-              </div>
-            ))}
 
-            {/* Archivo */}
-            <div style={{ background: "#0f172a", padding: 16, borderRadius: 10, marginBottom: 20 }}>
-              <p style={{ color: "#64748b", fontSize: 12, marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>📎 Archivo de la Revista</p>
-              {selected.archivoUrl ? (
-                <div>
-                  <p style={{ color: "#22c55e", fontSize: 13, marginBottom: 8 }}>✅ Archivo subido</p>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <a href={selected.archivoUrl} target="_blank" rel="noreferrer" style={{ background: "#22c55e", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 13, textDecoration: "none" }}>📥 Descargar</a>
-                    <label style={{ background: "#334155", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 13 }}>
-                      🔄 Reemplazar
-                      <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivo(selected.id, f); }} />
-                    </label>
+                {/* Agregar artículo a esta edición */}
+                {addingToEdicionId === ed.id ? (
+                  <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
+                    <select
+                      value={newArticleClienteId}
+                      onChange={e => setNewArticleClienteId(e.target.value)}
+                      style={{ ...inputStyle, flex: 1, marginBottom: 0, cursor: "pointer" }}
+                    >
+                      <option value="">-- Cliente (autor) --</option>
+                      {clientes.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.nombreCompleto || "Sin nombre"} {c.ci ? `· CI ${c.ci}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      placeholder="Título del artículo"
+                      value={newArticleTitle}
+                      onChange={e => setNewArticleTitle(e.target.value)}
+                      style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
+                    />
+                    <button
+                      onClick={() => addArticleToEdicion(ed.id)}
+                      disabled={addingArticle || !newArticleClienteId || !newArticleTitle}
+                      style={{ ...btnBlue, opacity: (!newArticleClienteId || !newArticleTitle) ? 0.5 : 1, cursor: (!newArticleClienteId || !newArticleTitle) ? "not-allowed" : "pointer" }}
+                    >
+                      {addingArticle ? <Spinner /> : "➕"}
+                    </button>
+                    <button onClick={() => { setAddingToEdicionId(null); setNewArticleClienteId(""); setNewArticleTitle(""); }} style={btnGray}>✕</button>
                   </div>
-                </div>
-              ) : (
-                <div>
-                  <p style={{ color: "#64748b", fontSize: 13, marginBottom: 8 }}>Sin archivo final todavía.</p>
-                  <label style={{ background: "#3b82f6", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    {subiendoId === selected.id ? <><Spinner /> Subiendo...</> : "📤 Subir archivo"}
-                    <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivo(selected.id, f); }} />
-                  </label>
-                </div>
-              )}
-            </div>
-
-            <h3 style={{ marginTop: 20, marginBottom: 12 }}>Artículos</h3>
-            {selected.articles.length === 0 && <p style={{ color: "#64748b", marginBottom: 16 }}>No hay artículos aún.</p>}
-            {selected.articles.map(a => (
-              <div key={a.id} style={{ background: "#0f172a", padding: 14, borderRadius: 10, marginBottom: 10, display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", gap: isMobile ? 10 : 0 }}>
-                <div>
-                  <p style={{ color: "white", fontWeight: "bold" }}>{a.title}</p>
-                  <p style={{ color: "#94a3b8", fontSize: 13 }}>{a.authors.map(x => x.name).join(", ")}</p>
-                  {a.cliente && <p style={{ color: "#60a5fa", fontSize: 12 }}>👤 {a.cliente.nombreCompleto} · CI {a.cliente.ci}</p>}
-                </div>
-                <button onClick={() => deleteArticle(a.id)} disabled={deletingArticleId === a.id} style={{ ...btnRed, display: "flex", alignItems: "center", gap: 6, minWidth: 100, justifyContent: "center", opacity: deletingArticleId === a.id ? 0.7 : 1 }}>
-                  {deletingArticleId === a.id ? <Spinner /> : "🗑 Eliminar"}
-                </button>
+                ) : (
+                  <button
+                    onClick={() => setAddingToEdicionId(ed.id)}
+                    style={{ ...btnGray, marginTop: 12, fontSize: 12, padding: "6px 12px" }}
+                  >
+                    ➕ Agregar artículo
+                  </button>
+                )}
               </div>
             ))}
-
-            <h4 style={{ marginTop: 24, marginBottom: 10 }}>Agregar artículo</h4>
-            <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10, alignItems: isMobile ? "stretch" : "center" }}>
-              <input placeholder="Autor" value={newAuthor} onChange={e => setNewAuthor(e.target.value)} style={inputStyle} />
-              <input placeholder="Título del artículo" value={newArticle} onChange={e => setNewArticle(e.target.value)} style={inputStyle} />
-              <button onClick={addArticleToMag} disabled={addingArticle} style={{ ...btnBlue, display: "flex", alignItems: "center", gap: 8, opacity: addingArticle ? 0.7 : 1, minWidth: 110, justifyContent: "center" }}>
-                {addingArticle ? <Spinner /> : "➕ Agregar"}
-              </button>
-            </div>
           </div>
         </div>
       ) : (
@@ -319,29 +463,8 @@ function Magazines() {
                   <h3 style={{ marginBottom: 6, fontSize: isMobile ? 15 : 17 }}>{m.title}</h3>
                   <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>Director: {m.director?.name}</p>
                   {m.cliente && <p style={{ color: "#a78bfa", fontSize: 12, marginBottom: 4 }}>👤 {m.cliente.nombreCompleto}</p>}
-                  <p style={{ color: "#64748b", fontSize: 13, marginBottom: 8 }}>{m.articles.length} artículo(s)</p>
+                  <p style={{ color: "#64748b", fontSize: 13, marginBottom: 8 }}>{m.articles.length} artículo(s) total</p>
                   {m.notas && <p style={{ color: "#f59e0b", fontSize: 12, marginBottom: 8, background: "#422006", padding: "4px 10px", borderRadius: 6 }}>📝 {m.notas.length > 50 ? m.notas.substring(0, 50) + "..." : m.notas}</p>}
-
-                  {/* Archivo en tarjeta */}
-                  <div style={{ background: "#0f172a", padding: 10, borderRadius: 8, marginBottom: 10 }}>
-                    {m.archivoUrl ? (
-                      <div>
-                        <p style={{ color: "#22c55e", fontSize: 12, marginBottom: 8 }}>✅ Archivo subido</p>
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <a href={m.archivoUrl?.replace("/upload/", "/upload/fl_attachment/")} target="_blank" rel="noreferrer" style={{ background: "#22c55e", border: "none", padding: "5px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11, textDecoration: "none" }}>📥 Descargar</a>
-                          <label style={{ background: "#334155", border: "none", padding: "5px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11 }}>
-                            🔄 Reemplazar
-                            <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivo(m.id, f); }} />
-                          </label>
-                        </div>
-                      </div>
-                    ) : (
-                      <label style={{ background: "#3b82f6", border: "none", padding: "5px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                        {subiendoId === m.id ? <><Spinner /> Subiendo...</> : "📤 Subir archivo"}
-                        <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivo(m.id, f); }} />
-                      </label>
-                    )}
-                  </div>
 
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button onClick={() => setSelected(m)} style={btnBlue}>Ver</button>
@@ -357,6 +480,7 @@ function Magazines() {
         </>
       )}
 
+      {/* Modal crear/editar revista (se mantiene igual) */}
       {open && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 999, padding: "20px" }}>
           <div style={{ background: "#1e293b", padding: isMobile ? 20 : 28, borderRadius: 14, width: "100%", maxWidth: 700, color: "white", maxHeight: "85vh", overflowY: "auto" }}>
@@ -391,12 +515,7 @@ function Magazines() {
             {!clienteId && (
               <>
                 <label style={labelStyle}>Nombre del director (manual)</label>
-                <input
-                  placeholder="Nombre del director"
-                  value={directorName}
-                  onChange={e => setDirectorName(e.target.value)}
-                  style={inputStyle}
-                />
+                <input placeholder="Nombre del director" value={directorName} onChange={e => setDirectorName(e.target.value)} style={inputStyle} />
               </>
             )}
             {clienteId && (
@@ -411,14 +530,13 @@ function Magazines() {
             <textarea placeholder="Notas sobre esta revista..." value={notas} onChange={e => setNotas(e.target.value)} rows={3} style={{ ...inputStyle, resize: "none" }} />
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "16px 0 10px" }}>
-              <label style={labelStyle}>Artículos</label>
+              <label style={labelStyle}>Artículos (general)</label>
               <button onClick={addArticleRow} style={btnGray}>➕ Añadir</button>
             </div>
 
             {editArticles.map((a, i) => (
               !a.isDeleted ? (
                 <div key={i} style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 8, marginBottom: 8, alignItems: isMobile ? "stretch" : "center" }}>
-                  {/* Selector de cliente (autor) */}
                   <select
                     value={a.clienteId ?? ""}
                     onChange={e => {
@@ -444,7 +562,6 @@ function Magazines() {
                     ))}
                   </select>
 
-                  {/* Si no hay cliente, mostrar campo para autor manual */}
                   {!a.clienteId && (
                     <input
                       placeholder="Autor"
@@ -453,7 +570,6 @@ function Magazines() {
                       style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
                     />
                   )}
-                  {/* Si hay cliente, mostrar nombre en modo solo lectura */}
                   {a.clienteId && (
                     <div style={{ ...inputStyle, marginBottom: 0, flex: 1, background: "#1e293b", display: "flex", alignItems: "center", padding: "0 10px" }}>
                       <span style={{ color: "#cbd5e1", fontSize: 14 }}>{a.author}</span>

@@ -228,6 +228,7 @@ app.get("/magazines", async (req, res) => {
     })
   );
 });
+
 app.get("/magazines/:id", auth, async (req, res) => {
   res.json(
     await prisma.magazine.findUnique({
@@ -237,7 +238,8 @@ app.get("/magazines/:id", auth, async (req, res) => {
         articles: {
           include: {
             authors: true,
-            cliente: true,   // ← AGREGADO
+            cliente: true,
+            edicion: true,
           },
         },
         cliente: true,
@@ -248,12 +250,19 @@ app.get("/magazines/:id", auth, async (req, res) => {
                 pedido: { include: { cliente: true } },
               },
             },
+            articles: {
+              include: {
+                authors: true,
+                cliente: true,
+              },
+            },
           },
         },
       },
     })
   );
 });
+
 app.post("/magazines", auth, async (req, res) => {
   const { title, directorId, notas, clienteId } = req.body;
   const magazine = await prisma.magazine.create({
@@ -270,6 +279,7 @@ app.post("/magazines", auth, async (req, res) => {
   }
   res.json(magazine);
 });
+
 app.post("/magazines/:id/archivo", auth, upload.single("archivo"), async (req: any, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "Archivo requerido" });
@@ -285,6 +295,7 @@ app.post("/magazines/:id/archivo", auth, upload.single("archivo"), async (req: a
     res.status(500).json({ error: "Error al subir archivo" });
   }
 });
+
 app.put("/magazines/:id", auth, async (req, res) => {
   const { title, directorName, notas, clienteId } = req.body;
   let director = await prisma.person.findFirst({ where: { name: directorName } });
@@ -302,6 +313,7 @@ app.put("/magazines/:id", auth, async (req, res) => {
     })
   );
 });
+
 app.delete("/magazines/:id", auth, async (req, res) => {
   const id = Number(req.params.id);
   await prisma.article.deleteMany({ where: { magazineId: id } });
@@ -313,8 +325,9 @@ app.delete("/magazines/:id", auth, async (req, res) => {
 app.get("/articles", auth, async (req, res) => {
   res.json(await prisma.article.findMany({ include: { authors: true, magazine: true } }));
 });
+
 app.post("/articles", auth, async (req, res) => {
-  const { title, authorIds, magazineId, authorName, clienteId } = req.body;
+  const { title, authorIds, magazineId, authorName, clienteId, edicionId } = req.body;
   let ids = authorIds || [];
   if (authorName && ids.length === 0) {
     let person = await prisma.person.findFirst({ where: { name: authorName } });
@@ -328,13 +341,15 @@ app.post("/articles", auth, async (req, res) => {
         magazineId: Number(magazineId),
         authors: { connect: ids.map((id: number) => ({ id })) },
         clienteId: clienteId ? Number(clienteId) : null,
+        edicionId: edicionId ? Number(edicionId) : null,
       },
-      include: { authors: true, magazine: true, cliente: true },
+      include: { authors: true, magazine: true, cliente: true, edicion: true },
     })
   );
 });
+
 app.put("/articles/:id", auth, async (req, res) => {
-  const { title, authorName, clienteId } = req.body;
+  const { title, authorName, clienteId, edicionId } = req.body;
   let person = await prisma.person.findFirst({ where: { name: authorName } });
   if (!person) person = await prisma.person.create({ data: { name: authorName } });
   res.json(
@@ -344,11 +359,13 @@ app.put("/articles/:id", auth, async (req, res) => {
         title,
         authors: { set: [{ id: person.id }] },
         clienteId: clienteId !== undefined ? (clienteId ? Number(clienteId) : null) : undefined,
+        edicionId: edicionId !== undefined ? (edicionId ? Number(edicionId) : null) : undefined,
       },
-      include: { authors: true, magazine: true, cliente: true },
+      include: { authors: true, magazine: true, cliente: true, edicion: true },
     })
   );
 });
+
 app.delete("/articles/:id", auth, async (req, res) => {
   await prisma.article.delete({ where: { id: Number(req.params.id) } });
   res.json({ ok: true });
@@ -629,7 +646,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
     await prisma.pago.update({ where: { id }, data: { clienteId: cliente.id } });
   }
 
-  // *** CORRECCIÓN CLAVE: usar los precios enviados por el frontend ***
   let montoTotal = 0;
   const itemsParaPedido: any[] = [];
 
@@ -639,7 +655,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
       console.log("📦 Carrito recibido en verificación:", JSON.stringify(carrito, null, 2));
 
       if (Array.isArray(carrito) && carrito.length > 0) {
-        // Extraer IDs reales (numéricos y que no contengan "_comp_")
         const idsReales = carrito
           .map((item: any) => item.id)
           .filter((id: any) => id != null && typeof id === 'number' && !String(id).includes('_comp_'));
@@ -655,12 +670,10 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
           let precioFinal: number | null = null;
           let nombreProducto = item.nombre || "Producto desconocido";
 
-          // Priorizar precio enviado por el frontend (para componentes)
           if (typeof item.precioUnitario === 'number' && !isNaN(item.precioUnitario) && item.precioUnitario > 0) {
             precioFinal = item.precioUnitario;
             console.log(`✅ Usando precio del frontend para ${nombreProducto}: ${precioFinal}`);
           }
-          // Fallback solo para IDs reales (productos normales)
           else if (item.id && typeof item.id === 'number' && !String(item.id).includes('_comp_') && productoPorId.has(item.id)) {
             const producto = productoPorId.get(item.id);
             nombreProducto = producto.nombre;
@@ -1151,6 +1164,21 @@ app.get("/ediciones", auth, async (req, res) => {
     orderBy: [{ magazine: { title: "asc" } }, { numero: "asc" }],
   });
   res.json(ediciones);
+});
+
+app.post("/ediciones/:id/archivo", auth, upload.single("archivo"), async (req: any, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "Archivo requerido" });
+    const url = await subirImagen(req.file.buffer, "ediciones", "auto");
+    const updated = await prisma.edicion.update({
+      where: { id: Number(req.params.id) },
+      data: { archivoUrl: url },
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al subir archivo" });
+  }
 });
 
 // ===================== MENSAJES ADMIN =====================

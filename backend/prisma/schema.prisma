@@ -73,6 +73,8 @@ model Article {
   authors    Person[] @relation("ArticleAuthors")
   clienteId  Int?
   cliente    Client?  @relation(fields: [clienteId], references: [id])
+  edicionId  Int?
+  edicion    Edicion? @relation(fields: [edicionId], references: [id])
 }
 
 model Book {
@@ -252,8 +254,10 @@ model Edicion {
   id         Int          @id @default(autoincrement())
   numero     Int
   magazineId Int
+  archivoUrl String?      // <--- AGREGAR ESTE CAMPO
   magazine   Magazine     @relation(fields: [magazineId], references: [id])
   items      ItemPedido[]
+  articles   Article[]
 }
 
 model ItemPedido {
