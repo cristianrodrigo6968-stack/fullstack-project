@@ -313,106 +313,189 @@ const save = async () => {
             )}
 
             {/* Ediciones con sus artículos */}
-            {selected.ediciones?.map(ed => (
-              <div key={ed.id} style={{ background: "#0f172a", padding: 16, borderRadius: 10, marginBottom: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <h3 style={{ margin: 0, color: "white", fontSize: 16 }}>Edición {ed.numero}</h3>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      onClick={() => copiarSenapi(ed)}
-                      style={{ background: "#3b82f6", border: "none", padding: "4px 10px", borderRadius: 6, color: "white", fontSize: 11, fontWeight: "bold", cursor: "pointer" }}
-                    >
-                      📋 Copiar SENAPI
-                    </button>
-                    {ed.archivoUrl ? (
-                      <>
-                        <a href={ed.archivoUrl?.replace("/upload/", "/upload/fl_attachment/")} target="_blank" rel="noreferrer" style={{ background: "#22c55e", border: "none", padding: "4px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11, textDecoration: "none" }}>
-                          📥 Descargar
-                        </a>
-                        <label style={{ background: "#334155", border: "none", padding: "4px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11 }}>
-                          🔄
-                          <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivoEdicion(ed.id, f); }} />
-                        </label>
-                      </>
-                    ) : (
-                      <label style={{ background: "#3b82f6", border: "none", padding: "4px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        {subiendoId === ed.id ? <Spinner /> : "📤 Subir"}
-                        <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivoEdicion(ed.id, f); }} />
-                      </label>
-                    )}
-                  </div>
-                </div>
+            {selected.ediciones?.map(ed => {
+  const numeroTexto = ["PRIMERA", "SEGUNDA", "TERCERA"][ed.numero - 1] || `N° ${ed.numero}`;
+  const participantesEdicion = [
+    ...(selected.cliente ? [{
+      nombre: selected.cliente.nombreCompleto || "",
+      ci: selected.cliente.ci || "",
+      extension: selected.cliente.extension || "",
+    }] : []),
+    ...(ed.articles || [])
+      .filter(a => a.cliente)
+      .map(a => ({
+        nombre: a.cliente!.nombreCompleto || "",
+        ci: a.cliente!.ci || "",
+        extension: a.cliente!.extension || "",
+      })),
+  ];
 
-                {/* Artículos de esta edición */}
-                {ed.articles?.length === 0 ? (
-                  <p style={{ color: "#64748b", fontSize: 13, marginBottom: 12 }}>Sin artículos asignados.</p>
-                ) : (
-                  ed.articles?.map(article => (
-                    <div key={article.id} style={{ padding: "6px 0", borderBottom: "1px solid #1e293b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <span style={{ color: "#cbd5e1", fontSize: 13 }}>
-                          📝 {article.title}
-                        </span>
-                        <span style={{ color: "#94a3b8", fontSize: 12, marginLeft: 8 }}>
-                          — {article.authors.map(a => a.name).join(", ")}
-                        </span>
-                        {article.cliente && (
-                          <span style={{ color: "#60a5fa", fontSize: 11, marginLeft: 8 }}>
-                            · CI {article.cliente.ci}
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => deleteArticle(article.id)}
-                        disabled={deletingArticleId === article.id}
-                        style={{ ...btnRed, fontSize: 11, padding: "3px 8px", display: "flex", alignItems: "center", gap: 4 }}
-                      >
-                        {deletingArticleId === article.id ? <Spinner /> : "🗑"}
-                      </button>
-                    </div>
-                  ))
-                )}
+  const copiarSenapiEdicion = () => {
+    const texto = participantesEdicion
+      .map(p => `${p.nombre} ${p.ci} ${p.extension}`.trim())
+      .join("\n");
+    if (!texto) {
+      alert("No hay participantes con datos para copiar.");
+      return;
+    }
+    navigator.clipboard.writeText(texto);
+    alert("📋 Datos copiados para SENAPI");
+  };
 
-                {/* Agregar artículo a esta edición */}
-                {addingToEdicionId === ed.id ? (
-                  <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
-                    <select
-                      value={newArticleClienteId}
-                      onChange={e => setNewArticleClienteId(e.target.value)}
-                      style={{ ...inputStyle, flex: 1, marginBottom: 0, cursor: "pointer" }}
-                    >
-                      <option value="">-- Cliente (autor) --</option>
-                      {clientes.map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.nombreCompleto || "Sin nombre"} {c.ci ? `· CI ${c.ci}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      placeholder="Título del artículo"
-                      value={newArticleTitle}
-                      onChange={e => setNewArticleTitle(e.target.value)}
-                      style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
-                    />
-                    <button
-                      onClick={() => addArticleToEdicion(ed.id)}
-                      disabled={addingArticle || !newArticleClienteId || !newArticleTitle}
-                      style={{ ...btnBlue, opacity: (!newArticleClienteId || !newArticleTitle) ? 0.5 : 1, cursor: (!newArticleClienteId || !newArticleTitle) ? "not-allowed" : "pointer" }}
-                    >
-                      {addingArticle ? <Spinner /> : "➕"}
-                    </button>
-                    <button onClick={() => { setAddingToEdicionId(null); setNewArticleClienteId(""); setNewArticleTitle(""); }} style={btnGray}>✕</button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingToEdicionId(ed.id)}
-                    style={{ ...btnGray, marginTop: 12, fontSize: 12, padding: "6px 12px" }}
-                  >
-                    ➕ Agregar artículo
-                  </button>
-                )}
-              </div>
+  return (
+    <div key={ed.id} style={{ background: "#0f172a", padding: 16, borderRadius: 10, marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <h3 style={{ margin: 0, color: "white", fontSize: 16, textTransform: "uppercase" }}>
+          {numeroTexto} EDICIÓN
+        </h3>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={copiarSenapiEdicion}
+            style={{
+              background: "#3b82f6", border: "none", padding: "4px 10px", borderRadius: 6,
+              color: "white", fontSize: 11, fontWeight: "bold", cursor: "pointer",
+            }}
+          >
+            📋 Copiar SENAPI
+          </button>
+          {ed.archivoUrl ? (
+            <>
+              <a
+                href={ed.archivoUrl?.replace("/upload/", "/upload/fl_attachment/")}
+                target="_blank" rel="noreferrer"
+                style={{
+                  background: "#22c55e", border: "none", padding: "4px 10px", borderRadius: 6,
+                  color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11,
+                  textDecoration: "none",
+                }}
+              >
+                📥 Descargar
+              </a>
+              <label style={{
+                background: "#334155", border: "none", padding: "4px 10px", borderRadius: 6,
+                color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11,
+              }}>
+                🔄
+                <input
+                  type="file" accept=".pdf,.pub,.docx"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) subirArchivoEdicion(ed.id, f);
+                  }}
+                />
+              </label>
+            </>
+          ) : (
+            <label style={{
+              background: "#3b82f6", border: "none", padding: "4px 10px", borderRadius: 6,
+              color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 11,
+              display: "inline-flex", alignItems: "center", gap: 4,
+            }}>
+              {subiendoId === ed.id ? <Spinner /> : "📤 Subir"}
+              <input
+                type="file" accept=".pdf,.pub,.docx"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) subirArchivoEdicion(ed.id, f);
+                }}
+              />
+            </label>
+          )}
+        </div>
+      </div>
+
+      {/* Artículos de esta edición */}
+      {ed.articles?.length === 0 ? (
+        <p style={{ color: "#64748b", fontSize: 13, marginBottom: 12 }}>Sin artículos asignados.</p>
+      ) : (
+        ed.articles?.map(article => (
+          <div key={article.id} style={{
+            padding: "6px 0", borderBottom: "1px solid #1e293b",
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+          }}>
+            <div>
+              <span style={{ color: "#cbd5e1", fontSize: 13 }}>
+                📝 {article.title}
+              </span>
+              <span style={{ color: "#94a3b8", fontSize: 12, marginLeft: 8 }}>
+                — {article.authors.map(a => a.name).join(", ")}
+              </span>
+              {article.cliente && (
+                <span style={{ color: "#60a5fa", fontSize: 11, marginLeft: 8 }}>
+                  · CI {article.cliente.ci}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => deleteArticle(article.id)}
+              disabled={deletingArticleId === article.id}
+              style={{
+                ...btnRed, fontSize: 11, padding: "3px 8px",
+                display: "flex", alignItems: "center", gap: 4,
+              }}
+            >
+              {deletingArticleId === article.id ? <Spinner /> : "🗑"}
+            </button>
+          </div>
+        ))
+      )}
+
+      {/* Agregar artículo a esta edición */}
+      {addingToEdicionId === ed.id ? (
+        <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
+          <select
+            value={newArticleClienteId}
+            onChange={e => setNewArticleClienteId(e.target.value)}
+            style={{ ...inputStyle, flex: 1, marginBottom: 0, cursor: "pointer" }}
+          >
+            <option value="">-- Cliente (autor) --</option>
+            {clientes.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.nombreCompleto || "Sin nombre"} {c.ci ? `· CI ${c.ci}` : ""}
+              </option>
             ))}
+          </select>
+          <input
+            placeholder="Título del artículo"
+            value={newArticleTitle}
+            onChange={e => setNewArticleTitle(e.target.value)}
+            style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
+          />
+          <button
+            onClick={() => addArticleToEdicion(ed.id)}
+            disabled={addingArticle || !newArticleClienteId || !newArticleTitle}
+            style={{
+              ...btnBlue,
+              opacity: (!newArticleClienteId || !newArticleTitle) ? 0.5 : 1,
+              cursor: (!newArticleClienteId || !newArticleTitle) ? "not-allowed" : "pointer",
+            }}
+          >
+            {addingArticle ? <Spinner /> : "➕"}
+          </button>
+          <button
+            onClick={() => {
+              setAddingToEdicionId(null);
+              setNewArticleClienteId("");
+              setNewArticleTitle("");
+            }}
+            style={btnGray}
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setAddingToEdicionId(ed.id)}
+          style={{ ...btnGray, marginTop: 12, fontSize: 12, padding: "6px 12px" }}
+        >
+          ➕ Agregar artículo
+        </button>
+      )}
+    </div>
+  );
+})}
           </div>
         </div>
       ) : (
