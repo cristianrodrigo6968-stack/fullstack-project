@@ -19,9 +19,6 @@ interface ClienteDatos {
   celular: string | null;
 }
 
-const soloLetrasMayusculas = (value: string): string =>
-  value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "").toUpperCase();
-
 const redondearAdelanto = (valor: number): number => {
   if (valor < 100) return Math.ceil(valor / 10) * 10;
   else if (valor < 1000) return Math.ceil(valor / 50) * 50;
@@ -59,7 +56,6 @@ function ClienteHacerPedido() {
   const [carrito, setCarrito] = useState<Record<number, { producto: Producto; cantidad: number }>>({});
   const [paso, setPaso] = useState<"catalogo" | "pago" | "confirmacion">("catalogo");
 
-  // Datos del cliente autenticado
   const [clienteDatos, setClienteDatos] = useState<ClienteDatos>({
     nombreCompleto: "",
     ci: "",
@@ -67,7 +63,6 @@ function ClienteHacerPedido() {
   });
   const [loadingPerfil, setLoadingPerfil] = useState(true);
 
-  // Pago
   const [modo, setModo] = useState<"subir" | "declarar" | null>(null);
   const [comprobante, setComprobante] = useState<File | null>(null);
   const [montoDeclarado, setMontoDeclarado] = useState("");
@@ -80,7 +75,6 @@ function ClienteHacerPedido() {
     Authorization: `Bearer ${token}`,
   };
 
-  // Cargar productos y perfil del cliente
   useEffect(() => {
     const cargar = async () => {
       setLoading(true);
@@ -103,6 +97,7 @@ function ClienteHacerPedido() {
     cargar();
   }, []);
 
+  // ─── Carrito ──────────────────────────────────────────
   const agregarAlCarrito = (producto: Producto) => {
     setCarrito((prev) => {
       const actual = prev[producto.id];
@@ -116,7 +111,7 @@ function ClienteHacerPedido() {
     });
   };
 
-  const quitarDelCarrito = (id: number) => {
+  const disminuirCantidad = (id: number) => {
     setCarrito((prev) => {
       const actual = prev[id];
       if (!actual) return prev;
@@ -126,6 +121,14 @@ function ClienteHacerPedido() {
         return nuevo;
       }
       return { ...prev, [id]: { ...actual, cantidad: actual.cantidad - 1 } };
+    });
+  };
+
+  const eliminarProducto = (id: number) => {
+    setCarrito((prev) => {
+      const nuevo = { ...prev };
+      delete nuevo[id];
+      return nuevo;
     });
   };
 
@@ -214,32 +217,20 @@ function ClienteHacerPedido() {
     setEnviando(false);
   };
 
-  // ── Pantalla de confirmación ──
+  // ── Confirmación ──────────────────────────────────────
   if (paso === "confirmacion") {
     return (
       <div
         style={{
-          background: "#000",
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 24,
+          background: "#000", minHeight: "100vh", display: "flex",
+          alignItems: "center", justifyContent: "center", padding: 24,
         }}
       >
-        <div
-          style={{
-            background: "#0d0d1a",
-            border: "1px solid #14532d",
-            padding: "52px 40px",
-            borderRadius: 24,
-            textAlign: "center",
-            maxWidth: 460,
-            width: "100%",
-            boxShadow: "0 0 60px rgba(5,150,105,.12)",
-            animation: "fadeIn .4s ease",
-          }}
-        >
+        <div style={{
+          background: "#0d0d1a", border: "1px solid #14532d",
+          padding: "52px 40px", borderRadius: 24, textAlign: "center",
+          maxWidth: 460, width: "100%", boxShadow: "0 0 60px rgba(5,150,105,.12)",
+        }}>
           <div style={{ fontSize: 72, marginBottom: 20 }}>✅</div>
           <h2 style={{ color: "#34d399", fontSize: 24, fontWeight: 800, margin: "0 0 14px" }}>
             ¡Pago registrado!
@@ -247,46 +238,24 @@ function ClienteHacerPedido() {
           <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.8, maxWidth: 440, margin: "0 auto 24px" }}>
             {mensaje}
           </p>
-          <div
-            style={{
-              background: "#0a0a14",
-              border: "1px solid #1e1b4b",
-              borderRadius: 12,
-              padding: "16px 22px",
-              display: "inline-block",
-              marginBottom: 28,
-              textAlign: "left",
-            }}
-          >
-            <p style={{ margin: "0 0 5px", color: "#475569", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, fontWeight: 700 }}>
+          <div style={{
+            background: "#0a0a14", border: "1px solid #1e1b4b",
+            borderRadius: 12, padding: "16px 22px", display: "inline-block",
+            marginBottom: 28, textAlign: "left",
+          }}>
+            <p style={{ margin: "0 0 5px", color: "#475569", fontSize: 11, textTransform: "uppercase", fontWeight: 700 }}>
               Datos de contacto
             </p>
-            <p style={{ margin: "0 0 3px", color: "white", fontSize: 14 }}>
-              📱 {clienteDatos.celular || "—"}
-            </p>
-            <p style={{ margin: 0, color: "white", fontSize: 14 }}>
-              🪪 CI: {clienteDatos.ci || "—"}
-            </p>
+            <p style={{ margin: 0, color: "white", fontSize: 14 }}>📱 {clienteDatos.celular || "—"}</p>
+            <p style={{ margin: 0, color: "white", fontSize: 14 }}>🪪 CI: {clienteDatos.ci || "—"}</p>
           </div>
-          <br />
           <button
-            onClick={() => {
-              setPaso("catalogo");
-              setModo(null);
-              setComprobante(null);
-              setMontoDeclarado("");
-              setDescripcion("");
-            }}
+            onClick={() => { setPaso("catalogo"); setModo(null); setComprobante(null); setMontoDeclarado(""); setDescripcion(""); }}
             style={{
               background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
-              border: "none",
-              padding: "13px 30px",
-              borderRadius: 12,
-              color: "white",
-              fontWeight: 700,
-              cursor: "pointer",
-              fontSize: 14,
-              boxShadow: "0 4px 16px rgba(99,102,241,.4)",
+              border: "none", padding: "13px 30px", borderRadius: 12,
+              color: "white", fontWeight: 700, cursor: "pointer",
+              fontSize: 14, boxShadow: "0 4px 16px rgba(99,102,241,.4)",
             }}
           >
             Hacer otro pedido
@@ -301,7 +270,6 @@ function ClienteHacerPedido() {
       <style>{`
         @keyframes fadeIn { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
         @keyframes spin { to{transform:rotate(360deg)} }
-
         .prod-card {
           background: linear-gradient(160deg,#0d0d1a,#0a0a14);
           border: 1px solid #1e1b4b; border-radius: 18px; overflow: hidden;
@@ -312,7 +280,6 @@ function ClienteHacerPedido() {
           border-color: #312e81; transform: translateY(-4px);
           box-shadow: 0 16px 36px rgba(99,102,241,.12);
         }
-
         .agregar-btn {
           background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.25);
           border-radius: 10px; color: #818cf8; font-weight: 700;
@@ -321,18 +288,14 @@ function ClienteHacerPedido() {
           transition: background .2s, border-color .2s, color .2s;
         }
         .agregar-btn:hover { background: rgba(99,102,241,.2); border-color: #6366f1; color: #a5b4fc; }
-
         .cart-input { padding:13px 16px; border-radius:12px; border:1px solid #1e1b4b; background:#0a0a14; color:white; font-size:14px; width:100%; box-sizing:border-box; outline:none; transition:border-color .2s, box-shadow .2s; font-family:inherit; }
         .cart-input:focus { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.15); }
         .cart-input::placeholder { color:#334155; }
-
         .file-upload-label { display:flex; align-items:center; gap:10px; padding:13px 16px; background:#0a0a14; border:1px dashed #312e81; border-radius:12px; color:#475569; font-size:13px; cursor:pointer; transition:border-color .2s, color .2s, background .2s; }
         .file-upload-label:hover { border-color:#6366f1; color:#a5b4fc; background:rgba(99,102,241,.05); }
-
         .step-btn { transition:opacity .15s, transform .15s, filter .15s; font-family:inherit; }
         .step-btn:hover:not(:disabled) { opacity:.9; transform:translateY(-1px); }
         .step-btn:active:not(:disabled) { transform:translateY(0); }
-
         .modo-card { transition:border-color .2s, background .2s, transform .15s, box-shadow .2s; cursor:pointer; }
         .modo-card:hover { border-color:#6366f1 !important; background:rgba(99,102,241,.07) !important; transform:translateY(-3px); box-shadow:0 12px 28px rgba(99,102,241,.12); }
       `}</style>
@@ -348,9 +311,7 @@ function ClienteHacerPedido() {
         </p>
 
         {loading || loadingPerfil ? (
-          <div style={{ textAlign: "center", padding: 80 }}>
-            <Spinner />
-          </div>
+          <div style={{ textAlign: "center", padding: 80 }}><Spinner /></div>
         ) : paso === "catalogo" ? (
           /* ─── CATÁLOGO + CARRITO ─── */
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 340px", gap: 28, alignItems: "start" }}>
@@ -359,13 +320,7 @@ function ClienteHacerPedido() {
               {productos.length === 0 ? (
                 <p style={{ color: "#475569", textAlign: "center", padding: 60 }}>No hay productos disponibles.</p>
               ) : (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)",
-                    gap: 18,
-                  }}
-                >
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 18 }}>
                   {productos.map((p) => {
                     const precioFinal = getPrecioFinal(p.precio, p.descuento);
                     const enCarrito = carrito[p.id]?.cantidad || 0;
@@ -412,43 +367,87 @@ function ClienteHacerPedido() {
             </div>
 
             {/* Carrito lateral */}
-            <div
-              style={{
-                background: "#0d0d1a",
-                border: "1px solid #1e1b4b",
-                borderRadius: 18,
-                padding: 20,
-                position: "sticky",
-                top: 100,
-                maxHeight: "calc(100vh - 140px)",
-                overflowY: "auto",
-              }}
-            >
-              <h3 style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>🛒 Tu pedido</h3>
+            <div style={{
+              background: "#0d0d1a", border: "1px solid #1e1b4b",
+              borderRadius: 18, padding: 20, position: "sticky",
+              top: 100, maxHeight: "calc(100vh - 140px)", overflowY: "auto",
+            }}>
+              <h3 style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>
+                🛒 Tu pedido
+              </h3>
               {totalItems === 0 ? (
-                <p style={{ color: "#475569", fontSize: 13, textAlign: "center", padding: "30px 0" }}>No has agregado servicios aún.</p>
+                <p style={{ color: "#475569", fontSize: 13, textAlign: "center", padding: "30px 0" }}>
+                  No has agregado servicios aún.
+                </p>
               ) : (
                 <>
                   <div style={{ marginBottom: 16 }}>
                     {Object.values(carrito).map((entry) => {
                       const precio = getPrecioFinal(entry.producto.precio, entry.producto.descuento);
                       return (
-                        <div key={entry.producto.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e1b4b" }}>
+                        <div key={entry.producto.id} style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          padding: "10px 0", borderBottom: "1px solid #1e1b4b",
+                        }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ color: "#cbd5e1", fontSize: 14, fontWeight: 500, margin: "0 0 2px" }}>{entry.producto.nombre}</p>
-                            <p style={{ color: "#475569", fontSize: 12, margin: 0 }}>Bs {precio.toFixed(2)} c/u</p>
+                            <p style={{ color: "#cbd5e1", fontSize: 14, fontWeight: 500, margin: "0 0 4px" }}>
+                              {entry.producto.nombre}
+                            </p>
+                            <p style={{ color: "#475569", fontSize: 12, margin: 0 }}>
+                              Bs {precio.toFixed(2)} c/u
+                            </p>
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <span style={{ color: "#a5b4fc", fontWeight: 700, fontSize: 14 }}>×{entry.cantidad}</span>
-                            <button onClick={() => quitarDelCarrito(entry.producto.id)} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 18, padding: "2px 4px" }}>✕</button>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <button
+                                onClick={() => disminuirCantidad(entry.producto.id)}
+                                style={{
+                                  background: "#334155", border: "none", color: "white",
+                                  borderRadius: 4, width: 24, height: 24, fontSize: 14,
+                                  cursor: "pointer", display: "flex", alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                −
+                              </button>
+                              <span style={{ color: "white", fontWeight: 700, minWidth: 24, textAlign: "center" }}>
+                                {entry.cantidad}
+                              </span>
+                              <button
+                                onClick={() => agregarAlCarrito(entry.producto)}
+                                style={{
+                                  background: "#334155", border: "none", color: "white",
+                                  borderRadius: 4, width: 24, height: 24, fontSize: 14,
+                                  cursor: "pointer", display: "flex", alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                +
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => eliminarProducto(entry.producto.id)}
+                              style={{
+                                background: "none", border: "none", color: "#ef4444",
+                                cursor: "pointer", fontSize: 18, padding: "2px 4px",
+                              }}
+                              title="Quitar producto"
+                            >
+                              ✕
+                            </button>
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                  <div style={{ borderTop: "1px solid #1e1b4b", paddingTop: 14, display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+                  <div style={{
+                    borderTop: "1px solid #1e1b4b", paddingTop: 14,
+                    display: "flex", justifyContent: "space-between", marginBottom: 20,
+                  }}>
                     <span style={{ color: "#64748b", fontSize: 14 }}>Total</span>
-                    <span style={{ color: "#34d399", fontWeight: 800, fontSize: 20 }}>Bs {totalPrecio.toFixed(2)}</span>
+                    <span style={{ color: "#34d399", fontWeight: 800, fontSize: 20 }}>
+                      Bs {totalPrecio.toFixed(2)}
+                    </span>
                   </div>
                   <button
                     className="step-btn"
@@ -472,7 +471,7 @@ function ClienteHacerPedido() {
                       padding: "8px 0", marginTop: 8, fontFamily: "inherit",
                     }}
                   >
-                    Vaciar carrito
+                    🗑 Vaciar carrito
                   </button>
                 </>
               )}
