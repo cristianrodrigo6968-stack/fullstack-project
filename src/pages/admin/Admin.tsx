@@ -11,7 +11,7 @@ import GlobalSearch from "../../components/GlobalSearch";
 import AdminMensajes from "./AdminMensajes";
 import AdminPagos from "./AdminPagos";
 import AdminProductos from "./AdminProductos";
-
+import ErrorBoundary from "../../components/ErrorBoundary";
 
 import.meta.env.VITE_API_URL
 
@@ -379,7 +379,11 @@ const res = await fetch(`${import.meta.env.VITE_API_URL}/stats`, {
         {section === "clients" && <Clients />}
         {section === "entregas" && <Entregas />}
         {section === "search" && <GlobalSearch />}
-        {section === "mensajes" && <AdminMensajes />}
+        {section === "mensajes" && (
+  <ErrorBoundary>
+    <AdminMensajes />
+  </ErrorBoundary>
+)}
         {section === "pagos" && <AdminPagos />}
         {section === "productos" && <AdminProductos />}
         
