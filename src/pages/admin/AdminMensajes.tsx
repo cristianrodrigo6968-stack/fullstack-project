@@ -40,6 +40,7 @@ function AdminMensajes() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
+  const chatListRef = useRef<HTMLDivElement>(null);
 
   const headers = useCallback(() => ({
     "Content-Type": "application/json",
@@ -84,7 +85,10 @@ function AdminMensajes() {
 
   // Polling mensajes del cliente seleccionado
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId) {
+      setMensajes([]);
+      return;
+    }
     cargarMensajes(selectedId);
     const interval = setInterval(() => cargarMensajes(selectedId!), 5000);
     return () => clearInterval(interval);
@@ -99,9 +103,14 @@ function AdminMensajes() {
     }).catch(() => {});
   }, [selectedId, mensajes.length, headers]);
 
-  // Scroll automático
+  // Scroll automático (solo si el chat está visible)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (bottomRef.current) {
+      const timer = setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "auto" });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
   }, [mensajes]);
 
   const enviar = async () => {
@@ -140,7 +149,7 @@ function AdminMensajes() {
         height: isMobile ? "auto" : "calc(100vh - 220px)",
       }}>
         {/* LISTA DE CLIENTES */}
-        <div style={{
+        <div ref={chatListRef} style={{
           background: "#1e293b", borderRadius: 14, overflow: "auto",
           display: "flex", flexDirection: "column",
         }}>
@@ -208,11 +217,14 @@ function AdminMensajes() {
 
         {/* CHAT */}
         {selectedId && clienteSeleccionado ? (
-          <div style={{
-            background: "#1e293b", borderRadius: 14,
-            display: "flex", flexDirection: "column",
-            overflow: "hidden",
-          }}>
+          <div 
+            key={selectedId}
+            style={{
+              background: "#1e293b", borderRadius: 14,
+              display: "flex", flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
             {/* Header del chat */}
             <div style={{
               padding: 14, borderBottom: "1px solid #334155",
