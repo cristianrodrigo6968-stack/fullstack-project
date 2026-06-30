@@ -17,9 +17,21 @@ function ClienteMensajes() {
   };
 
   const cargar = async () => {
-    const res = await fetch(`${API_URL}/cliente/mensajes`, { headers });
-    setMensajes(await res.json());
-    setLoading(false);
+    try {
+      const res = await fetch(`${API_URL}/cliente/mensajes`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setMensajes(data);
+        }
+      } else {
+        console.error("Error al cargar mensajes:", res.status);
+      }
+    } catch (error) {
+      console.error("Error de red al cargar mensajes:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -35,14 +47,21 @@ function ClienteMensajes() {
   const enviar = async () => {
     if (!texto.trim()) return;
     setEnviando(true);
-    await fetch(`${API_URL}/cliente/mensajes`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ texto }),
-    });
-    setTexto("");
-    setEnviando(false);
-    cargar();
+    try {
+      const res = await fetch(`${API_URL}/cliente/mensajes`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ texto }),
+      });
+      if (res.ok) {
+        setTexto("");
+        cargar();
+      }
+    } catch (error) {
+      console.error("Error al enviar mensaje:", error);
+    } finally {
+      setEnviando(false);
+    }
   };
 
   if (loading) return <p style={{ color: "#94a3b8" }}>Cargando mensajes...</p>;
