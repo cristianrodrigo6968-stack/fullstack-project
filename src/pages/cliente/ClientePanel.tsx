@@ -40,9 +40,18 @@ function ClientePanel() {
 
   useEffect(() => {
     loadUnreadCount();
-    const interval = setInterval(loadUnreadCount, 10000); 
+    const interval = setInterval(loadUnreadCount, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  // Limpiar badge al entrar a mensajes
+  useEffect(() => {
+    if (section === "mensajes") {
+      setUnreadMessages(0);
+      const timer = setTimeout(loadUnreadCount, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [section]);
 
   const menuItems = [
     { key: "inicio", label: "🏠 Inicio" },
@@ -59,12 +68,10 @@ function ClientePanel() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#0f172a" }}>
-      {/* Overlay mobile */}
       {isMobile && sidebarOpen && (
         <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200 }} />
       )}
 
-      {/* SIDEBAR */}
       <div style={{
         width: 240, background: "#1e293b", padding: 24,
         display: "flex", flexDirection: "column", gap: 8,
@@ -112,7 +119,6 @@ function ClientePanel() {
         </button>
       </div>
 
-      {/* CONTENIDO */}
       <div style={{ flex: 1, padding: isMobile ? 20 : 40, color: "white", overflowY: "auto", minWidth: 0 }}>
         {isMobile && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, background: "#1e293b", padding: "12px 16px", borderRadius: 10 }}>

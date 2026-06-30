@@ -41,7 +41,6 @@ function Admin() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
-  // Contadores para badges
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [pendingPayments, setPendingPayments] = useState(0);
 
@@ -77,7 +76,6 @@ function Admin() {
     }
   };
 
-  // Cargar badges de notificaciones
   const loadNotifications = async () => {
     try {
       const [msgRes, payRes] = await Promise.all([
@@ -101,21 +99,32 @@ function Admin() {
     if (section === "panel") loadStats();
   }, [section]);
 
-  // Cargar contadores al montar y luego cada 30 segundos
   useEffect(() => {
     loadNotifications();
-    const interval = setInterval(loadNotifications, 30000);
+    const interval = setInterval(loadNotifications, 10000);
     return () => clearInterval(interval);
   }, []);
 
+  // Limpiar badge al entrar a la sección
+  useEffect(() => {
+    if (section === "mensajes") {
+      setUnreadMessages(0);
+      const timer = setTimeout(loadNotifications, 2000);
+      return () => clearTimeout(timer);
+    }
+    if (section === "pagos") {
+      setPendingPayments(0);
+      const timer = setTimeout(loadNotifications, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [section]);
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#0f172a" }}>
-      {/* Overlay para mobile */}
       {isMobile && sidebarOpen && (
         <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200 }} />
       )}
 
-      {/* SIDEBAR */}
       <div style={{
         width: 240, background: "#1e293b", padding: 24,
         display: "flex", flexDirection: "column", gap: 8,
@@ -163,9 +172,7 @@ function Admin() {
         </button>
       </div>
 
-      {/* CONTENIDO */}
       <div style={{ flex: 1, padding: isMobile ? 20 : 40, color: "white", overflowY: "auto", minWidth: 0 }}>
-        {/* Cabecera mobile */}
         {isMobile && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, background: "#1e293b", padding: "12px 16px", borderRadius: 10 }}>
             <span style={{ fontWeight: "bold", fontSize: 15 }}>
@@ -175,7 +182,6 @@ function Admin() {
           </div>
         )}
 
-        {/* PANEL */}
         {section === "panel" && (
           <div>
             <h1 style={{ marginBottom: 4, fontSize: isMobile ? 22 : 28 }}>🏠 Panel Editorial</h1>
@@ -187,7 +193,6 @@ function Admin() {
               <div style={{ display: "flex", justifyContent: "center", marginTop: 60 }}><Spinner /></div>
             ) : stats && (
               <div>
-                {/* ALERTAS */}
                 {(stats.clientes.formularioLlenado > 0 || stats.entregas.pendientes > 0 || stats.tareas.clientes.pendientes > 0) && (
                   <div style={{ marginBottom: 28 }}>
                     <h3 style={{ color: "#f59e0b", marginBottom: 12, fontSize: isMobile ? 14 : 16 }}>⚠️ Requieren atención</h3>
@@ -214,7 +219,6 @@ function Admin() {
                   </div>
                 )}
 
-                {/* CLIENTES */}
                 <h3 style={{ color: "#94a3b8", marginBottom: 12, fontSize: 13, textTransform: "uppercase", letterSpacing: 1 }}>👥 Clientes</h3>
                 <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(5, 1fr)", gap: 10, marginBottom: 28 }}>
                   {[
@@ -231,7 +235,6 @@ function Admin() {
                   ))}
                 </div>
 
-                {/* TAREAS + ENTREGAS */}
                 <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
                   <div onClick={() => handleSection("tasks")} style={{ background: "#1e293b", padding: isMobile ? 16 : 20, borderRadius: 12, cursor: "pointer" }}>
                     <h4 style={{ marginBottom: 16, fontSize: isMobile ? 14 : 16 }}>✅ Trabajo de clientes</h4>

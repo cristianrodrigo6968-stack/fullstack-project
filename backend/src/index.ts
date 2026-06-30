@@ -318,10 +318,8 @@ app.delete("/magazines/:id", auth, async (req, res) => {
   const id = Number(req.params.id);
 
   try {
-    // 1. Eliminar artículos de la revista (incluye los que están en ediciones)
     await prisma.article.deleteMany({ where: { magazineId: id } });
 
-    // 2. Desvincular ítems de pedido de las ediciones de esta revista
     const ediciones = await prisma.edicion.findMany({
       where: { magazineId: id },
       select: { id: true },
@@ -334,13 +332,8 @@ app.delete("/magazines/:id", auth, async (req, res) => {
       });
     }
 
-    // 3. Eliminar las ediciones
     await prisma.edicion.deleteMany({ where: { magazineId: id } });
-
-    // 4. Eliminar entregas asociadas a la revista
     await prisma.entrega.deleteMany({ where: { magazineId: id } });
-
-    // 5. Finalmente eliminar la revista
     await prisma.magazine.delete({ where: { id } });
 
     res.json({ ok: true });
@@ -613,7 +606,7 @@ app.delete("/pagos/:id", auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ===================== VERIFICAR PAGO (CORREGIDO) =====================
+// ===================== VERIFICAR PAGO =====================
 app.put("/pagos/:id/verificar", auth, async (req, res) => {
   const id = Number(req.params.id);
   const pago = await prisma.pago.findUnique({ where: { id } });
@@ -681,8 +674,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
   if (pago.productos) {
     try {
       const carrito = JSON.parse(pago.productos);
-      console.log("📦 Carrito recibido en verificación:", JSON.stringify(carrito, null, 2));
-
       if (Array.isArray(carrito) && carrito.length > 0) {
         const idsReales = carrito
           .map((item: any) => item.id)
@@ -701,7 +692,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
 
           if (typeof item.precioUnitario === 'number' && !isNaN(item.precioUnitario) && item.precioUnitario > 0) {
             precioFinal = item.precioUnitario;
-            console.log(`✅ Usando precio del frontend para ${nombreProducto}: ${precioFinal}`);
           }
           else if (item.id && typeof item.id === 'number' && !String(item.id).includes('_comp_') && productoPorId.has(item.id)) {
             const producto = productoPorId.get(item.id);
@@ -709,7 +699,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
             precioFinal = producto.descuento > 0
               ? producto.precio - (producto.precio * producto.descuento / 100)
               : producto.precio;
-            console.log(`⚠️ Precio no enviado, usando BD para ${nombreProducto}: ${precioFinal}`);
           }
 
           if (precioFinal !== null && precioFinal > 0) {
@@ -720,8 +709,6 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
               notas: `Precio unitario: Bs ${precioFinal.toFixed(2)}`,
               precioUnitario: precioFinal,
             });
-          } else {
-            console.error(`❌ No se pudo determinar precio para item:`, item);
           }
         }
       }
@@ -738,11 +725,7 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
       precioUnitario: pago.monto,
       notas: "",
     });
-    console.log("⚠️ No se encontraron productos, usando fallback genérico");
   }
-
-  console.log("💰 Monto total calculado:", montoTotal);
-  console.log("📋 Items para pedido:", itemsParaPedido);
 
   const nuevoPedido = await prisma.pedido.create({
     data: {
@@ -1127,12 +1110,8 @@ app.delete("/items-pedido/:id", auth, async (req, res) => {
   const id = Number(req.params.id);
 
   try {
-    // Eliminar primero las revisiones asociadas
     await prisma.revisionItem.deleteMany({ where: { itemPedidoId: id } });
-
-    // Luego eliminar el ítem
     await prisma.itemPedido.delete({ where: { id } });
-
     res.json({ ok: true });
   } catch (error) {
     console.error("Error al eliminar item de pedido:", error);
@@ -1257,7 +1236,6 @@ app.get("/mensajes/:clienteId", auth, async (req, res) => {
   res.json(mensajes);
 });
 
-// Enviar mensaje admin (con archivos)
 app.post("/mensajes/:clienteId", auth, upload.array("archivos", 5), async (req: any, res) => {
   const clienteId = Number(req.params.clienteId);
   const { texto } = req.body;
@@ -1287,7 +1265,6 @@ app.post("/mensajes/:clienteId", auth, upload.array("archivos", 5), async (req: 
   res.json(mensaje);
 });
 
-// Marcar como leídos
 app.put("/mensajes/:clienteId/leidos", auth, async (req, res) => {
   const clienteId = Number(req.params.clienteId);
   await prisma.mensaje.updateMany({
@@ -1737,23 +1714,29 @@ app.post("/items-pedido/:id/archivo", auth, upload.single("archivo"), async (req
   const updated = await prisma.itemPedido.update({ where: { id }, data, include: { pedido: { include: { cliente: true } } } });
   res.json({ ...updated, cliente: updated.pedido.cliente, creadoEn: updated.pedido.creadoEn });
 });
-// ===================== NOTIFICACIONES ADMIN =====================
 
+// ===================== NOTIFICACIONES =====================
 app.get("/mensajes/no-leidos-count", auth, async (req, res) => {
-  const count = await prisma.mensaje.count({ where: { emisor: "cliente", leido: false } });
+  const count = await prisma.mensaje.count({
+    where: { emisor: "cliente", leido: false },
+  });
   res.json({ total: count });
 });
 
 app.get("/pagos/pendientes-count", auth, async (req, res) => {
-  const count = await prisma.pago.count({ where: { estado: "pendiente" } });
+  const count = await prisma.pago.count({
+    where: { estado: "pendiente" },
+  });
   res.json({ total: count });
 });
+
 app.get("/cliente/mensajes/no-leidos-count", authCliente, async (req: any, res) => {
   const count = await prisma.mensaje.count({
     where: { clienteId: req.clienteId, emisor: "admin", leido: false },
   });
   res.json({ total: count });
 });
+
 // ===================== INICIO SERVIDOR =====================
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
