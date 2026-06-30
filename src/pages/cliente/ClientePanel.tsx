@@ -44,7 +44,7 @@ function ClientePanel() {
     return () => clearInterval(interval);
   }, []);
 
-  // Limpiar badge al entrar a mensajes
+  // Al entrar a mensajes, poner a 0 para que al salir no arrastre un número obsoleto
   useEffect(() => {
     if (section === "mensajes") {
       setUnreadMessages(0);
@@ -98,7 +98,7 @@ function ClientePanel() {
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
             <span>{item.label}</span>
-            {item.badge && item.badge > 0 && (
+            {item.badge != null && item.badge > 0 && section !== "mensajes" && (
               <span style={{
                 background: "#ef4444", color: "white", fontSize: 11,
                 fontWeight: "bold", padding: "2px 8px", borderRadius: 99,
