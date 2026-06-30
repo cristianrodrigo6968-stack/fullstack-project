@@ -189,6 +189,7 @@ model Mensaje {
   clienteId Int
   emisor    String
   texto     String
+  archivos  String[] @default([])
   leido     Boolean  @default(false)
   createdAt DateTime @default(now())
   cliente   Client   @relation(fields: [clienteId], references: [id])

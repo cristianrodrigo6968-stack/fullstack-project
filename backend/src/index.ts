@@ -1,3 +1,4 @@
+
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -1265,10 +1266,33 @@ app.post("/mensajes/:clienteId", auth, async (req, res) => {
   res.json(mensaje);
 });
 
-app.put("/mensajes/:clienteId/leidos", auth, async (req, res) => {
+app.post("/mensajes/:clienteId", auth, upload.array("archivos", 5), async (req: any, res) => {
   const clienteId = Number(req.params.clienteId);
-  await prisma.mensaje.updateMany({ where: { clienteId, emisor: "cliente", leido: false }, data: { leido: true } });
-  res.json({ ok: true });
+  const { texto } = req.body;
+  const archivos: string[] = [];
+
+  if (req.files && Array.isArray(req.files)) {
+    for (const file of req.files) {
+      const url = await subirImagen(file.buffer, "mensajes", "auto");
+      if (url) archivos.push(url);
+    }
+  }
+
+  if (!texto?.trim() && archivos.length === 0) {
+    return res.status(400).json({ error: "El mensaje no puede estar vacío" });
+  }
+
+  const mensaje = await prisma.mensaje.create({
+    data: {
+      clienteId,
+      emisor: "admin",
+      texto: texto || "",
+      archivos,
+      leido: false,
+    },
+  });
+
+  res.json(mensaje);
 });
 
 // ===================== ARCHIVOS CLIENTE (admin) =====================
@@ -1321,24 +1345,47 @@ app.get("/cliente/entregas", authCliente, async (req: any, res) => {
   res.json(entregas);
 });
 
-app.post("/cliente/mensajes", authCliente, async (req: any, res) => {
+app.post("/cliente/mensajes", authCliente, upload.array("archivos", 5), async (req: any, res) => {
   const { texto } = req.body;
-  if (!texto || !texto.trim()) return res.status(400).json({ error: "El mensaje no puede estar vacío" });
-  const mensaje = await prisma.mensaje.create({ data: { clienteId: req.clienteId, emisor: "cliente", texto, leido: false } });
+  const archivos: string[] = [];
+
+  if (req.files && Array.isArray(req.files)) {
+    for (const file of req.files) {
+      const url = await subirImagen(file.buffer, "mensajes", "auto");
+      if (url) archivos.push(url);
+    }
+  }
+
+  if (!texto?.trim() && archivos.length === 0) {
+    return res.status(400).json({ error: "El mensaje no puede estar vacío" });
+  }
+
+  const mensaje = await prisma.mensaje.create({
+    data: {
+      clienteId: req.clienteId,
+      emisor: "cliente",
+      texto: texto || "",
+      archivos,
+      leido: false,
+    },
+  });
+
   try {
-    const noLeidos = await prisma.mensaje.count({ where: { clienteId: req.clienteId, emisor: "cliente", leido: false } });
+    const noLeidos = await prisma.mensaje.count({
+      where: { clienteId: req.clienteId, emisor: "cliente", leido: false },
+    });
     if (noLeidos === 1) {
       const { notificarAdminMensaje } = await import("./whatsapp");
       const cliente = await prisma.client.findUnique({
         where: { id: req.clienteId },
-        select: { nombreCompleto: true, nombres: true, apellidoPaterno: true },
+        select: { nombreCompleto: true },
       });
-      const nombre = cliente?.nombreCompleto || [cliente?.nombres, cliente?.apellidoPaterno].filter(Boolean).join(" ") || "Cliente";
-      await notificarAdminMensaje(nombre);
+      await notificarAdminMensaje(cliente?.nombreCompleto || "Cliente");
     }
   } catch (err) {
-    console.warn("No se pudo notificar por WhatsApp:", err);
+    console.warn("No se pudo notificar:", err);
   }
+
   res.json(mensaje);
 });
 
