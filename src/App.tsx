@@ -28,7 +28,6 @@ import Notes from "./pages/admin/Notes";
 
 // Páginas del cliente
 import ClientePanel from "./pages/cliente/ClientePanel";
-
 import ClienteEntregas from "./pages/cliente/ClienteEntregas";
 import ClienteHacerPedido from "./pages/cliente/ClienteHacerPedido";
 import ClienteInicio from "./pages/cliente/ClienteInicio";

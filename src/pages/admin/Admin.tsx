@@ -11,9 +11,6 @@ import GlobalSearch from "../../components/GlobalSearch";
 import AdminMensajes from "./AdminMensajes";
 import AdminPagos from "./AdminPagos";
 import AdminProductos from "./AdminProductos";
-import ErrorBoundary from "../../components/ErrorBoundary";
-
-import.meta.env.VITE_API_URL
 
 interface Stats {
   clientes: {
@@ -27,6 +24,12 @@ interface Stats {
   };
   revistas: number;
   libros: number;
+}
+
+interface Notificacion {
+  total: number;
+  mensajes: { count: number; ultimos: any[] };
+  pagos: { count: number; ultimos: any[] };
 }
 
 function Spinner() {
@@ -52,12 +55,15 @@ function Admin() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
+  // Notificaciones
+  const [notificaciones, setNotificaciones] = useState<Notificacion | null>(null);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+
   const handleLogout = () => { logout(); navigate("/"); };
 
   const menuItems = [
     { key: "panel", label: "🏠 Panel" },
     { key: "notes", label: "📌 Notas" },
-   
     { key: "magazines", label: "📘 Revistas" },
     { key: "books", label: "📚 Libros" },
     { key: "clients", label: "👥 Clientes" },
@@ -66,7 +72,6 @@ function Admin() {
     { key: "mensajes", label: "💬 Mensajes" },
     { key: "pagos", label: "💰 Pagos" },
     { key: "productos", label: "🛒 Productos" },
-    
   ];
 
   const handleSection = (key: string) => { setSection(key); setSidebarOpen(false); };
@@ -74,7 +79,7 @@ function Admin() {
   const loadStats = async () => {
     setLoadingStats(true);
     try {
-const res = await fetch(`${import.meta.env.VITE_API_URL}/stats`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/stats`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setStats(await res.json());
@@ -83,7 +88,27 @@ const res = await fetch(`${import.meta.env.VITE_API_URL}/stats`, {
     }
   };
 
-  useEffect(() => { if (section === "panel") loadStats(); }, [section]);
+  // Cargar notificaciones cada 30 segundos
+  const cargarNotificaciones = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/notificaciones`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setNotificaciones(await res.json());
+    } catch (err) {
+      console.warn("Error cargando notificaciones:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (section === "panel") loadStats();
+  }, [section]);
+
+  useEffect(() => {
+    cargarNotificaciones();
+    const interval = setInterval(cargarNotificaciones, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#0f172a" }}>
@@ -114,6 +139,68 @@ const res = await fetch(`${import.meta.env.VITE_API_URL}/stats`, {
           <div style={{ fontSize: 13, color: "#64748b" }}>Bienvenido</div>
           <div style={{ color: "white", fontWeight: "bold", fontSize: 16 }}>👤 {username}</div>
         </div>
+
+        {/* BOTÓN DE NOTIFICACIONES */}
+        <button
+          onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+          style={{
+            padding: "10px 16px", border: "none", borderRadius: 8,
+            cursor: "pointer", textAlign: "left",
+            background: "#334155", color: "white", fontSize: 14,
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            position: "relative",
+          }}
+        >
+          <span>🔔 Notificaciones</span>
+          {notificaciones && notificaciones.total > 0 && (
+            <span style={{
+              background: "#ef4444", color: "white", fontSize: 11,
+              fontWeight: "bold", padding: "2px 8px", borderRadius: 99,
+              minWidth: 24, textAlign: "center",
+            }}>
+              {notificaciones.total}
+            </span>
+          )}
+        </button>
+
+        {/* DROPDOWN DE NOTIFICACIONES */}
+        {showNotifDropdown && notificaciones && (
+          <div style={{
+            background: "#0f172a", border: "1px solid #334155",
+            borderRadius: 8, padding: 10, marginBottom: 8,
+            maxHeight: 250, overflowY: "auto", fontSize: 12,
+          }}>
+            {notificaciones.mensajes.count > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <p style={{ color: "#60a5fa", fontWeight: "bold", margin: "0 0 4px" }}>
+                  💬 {notificaciones.mensajes.count} mensaje(s) nuevo(s)
+                </p>
+                {notificaciones.mensajes.ultimos.map((m: any) => (
+                  <p key={m.id} style={{ color: "#94a3b8", margin: "2px 0", cursor: "pointer" }}
+                     onClick={() => { handleSection("mensajes"); setShowNotifDropdown(false); }}>
+                    {m.cliente}: {m.texto}
+                  </p>
+                ))}
+              </div>
+            )}
+            {notificaciones.pagos.count > 0 && (
+              <div>
+                <p style={{ color: "#f59e0b", fontWeight: "bold", margin: "0 0 4px" }}>
+                  💰 {notificaciones.pagos.count} pago(s) pendiente(s)
+                </p>
+                {notificaciones.pagos.ultimos.map((p: any) => (
+                  <p key={p.id} style={{ color: "#94a3b8", margin: "2px 0", cursor: "pointer" }}
+                     onClick={() => { handleSection("pagos"); setShowNotifDropdown(false); }}>
+                    {p.nombreDeclarado}: Bs {p.monto}
+                  </p>
+                ))}
+              </div>
+            )}
+            {notificaciones.total === 0 && (
+              <p style={{ color: "#64748b", textAlign: "center" }}>No hay notificaciones</p>
+            )}
+          </div>
+        )}
 
         {menuItems.map((item) => (
           <button key={item.key} onClick={() => handleSection(item.key)} style={{
@@ -373,20 +460,14 @@ const res = await fetch(`${import.meta.env.VITE_API_URL}/stats`, {
         )}
 
         {section === "notes" && <Notes />}
-       
         {section === "magazines" && <Magazines />}
         {section === "books" && <Books />}
         {section === "clients" && <Clients />}
         {section === "entregas" && <Entregas />}
         {section === "search" && <GlobalSearch />}
-        {section === "mensajes" && (
-  <ErrorBoundary>
-    <AdminMensajes />
-  </ErrorBoundary>
-)}
+        {section === "mensajes" && <AdminMensajes />}
         {section === "pagos" && <AdminPagos />}
         {section === "productos" && <AdminProductos />}
-        
       </div>
     </div>
   );
