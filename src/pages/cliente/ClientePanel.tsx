@@ -1,59 +1,67 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
 import { useWindowSize } from "../../hooks/useWindowSize";
 import ClienteInicio from "./ClienteInicio";
-import ClienteProgreso from "./ClienteProgreso";
-import ClienteEntregas from "./ClienteEntregas";
-
-import ClienteContenido from "./ClienteContenido";
-import ClienteMensajes from "./ClienteMensajes";
-import ClientePassword from "./ClientePassword";
-import ClienteHacerPedido from "./ClienteHacerPedido";
 import ClienteMisPedidos from "./ClienteMisPedidos";
+import ClienteHacerPedido from "./ClienteHacerPedido";
+import ClienteProgreso from "./ClienteProgreso";
+import ClienteMensajes from "./ClienteMensajes";
+import ClienteEntregas from "./ClienteEntregas";
+import ClienteContenido from "./ClienteContenido";
+import ClientePassword from "./ClientePassword";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 function ClientePanel() {
-  const { token, username, logout, clienteId } = useAuth();
-  const navigate = useNavigate();
+  const { token, logout, username } = useAuth();
   const { isMobile } = useWindowSize();
-
   const [section, setSection] = useState("inicio");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
   };
+
+  const handleLogout = () => { logout(); };
+
+  const loadUnreadCount = async () => {
+    try {
+      const res = await fetch(`${API_URL}/cliente/mensajes/no-leidos-count`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadMessages(data.total ?? 0);
+      }
+    } catch (err) {
+      console.warn("Error cargando mensajes no leídos", err);
+    }
+  };
+
+  useEffect(() => {
+    loadUnreadCount();
+    const interval = setInterval(loadUnreadCount, 10000); 
+    return () => clearInterval(interval);
+  }, []);
 
   const menuItems = [
-    { key: "inicio",     label: "🏠 Inicio" },
-    { key: "progreso",   label: "📚 Mi Progreso" },
-    { key: "entregas",   label: "📦 Mis Entregas" },
-    { key: "datos",      label: "👤 Mis Datos" },
-    { key: "contenido",  label: "📁 Mi Contenido" },
-    { key: "mensajes",   label: "💬 Mensajes" },
-    { key: "password",   label: "🔑 Cambiar Contraseña" },
-    { key: "hacerpedido", label: "🛒 Hacer Pedido" },
-    { key: "mispedidos", label: "📦 Mis Pedidos" },
+    { key: "inicio", label: "🏠 Inicio" },
+    { key: "progreso", label: "📚 Mi Progreso" },
+    { key: "entregas", label: "📦 Mis Entregas" },
+    { key: "contenido", label: "📁 Mi Contenido" },
+    { key: "mensajes", label: "💬 Mensajes", badge: unreadMessages },
+    { key: "password", label: "🔑 Cambiar Contraseña" },
+    { key: "hacer-pedido", label: "🛒 Hacer Pedido" },
+    { key: "mis-pedidos", label: "📦 Mis Pedidos" },
   ];
 
-  const handleSection = (key: string) => {
-    setSection(key);
-    setSidebarOpen(false);
-  };
+  const handleSection = (key: string) => { setSection(key); setSidebarOpen(false); };
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#0f172a" }}>
-
-      {/* Overlay móvil */}
+      {/* Overlay mobile */}
       {isMobile && sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200,
-          }}
-        />
+        <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200 }} />
       )}
 
       {/* SIDEBAR */}
@@ -67,85 +75,62 @@ function ClientePanel() {
       }}>
         <div style={{ marginBottom: 24 }}>
           {isMobile && (
-            <button
-              onClick={() => setSidebarOpen(false)}
-              style={{
-                background: "none", border: "none", color: "#94a3b8",
-                cursor: "pointer", fontSize: 20, marginBottom: 16,
-                display: "block", marginLeft: "auto",
-              }}
-            >
-              ✕
-            </button>
+            <button onClick={() => setSidebarOpen(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 20, marginBottom: 16, display: "block", marginLeft: "auto" }}>✕</button>
           )}
           <div style={{ fontSize: 13, color: "#64748b" }}>Portal del Cliente</div>
           <div style={{ color: "white", fontWeight: "bold", fontSize: 16 }}>👤 {username}</div>
         </div>
 
         {menuItems.map((item) => (
-          <button
-            key={item.key}
-            onClick={() => handleSection(item.key)}
-            style={{
-              padding: "10px 16px", border: "none", borderRadius: 8,
-              cursor: "pointer", textAlign: "left",
-              fontWeight: section === item.key ? "bold" : "normal",
-              background: section === item.key ? "#3b82f6" : "#334155",
-              color: "white", fontSize: 14,
-            }}
-          >
-            {item.label}
+          <button key={item.key} onClick={() => handleSection(item.key)} style={{
+            padding: "10px 16px", border: "none", borderRadius: 8,
+            cursor: "pointer", textAlign: "left",
+            fontWeight: section === item.key ? "bold" : "normal",
+            background: section === item.key ? "#3b82f6" : "#334155",
+            color: "white", fontSize: 14,
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+          }}>
+            <span>{item.label}</span>
+            {item.badge && item.badge > 0 && (
+              <span style={{
+                background: "#ef4444", color: "white", fontSize: 11,
+                fontWeight: "bold", padding: "2px 8px", borderRadius: 99,
+                lineHeight: "1.2",
+              }}>
+                {item.badge}
+              </span>
+            )}
           </button>
         ))}
 
-        <button
-          onClick={handleLogout}
-          style={{
-            marginTop: "auto", padding: "10px 16px", border: "none",
-            borderRadius: 8, cursor: "pointer", background: "#ef4444",
-            color: "white", fontWeight: "bold", fontSize: 14,
-          }}
-        >
+        <button onClick={handleLogout} style={{
+          marginTop: "auto", padding: "10px 16px", border: "none",
+          borderRadius: 8, cursor: "pointer", background: "#ef4444",
+          color: "white", fontWeight: "bold", fontSize: 14,
+        }}>
           🚪 Cerrar sesión
         </button>
       </div>
 
       {/* CONTENIDO */}
-      <div style={{
-        flex: 1, padding: isMobile ? 20 : 40,
-        color: "white", overflowY: "auto", minWidth: 0,
-      }}>
-        {/* Header móvil */}
+      <div style={{ flex: 1, padding: isMobile ? 20 : 40, color: "white", overflowY: "auto", minWidth: 0 }}>
         {isMobile && (
-          <div style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-            marginBottom: 20, background: "#1e293b", padding: "12px 16px", borderRadius: 10,
-          }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, background: "#1e293b", padding: "12px 16px", borderRadius: 10 }}>
             <span style={{ fontWeight: "bold", fontSize: 15 }}>
-              {menuItems.find((m) => m.key === section)?.label || "Panel"}
+              {menuItems.find(m => m.key === section)?.label || "Inicio"}
             </span>
-            <button
-              onClick={() => setSidebarOpen(true)}
-              style={{
-                background: "#334155", border: "none", color: "white",
-                cursor: "pointer", padding: "6px 12px", borderRadius: 8, fontSize: 18,
-              }}
-            >
-              ☰
-            </button>
+            <button onClick={() => setSidebarOpen(true)} style={{ background: "#334155", border: "none", color: "white", cursor: "pointer", padding: "6px 12px", borderRadius: 8, fontSize: 18 }}>☰</button>
           </div>
         )}
 
-        {/* Secciones */}
         {section === "inicio" && <ClienteInicio />}
         {section === "progreso" && <ClienteProgreso />}
         {section === "entregas" && <ClienteEntregas />}
-     
         {section === "contenido" && <ClienteContenido />}
         {section === "mensajes" && <ClienteMensajes />}
         {section === "password" && <ClientePassword />}
-        {section === "hacerpedido" && <ClienteHacerPedido />}
-        {section === "mispedidos" && <ClienteMisPedidos />}
+        {section === "hacer-pedido" && <ClienteHacerPedido />}
+        {section === "mis-pedidos" && <ClienteMisPedidos />}
       </div>
     </div>
   );

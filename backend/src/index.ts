@@ -1738,17 +1738,19 @@ app.post("/items-pedido/:id/archivo", auth, upload.single("archivo"), async (req
   res.json({ ...updated, cliente: updated.pedido.cliente, creadoEn: updated.pedido.creadoEn });
 });
 // ===================== NOTIFICACIONES ADMIN =====================
-// ===================== NOTIFICACIONES ADMIN =====================
+
 app.get("/mensajes/no-leidos-count", auth, async (req, res) => {
-  const count = await prisma.mensaje.count({
-    where: { emisor: "cliente", leido: false },
-  });
+  const count = await prisma.mensaje.count({ where: { emisor: "cliente", leido: false } });
   res.json({ total: count });
 });
 
 app.get("/pagos/pendientes-count", auth, async (req, res) => {
-  const count = await prisma.pago.count({
-    where: { estado: "pendiente" },
+  const count = await prisma.pago.count({ where: { estado: "pendiente" } });
+  res.json({ total: count });
+});
+app.get("/cliente/mensajes/no-leidos-count", authCliente, async (req: any, res) => {
+  const count = await prisma.mensaje.count({
+    where: { clienteId: req.clienteId, emisor: "admin", leido: false },
   });
   res.json({ total: count });
 });
