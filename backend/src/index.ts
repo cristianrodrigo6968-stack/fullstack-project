@@ -1736,7 +1736,13 @@ app.get("/cliente/mensajes/no-leidos-count", authCliente, async (req: any, res) 
   });
   res.json({ total: count });
 });
-
+app.put("/cliente/mensajes/leidos", authCliente, async (req: any, res) => {
+  await prisma.mensaje.updateMany({
+    where: { clienteId: req.clienteId, emisor: "admin", leido: false },
+    data: { leido: true },
+  });
+  res.json({ ok: true });
+});
 // ===================== INICIO SERVIDOR =====================
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en el puerto ${PORT}`);

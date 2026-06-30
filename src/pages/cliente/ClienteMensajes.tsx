@@ -22,7 +22,22 @@ function ClienteMensajes() {
   const [loading, setLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+// Agregar después de las declaraciones de estado
+const marcarComoLeidos = async () => {
+  try {
+    await fetch(`${API_URL}/cliente/mensajes/leidos`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    console.warn("Error al marcar leídos", err);
+  }
+};
 
+// Agregar este useEffect
+useEffect(() => {
+  marcarComoLeidos();
+}, []);
   const headers = useCallback(
     () => ({
       "Content-Type": "application/json",
