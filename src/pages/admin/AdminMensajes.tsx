@@ -40,7 +40,6 @@ function AdminMensajes() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
-  const chatListRef = useRef<HTMLDivElement>(null);
 
   const headers = useCallback(() => ({
     "Content-Type": "application/json",
@@ -136,7 +135,7 @@ function AdminMensajes() {
   const clienteSeleccionado = clientes.find((c) => c.id === selectedId);
 
   return (
-    <div>
+    <div translate="no">
       <h1 style={{ marginBottom: 8, fontSize: isMobile ? 22 : 28 }}>💬 Mensajes</h1>
       <p style={{ color: "#94a3b8", marginBottom: 24, fontSize: isMobile ? 13 : 15 }}>
         Comunicación directa con los clientes.
@@ -149,7 +148,7 @@ function AdminMensajes() {
         height: isMobile ? "auto" : "calc(100vh - 220px)",
       }}>
         {/* LISTA DE CLIENTES */}
-        <div ref={chatListRef} style={{
+        <div translate="no" style={{
           background: "#1e293b", borderRadius: 14, overflow: "auto",
           display: "flex", flexDirection: "column",
         }}>
@@ -217,8 +216,9 @@ function AdminMensajes() {
 
         {/* CHAT */}
         {selectedId && clienteSeleccionado ? (
-          <div 
+          <div
             key={selectedId}
+            translate="no"
             style={{
               background: "#1e293b", borderRadius: 14,
               display: "flex", flexDirection: "column",
