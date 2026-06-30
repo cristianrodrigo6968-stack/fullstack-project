@@ -68,7 +68,7 @@ function ClienteHacerPedido() {
   const [comprobante, setComprobante] = useState<File | null>(null);
   const [montoDeclarado, setMontoDeclarado] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [nombreIngresado, setNombreIngresado] = useState(""); // nuevo: si no hay nombre en perfil
+  const [nombreIngresado, setNombreIngresado] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState("");
 
@@ -92,7 +92,6 @@ function ClienteHacerPedido() {
       if (prodRes.ok) setProductos(await prodRes.json());
       if (perfilRes.ok) {
         const perfil = await perfilRes.json();
-        // Construir nombre completo a partir de nombres y apellidos si no existe
         const nombreCompleto = perfil.nombreCompleto
           ? perfil.nombreCompleto
           : [perfil.nombres, perfil.apellidoPaterno, perfil.apellidoMaterno]
@@ -125,7 +124,6 @@ function ClienteHacerPedido() {
       };
     });
 
-    // Feedback visual
     setBounceId(producto.id);
     const newToastId = ++toastIdRef.current;
     setToasts((prev) => [...prev, { id: newToastId, productoId: producto.id }]);
@@ -166,9 +164,7 @@ function ClienteHacerPedido() {
   const adelantoBruto = totalPrecio * 0.3;
   const adelanto = redondearAdelanto(adelantoBruto);
 
-  // Nombre que se usará para el pago (prioridad: perfil, luego ingreso manual)
-  const nombreParaPago =
-    clienteDatos.nombreCompleto || nombreIngresado || "";
+  const nombreParaPago = clienteDatos.nombreCompleto || nombreIngresado || "";
 
   const getProductosPayload = () => {
     const payload: any[] = [];
@@ -276,8 +272,7 @@ function ClienteHacerPedido() {
           </p>
           <div style={{
             background: "#0a0a14", border: "1px solid #1e1b4b",
-            borderRadius: 12, padding: "16px 22px", display: "inline-block",
-            marginBottom: 28, textAlign: "left",
+            borderRadius: 12, padding: "16px 22px", marginBottom: 28, textAlign: "left",
           }}>
             <p style={{ margin: "0 0 5px", color: "#475569", fontSize: 11, textTransform: "uppercase", fontWeight: 700 }}>
               Datos de contacto
@@ -294,7 +289,7 @@ function ClienteHacerPedido() {
               fontSize: 14, boxShadow: "0 4px 16px rgba(99,102,241,.4)",
             }}
           >
-            Hacer otro pedido
+            Continuar
           </button>
         </div>
       </div>
@@ -378,7 +373,6 @@ function ClienteHacerPedido() {
           <div style={{ textAlign: "center", padding: 80 }}><Spinner /></div>
         ) : paso === "catalogo" ? (
           <>
-            {/* Catálogo de productos (idéntico al Home) */}
             <div
               style={{
                 display: "grid",
@@ -393,7 +387,6 @@ function ClienteHacerPedido() {
 
                 return (
                   <div key={p.id} className="card-catalogo">
-                    {/* Imagen */}
                     <div
                       style={{
                         position: "relative",
@@ -459,7 +452,6 @@ function ClienteHacerPedido() {
                       )}
                     </div>
 
-                    {/* Info */}
                     <div style={{ padding: 22, flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
                       <h3
                         style={{
@@ -473,7 +465,6 @@ function ClienteHacerPedido() {
                         {p.nombre}
                       </h3>
 
-                      {/* Precio */}
                       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
                         {p.descuento > 0 && (
                           <span style={{ color: "#475569", fontSize: 14, textDecoration: "line-through" }}>
@@ -485,7 +476,6 @@ function ClienteHacerPedido() {
                         </span>
                       </div>
 
-                      {/* Botón */}
                       <div style={{ position: "relative", marginTop: 4 }}>
                         {toasts
                           .filter((t) => t.productoId === p.id)
@@ -548,7 +538,6 @@ function ClienteHacerPedido() {
               })}
             </div>
 
-            {/* FAB flotante con carrito y pago (siempre visible) */}
             {totalItems > 0 && (
               <div
                 style={{
@@ -654,7 +643,6 @@ function ClienteHacerPedido() {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {/* Mostrar campo de nombre solo si no hay nombre completo en el perfil */}
                   {!clienteDatos.nombreCompleto && (
                     <>
                       <label style={labelStyle}>Nombre completo</label>
