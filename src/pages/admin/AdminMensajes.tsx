@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useWindowSize } from "../../hooks/useWindowSize";
 
 const API_URL = import.meta.env.VITE_API_URL;
+
 interface UltimoMensaje {
   texto: string;
   emisor: string;
@@ -38,49 +39,67 @@ function AdminMensajes() {
   const [enviando, setEnviando] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
+  const mountedRef = useRef(true);
 
-  const headers = {
+  const headers = useCallback(() => ({
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
-  };
+  }), [token]);
 
-  const cargarLista = async () => {
-    const res = await fetch(`${API_URL}/mensajes`, { headers });
-    if (res.ok) setClientes(await res.json());
-    setLoading(false);
-  };
+  const cargarLista = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/mensajes`, { headers: headers() });
+      if (res.ok && mountedRef.current) {
+        setClientes(await res.json());
+      }
+    } catch (err) {
+      console.warn("Error al cargar lista de mensajes:", err);
+    }
+    if (mountedRef.current) setLoading(false);
+  }, [headers]);
 
-  const cargarMensajes = async (clienteId: number) => {
-    const res = await fetch(`${API_URL}/mensajes/${clienteId}`, { headers });
-    if (res.ok) setMensajes(await res.json());
-  };
+  const cargarMensajes = useCallback(async (clienteId: number) => {
+    try {
+      const res = await fetch(`${API_URL}/mensajes/${clienteId}`, { headers: headers() });
+      if (res.ok && mountedRef.current) {
+        setMensajes(await res.json());
+      }
+    } catch (err) {
+      console.warn("Error al cargar mensajes:", err);
+    }
+  }, [headers]);
 
-  // Polling cada 5 segundos
+  // Montaje / desmontaje
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  // Polling lista de clientes
   useEffect(() => {
     cargarLista();
     const interval = setInterval(cargarLista, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [cargarLista]);
 
+  // Polling mensajes del cliente seleccionado
   useEffect(() => {
-    if (selectedId) {
-      cargarMensajes(selectedId);
-      const interval = setInterval(() => cargarMensajes(selectedId), 5000);
-      return () => clearInterval(interval);
-    }
-  }, [selectedId]);
+    if (!selectedId) return;
+    cargarMensajes(selectedId);
+    const interval = setInterval(() => cargarMensajes(selectedId!), 5000);
+    return () => clearInterval(interval);
+  }, [selectedId, cargarMensajes]);
 
-  // Marcar como leídos al abrir conversación
+  // Marcar como leídos
   useEffect(() => {
-    if (selectedId) {
-      fetch(`${API_URL}/mensajes/${selectedId}/leidos`, {
-        method: "PUT",
-        headers,
-      });
-    }
-  }, [selectedId, mensajes.length]);
+    if (!selectedId) return;
+    fetch(`${API_URL}/mensajes/${selectedId}/leidos`, {
+      method: "PUT",
+      headers: headers(),
+    }).catch(() => {});
+  }, [selectedId, mensajes.length, headers]);
 
-  // Scroll al final
+  // Scroll automático
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [mensajes]);
@@ -88,15 +107,21 @@ function AdminMensajes() {
   const enviar = async () => {
     if (!texto.trim() || !selectedId) return;
     setEnviando(true);
-    await fetch(`${API_URL}/mensajes/${selectedId}`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ texto }),
-    });
-    setTexto("");
+    try {
+      await fetch(`${API_URL}/mensajes/${selectedId}`, {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({ texto }),
+      });
+      setTexto("");
+      await Promise.all([
+        cargarMensajes(selectedId),
+        cargarLista(),
+      ]);
+    } catch (err) {
+      console.error("Error al enviar mensaje:", err);
+    }
     setEnviando(false);
-    cargarMensajes(selectedId);
-    cargarLista();
   };
 
   const clienteSeleccionado = clientes.find((c) => c.id === selectedId);
