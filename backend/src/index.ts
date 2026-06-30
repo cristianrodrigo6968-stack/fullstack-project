@@ -1123,7 +1123,22 @@ app.put("/pedidos/:id/ajustar-precio", auth, async (req, res) => {
   const { montoTotal } = req.body;
   res.json(await prisma.pedido.update({ where: { id }, data: { montoTotal: Number(montoTotal) } }));
 });
+app.delete("/items-pedido/:id", auth, async (req, res) => {
+  const id = Number(req.params.id);
 
+  try {
+    // Eliminar primero las revisiones asociadas
+    await prisma.revisionItem.deleteMany({ where: { itemPedidoId: id } });
+
+    // Luego eliminar el ítem
+    await prisma.itemPedido.delete({ where: { id } });
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("Error al eliminar item de pedido:", error);
+    res.status(500).json({ error: "Error interno al eliminar el ítem" });
+  }
+});
 // ===================== ITEMS Y REVISIONES =====================
 app.post("/items/:id/revision", auth, upload.array("archivos", 5), async (req: any, res) => {
   const itemId = Number(req.params.id);
