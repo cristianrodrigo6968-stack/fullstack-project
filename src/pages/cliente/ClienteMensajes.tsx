@@ -166,13 +166,16 @@ function ClienteMensajes() {
   if (loading) return <p style={{ color: "#94a3b8", textAlign: "center", padding: 40 }}>Cargando mensajes...</p>;
 
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto", width: "100%" }}>
-      <h1 style={{ fontSize: 24, marginBottom: 24, fontWeight: 700, color: "#f1f5f9" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <h1 style={{ fontSize: 24, marginBottom: 16, fontWeight: 700, color: "#f1f5f9" }}>
         💬 Mensajes
       </h1>
 
       <div
         style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
           background: "#1e293b",
           borderRadius: 16,
           overflow: "hidden",
@@ -183,9 +186,9 @@ function ClienteMensajes() {
         {/* Zona de mensajes */}
         <div
           style={{
-            padding: "16px 20px",
-            height: 450,
+            flex: 1,
             overflowY: "auto",
+            padding: "16px 20px",
             display: "flex",
             flexDirection: "column",
             gap: 12,
@@ -232,7 +235,7 @@ function ClienteMensajes() {
           <div ref={bottomRef} />
         </div>
 
-        {/* Previsualización de archivos a enviar */}
+        {/* Previsualización de archivos */}
         {archivos.length > 0 && (
           <div
             style={{
@@ -334,14 +337,6 @@ function ClienteMensajes() {
               transition: "background 0.2s, color 0.2s",
             }}
             title="Adjuntar archivos"
-            onMouseEnter={e => {
-              e.currentTarget.style.background = "#475569";
-              e.currentTarget.style.color = "white";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = "#334155";
-              e.currentTarget.style.color = "#94a3b8";
-            }}
           >
             📎
           </button>
@@ -359,28 +354,21 @@ function ClienteMensajes() {
               color: "white",
               fontSize: 14,
               outline: "none",
-              transition: "border-color 0.2s",
             }}
-            onFocus={e => (e.target.style.borderColor = "#3b82f6")}
-            onBlur={e => (e.target.style.borderColor = "#334155")}
           />
           <button
             onClick={enviar}
             disabled={enviando || (!texto.trim() && archivos.length === 0)}
             style={{
-              background:
-                enviando || (!texto.trim() && archivos.length === 0)
-                  ? "#334155"
-                  : "#3b82f6",
+              background: enviando ? "#334155" : "#3b82f6",
               border: "none",
               padding: "10px 18px",
               borderRadius: 10,
               color: "white",
               fontWeight: "bold",
-              cursor: enviando || (!texto.trim() && archivos.length === 0) ? "not-allowed" : "pointer",
+              cursor: enviando ? "not-allowed" : "pointer",
               fontSize: 14,
-              transition: "background 0.2s",
-              opacity: enviando || (!texto.trim() && archivos.length === 0) ? 0.6 : 1,
+              opacity: enviando ? 0.6 : 1,
             }}
           >
             {enviando ? "..." : "Enviar"}
