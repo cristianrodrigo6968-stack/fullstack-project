@@ -353,75 +353,6 @@ function ClienteHacerPedido() {
           <div style={{ textAlign: "center", padding: 80 }}><Spinner /></div>
         ) : paso === "catalogo" ? (
           <>
-            {/* Barra superior fija con resumen del carrito (se muestra solo si hay ítems) */}
-            {totalItems > 0 && (
-              <div
-                style={{
-                  position: "sticky",
-                  top: 0,
-                  zIndex: 100,
-                  background: "rgba(13,13,26,0.95)",
-                  backdropFilter: "blur(12px)",
-                  borderBottom: "1px solid #1e1b4b",
-                  padding: "12px 20px",
-                  marginBottom: 28,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: 12,
-                  borderRadius: "0 0 14px 14px",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 22 }}>🛒</span>
-                    <span style={{ color: "white", fontWeight: 700, fontSize: 16 }}>
-                      {totalItems} producto{totalItems !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                  <span style={{ color: "#34d399", fontWeight: 800, fontSize: 20 }}>
-                    Bs {totalPrecio.toFixed(2)}
-                  </span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <button
-                    onClick={() => setPaso("pago")}
-                    className="step-btn"
-                    style={{
-                      padding: "10px 24px",
-                      background: "linear-gradient(135deg,#10b981,#059669)",
-                      border: "none",
-                      borderRadius: 12,
-                      color: "white",
-                      fontWeight: 700,
-                      fontSize: 15,
-                      cursor: "pointer",
-                      boxShadow: "0 4px 16px rgba(16,185,129,.3)",
-                    }}
-                  >
-                    💳 Pagar
-                  </button>
-                  <button
-                    onClick={vaciarCarrito}
-                    style={{
-                      background: "transparent",
-                      border: "1px solid #1e1b4b",
-                      borderRadius: 10,
-                      color: "#64748b",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      padding: "8px 16px",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    🗑 Vaciar
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Catálogo de productos (idéntico al Home) */}
             <div
               style={{
@@ -591,6 +522,71 @@ function ClienteHacerPedido() {
                 );
               })}
             </div>
+
+            {/* FAB flotante con carrito y pago (siempre visible) */}
+            {totalItems > 0 && (
+              <div
+                style={{
+                  position: "fixed",
+                  bottom: 20,
+                  right: 20,
+                  zIndex: 1000,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  background: "rgba(13,13,26,0.95)",
+                  backdropFilter: "blur(12px)",
+                  border: "1px solid #312e81",
+                  borderRadius: 20,
+                  padding: "12px 20px",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.3)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 22 }}>🛒</span>
+                  <div>
+                    <p style={{ color: "#94a3b8", fontSize: 11, margin: 0 }}>
+                      {totalItems} producto{totalItems !== 1 ? "s" : ""}
+                    </p>
+                    <p style={{ color: "#34d399", fontWeight: 800, fontSize: 18, margin: 0 }}>
+                      Bs {totalPrecio.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPaso("pago")}
+                  style={{
+                    padding: "10px 20px",
+                    background: "linear-gradient(135deg,#10b981,#059669)",
+                    border: "none",
+                    borderRadius: 12,
+                    color: "white",
+                    fontWeight: 700,
+                    fontSize: 15,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 16px rgba(16,185,129,.3)",
+                  }}
+                >
+                  💳 Pagar
+                </button>
+                <button
+                  onClick={vaciarCarrito}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid #1e1b4b",
+                    borderRadius: 8,
+                    color: "#64748b",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    padding: "6px 10px",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  🗑
+                </button>
+              </div>
+            )}
           </>
         ) : (
           /* ─── PANTALLA DE PAGO ─── */
