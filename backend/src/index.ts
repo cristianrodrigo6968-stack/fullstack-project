@@ -1738,63 +1738,19 @@ app.post("/items-pedido/:id/archivo", auth, upload.single("archivo"), async (req
   res.json({ ...updated, cliente: updated.pedido.cliente, creadoEn: updated.pedido.creadoEn });
 });
 // ===================== NOTIFICACIONES ADMIN =====================
-app.get("/notificaciones", auth, async (req, res) => {
-  try {
-    // Contar mensajes no leídos de todos los clientes
-    const mensajesNoLeidos = await prisma.mensaje.count({
-      where: { emisor: "cliente", leido: false },
-    });
+// ===================== NOTIFICACIONES ADMIN =====================
+app.get("/mensajes/no-leidos-count", auth, async (req, res) => {
+  const count = await prisma.mensaje.count({
+    where: { emisor: "cliente", leido: false },
+  });
+  res.json({ total: count });
+});
 
-    // Contar pagos pendientes (nuevos)
-    const pagosPendientes = await prisma.pago.count({
-      where: { estado: "pendiente" },
-    });
-
-    // Obtener últimos mensajes no leídos (máximo 5)
-    const ultimosMensajes = await prisma.mensaje.findMany({
-      where: { emisor: "cliente", leido: false },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      include: {
-        cliente: {
-          select: { nombreCompleto: true, fotografia: true },
-        },
-      },
-    });
-
-    // Obtener últimos pagos pendientes (máximo 5)
-    const ultimosPagos = await prisma.pago.findMany({
-      where: { estado: "pendiente" },
-      orderBy: { creadoEn: "desc" },
-      take: 5,
-    });
-
-    res.json({
-      total: mensajesNoLeidos + pagosPendientes,
-      mensajes: {
-        count: mensajesNoLeidos,
-        ultimos: ultimosMensajes.map(m => ({
-          id: m.id,
-          clienteId: m.clienteId,
-          cliente: m.cliente?.nombreCompleto || "Cliente",
-          texto: m.texto.length > 50 ? m.texto.substring(0, 50) + "..." : m.texto,
-          createdAt: m.createdAt,
-        })),
-      },
-      pagos: {
-        count: pagosPendientes,
-        ultimos: ultimosPagos.map(p => ({
-          id: p.id,
-          nombreDeclarado: p.nombreDeclarado,
-          monto: p.monto,
-          createdAt: p.creadoEn,
-        })),
-      },
-    });
-  } catch (error) {
-    console.error("Error al obtener notificaciones:", error);
-    res.status(500).json({ error: "Error interno" });
-  }
+app.get("/pagos/pendientes-count", auth, async (req, res) => {
+  const count = await prisma.pago.count({
+    where: { estado: "pendiente" },
+  });
+  res.json({ total: count });
 });
 // ===================== INICIO SERVIDOR =====================
 app.listen(PORT, () => {
