@@ -1227,6 +1227,7 @@ app.post("/ediciones/:id/archivo", auth, upload.single("archivo"), async (req: a
 });
 
 // ===================== MENSAJES ADMIN =====================
+// ===================== MENSAJES ADMIN =====================
 app.get("/mensajes", auth, async (req, res) => {
   const clientes = await prisma.client.findMany({
     where: { mensajes: { some: {} } },
@@ -1258,14 +1259,7 @@ app.get("/mensajes/:clienteId", auth, async (req, res) => {
   res.json(mensajes);
 });
 
-app.post("/mensajes/:clienteId", auth, async (req, res) => {
-  const clienteId = Number(req.params.clienteId);
-  const { texto } = req.body;
-  if (!texto || !texto.trim()) return res.status(400).json({ error: "El mensaje no puede estar vacío" });
-  const mensaje = await prisma.mensaje.create({ data: { clienteId, emisor: "admin", texto, leido: false } });
-  res.json(mensaje);
-});
-
+// Enviar mensaje admin (con archivos) — UNA SOLA definición
 app.post("/mensajes/:clienteId", auth, upload.array("archivos", 5), async (req: any, res) => {
   const clienteId = Number(req.params.clienteId);
   const { texto } = req.body;
@@ -1295,13 +1289,14 @@ app.post("/mensajes/:clienteId", auth, upload.array("archivos", 5), async (req: 
   res.json(mensaje);
 });
 
-// ===================== ARCHIVOS CLIENTE (admin) =====================
-app.get("/clients/:id/archivos", auth, async (req, res) => {
-  const clienteId = Number(req.params.id);
-  const cliente = await prisma.client.findUnique({ where: { id: clienteId }, select: { id: true } });
-  if (!cliente) return res.status(404).json({ error: "Cliente no encontrado" });
-  const archivos = await prisma.clienteArchivo.findMany({ where: { clienteId }, orderBy: { createdAt: "desc" } });
-  res.json(archivos);
+// Marcar como leídos — RUTA NUEVA
+app.put("/mensajes/:clienteId/leidos", auth, async (req, res) => {
+  const clienteId = Number(req.params.clienteId);
+  await prisma.mensaje.updateMany({
+    where: { clienteId, emisor: "cliente", leido: false },
+    data: { leido: true },
+  });
+  res.json({ ok: true });
 });
 
 // ===================== CLIENTE (endpoints propios) =====================
