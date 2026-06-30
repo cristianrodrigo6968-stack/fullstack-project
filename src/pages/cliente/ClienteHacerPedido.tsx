@@ -17,6 +17,8 @@ interface ClienteDatos {
   nombreCompleto: string | null;
   ci: string | null;
   celular: string | null;
+  nombres: string | null;
+  apellidoPaterno: string | null;
 }
 
 const redondearAdelanto = (valor: number): number => {
@@ -57,6 +59,8 @@ function ClienteHacerPedido() {
     nombreCompleto: "",
     ci: "",
     celular: "",
+    nombres: "",
+    apellidoPaterno: "",
   });
   const [loadingPerfil, setLoadingPerfil] = useState(true);
 
@@ -64,6 +68,7 @@ function ClienteHacerPedido() {
   const [comprobante, setComprobante] = useState<File | null>(null);
   const [montoDeclarado, setMontoDeclarado] = useState("");
   const [descripcion, setDescripcion] = useState("");
+  const [nombreIngresado, setNombreIngresado] = useState(""); // nuevo: si no hay nombre en perfil
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState("");
 
@@ -87,10 +92,18 @@ function ClienteHacerPedido() {
       if (prodRes.ok) setProductos(await prodRes.json());
       if (perfilRes.ok) {
         const perfil = await perfilRes.json();
+        // Construir nombre completo a partir de nombres y apellidos si no existe
+        const nombreCompleto = perfil.nombreCompleto
+          ? perfil.nombreCompleto
+          : [perfil.nombres, perfil.apellidoPaterno, perfil.apellidoMaterno]
+              .filter(Boolean)
+              .join(" ");
         setClienteDatos({
-          nombreCompleto: perfil.nombreCompleto || "",
+          nombreCompleto: nombreCompleto || "",
           ci: perfil.ci || "",
           celular: perfil.celular || "",
+          nombres: perfil.nombres || "",
+          apellidoPaterno: perfil.apellidoPaterno || "",
         });
       }
       setLoading(false);
@@ -153,6 +166,10 @@ function ClienteHacerPedido() {
   const adelantoBruto = totalPrecio * 0.3;
   const adelanto = redondearAdelanto(adelantoBruto);
 
+  // Nombre que se usará para el pago (prioridad: perfil, luego ingreso manual)
+  const nombreParaPago =
+    clienteDatos.nombreCompleto || nombreIngresado || "";
+
   const getProductosPayload = () => {
     const payload: any[] = [];
     Object.values(carrito).forEach(({ producto, cantidad }) => {
@@ -173,11 +190,15 @@ function ClienteHacerPedido() {
       alert("Completá todos los campos antes de enviar.");
       return;
     }
+    if (!nombreParaPago) {
+      alert("Tu nombre completo es necesario. Ingresalo o actualizá tu perfil.");
+      return;
+    }
     setEnviando(true);
     const formData = new FormData();
     formData.append("comprobante", comprobante);
     formData.append("tipo", "imagen");
-    formData.append("nombreDeclarado", clienteDatos.nombreCompleto || "");
+    formData.append("nombreDeclarado", nombreParaPago);
     formData.append("monto", montoDeclarado);
     formData.append("celular", clienteDatos.celular || "");
     formData.append("ci", clienteDatos.ci || "");
@@ -203,9 +224,13 @@ function ClienteHacerPedido() {
       alert("Ingresá el monto depositado.");
       return;
     }
+    if (!nombreParaPago) {
+      alert("Tu nombre completo es necesario. Ingresalo o actualizá tu perfil.");
+      return;
+    }
     setEnviando(true);
     const formData = new FormData();
-    formData.append("nombreDeclarado", clienteDatos.nombreCompleto || "");
+    formData.append("nombreDeclarado", nombreParaPago);
     formData.append("monto", montoDeclarado);
     formData.append("tipo", "declarado");
     formData.append("celular", clienteDatos.celular || "");
@@ -261,7 +286,7 @@ function ClienteHacerPedido() {
             <p style={{ margin: 0, color: "white", fontSize: 14 }}>🪪 CI: {clienteDatos.ci || "—"}</p>
           </div>
           <button
-            onClick={() => { setPaso("catalogo"); setModo(null); setComprobante(null); setMontoDeclarado(""); setDescripcion(""); }}
+            onClick={() => { setPaso("catalogo"); setModo(null); setComprobante(null); setMontoDeclarado(""); setDescripcion(""); setNombreIngresado(""); }}
             style={{
               background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
               border: "none", padding: "13px 30px", borderRadius: 12,
@@ -629,6 +654,18 @@ function ClienteHacerPedido() {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {/* Mostrar campo de nombre solo si no hay nombre completo en el perfil */}
+                  {!clienteDatos.nombreCompleto && (
+                    <>
+                      <label style={labelStyle}>Nombre completo</label>
+                      <input
+                        className="cart-input"
+                        placeholder="Tu nombre completo (solo letras)"
+                        value={nombreIngresado}
+                        onChange={(e) => setNombreIngresado(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "").toUpperCase())}
+                      />
+                    </>
+                  )}
                   <label style={labelStyle}>Monto depositado (Bs)</label>
                   <input className="cart-input" placeholder={`Ej: ${adelanto}`} type="number" value={montoDeclarado} onChange={(e) => setMontoDeclarado(e.target.value)} />
                   {modo === "subir" && (
