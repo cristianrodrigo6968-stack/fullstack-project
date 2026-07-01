@@ -23,7 +23,17 @@ const getCategoria = (nombre: string): string => {
   if (n.includes("artículo") || n.includes("articulo") || n.includes("autor")) return "autor";
   return "otro";
 };
-
+const getComponenteLabel = (comp: any): string => {
+  if (comp.tipo === "libro") return `📖 Libro Categoría ${comp.categoria}`;
+  if (comp.tipo === "revista") {
+    const subtipoLabel = comp.subtipo === "director" ? "Director de revista" :
+                         comp.subtipo === "fundador" ? "Fundador" :
+                         comp.subtipo === "articulo_rp" ? "Artículo (redacción y publicación)" :
+                         "Artículo (solo publicación)";
+    return `📰 ${subtipoLabel}${comp.meses ? ` (${comp.meses} mes${comp.meses > 1 ? "es" : ""})` : ""}`;
+  }
+  return "📦 Otro servicio";
+};
 interface Toast { id: number; }
 interface FeedbackState { count: number; toasts: Toast[]; bounce: boolean; }
 
@@ -465,8 +475,34 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
 
   const agregarAlCarrito = (producto: any, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    const tipo = getCategoria(producto.nombre);
-    setCarrito(prev => [...prev, { ...producto, tipo }]);
+
+    if (producto.componentes && Array.isArray(producto.componentes) && producto.componentes.length > 0) {
+      const totalComponentes = producto.componentes.length;
+      const nuevosItems = producto.componentes.map((comp: any, idx: number) => {
+        const nombreComp = getComponenteLabel(comp);
+        const precioUnitario = comp.precio || (producto.precio / totalComponentes);
+        const precioConDescuento = producto.descuento > 0
+          ? precioUnitario - (precioUnitario * producto.descuento / 100)
+          : precioUnitario;
+        return {
+          id: `${producto.id}_comp_${idx}`,
+          nombre: nombreComp,
+          descripcion: `Componente de ${producto.nombre}`,
+          precio: precioConDescuento,
+          descuento: 0,
+          imagenUrl: producto.imagenUrl,
+          tipo: comp.tipo,
+          componente: true,
+          productoPadreId: producto.id,
+          nombrePadre: producto.nombre,
+        };
+      });
+      setCarrito(prev => [...prev, ...nuevosItems]);
+    } else {
+      const tipo = getCategoria(producto.nombre);
+      setCarrito(prev => [...prev, { ...producto, tipo }]);
+    }
+
     const pid = producto.id;
     const newToast = ++toastIdRef.current;
     setFeedbacks(prev => ({
