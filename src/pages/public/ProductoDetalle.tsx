@@ -63,13 +63,12 @@ function ProductoDetalle() {
     localStorage.setItem("carrito", JSON.stringify(carrito));
   }, [carrito]);
 
-  const agregarAlCarrito = (producto: any) => {
-    // Si el producto tiene componentes, agregamos cada componente como un ítem separado
+ const agregarAlCarrito = (producto: any) => {
     if (producto.componentes && Array.isArray(producto.componentes) && producto.componentes.length > 0) {
+      const grupoId = `grp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const totalComponentes = producto.componentes.length;
       const nuevosItems = producto.componentes.map((comp: any, idx: number) => {
         const nombreComp = getComponenteLabel(comp);
-        // Precio: si el componente tiene precio propio, lo usamos; si no, repartimos el precio total
         const precioUnitario = comp.precio || (producto.precio / totalComponentes);
         const precioConDescuento = producto.descuento > 0 
           ? precioUnitario - (precioUnitario * producto.descuento / 100)
@@ -84,12 +83,12 @@ function ProductoDetalle() {
           tipo: comp.tipo,
           componente: true,
           productoPadreId: producto.id,
-          nombrePadre: producto.nombre,   // 👈 Línea importante para agrupar en el carrito
+          nombrePadre: producto.nombre,
+          grupoCompraId: grupoId,
         };
       });
       setCarrito(prev => [...prev, ...nuevosItems]);
     } else {
-      // Producto normal
       const tipo = getCategoria(producto.nombre);
       setCarrito(prev => [...prev, { ...producto, tipo }]);
     }

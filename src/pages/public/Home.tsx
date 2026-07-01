@@ -452,6 +452,7 @@ function Home() {
 
 // ── CATÁLOGO DE PRODUCTOS ──
 function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
+  
   const navigate = useNavigate();
   const [productos, setProductos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -477,6 +478,7 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
     e?.stopPropagation();
 
     if (producto.componentes && Array.isArray(producto.componentes) && producto.componentes.length > 0) {
+      const grupoId = `grp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const totalComponentes = producto.componentes.length;
       const nuevosItems = producto.componentes.map((comp: any, idx: number) => {
         const nombreComp = getComponenteLabel(comp);
@@ -495,6 +497,7 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
           componente: true,
           productoPadreId: producto.id,
           nombrePadre: producto.nombre,
+          grupoCompraId: grupoId,
         };
       });
       setCarrito(prev => [...prev, ...nuevosItems]);

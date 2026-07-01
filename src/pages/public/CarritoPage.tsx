@@ -42,28 +42,28 @@ function CarritoPage() {
     setCarrito(saved ? JSON.parse(saved) : []);
   }, []);
 
-  const eliminarPaquete = (productoPadreId: number) => {
-    const nuevoCarrito = carrito.filter(item => item.productoPadreId !== productoPadreId);
+  const eliminarPaquete = (grupoCompraId: string) => {
+    const nuevoCarrito = carrito.filter(item => item.grupoCompraId !== grupoCompraId);
     setCarrito(nuevoCarrito);
     localStorage.setItem("carrito", JSON.stringify(nuevoCarrito));
     if (nuevoCarrito.length === 0) setStep("carrito");
   };
 
   const agruparCarrito = () => {
-    const grupos: Record<number, any[]> = {};
+    const grupos: Record<string, any[]> = {};
     const normales: any[] = [];
 
     carrito.forEach(item => {
-      if (item.productoPadreId) {
-        if (!grupos[item.productoPadreId]) grupos[item.productoPadreId] = [];
-        grupos[item.productoPadreId].push(item);
+      if (item.grupoCompraId) {
+        if (!grupos[item.grupoCompraId]) grupos[item.grupoCompraId] = [];
+        grupos[item.grupoCompraId].push(item);
       } else {
         normales.push(item);
       }
     });
 
     const gruposArray = Object.entries(grupos).map(([id, items]) => ({
-      id: Number(id),
+      id,
       items,
       nombrePaquete: items[0]?.nombrePadre || "Paquete combinado",
       total: items.reduce((sum, i) => sum + (i.descuento > 0 ? i.precio - (i.precio * i.descuento / 100) : i.precio), 0)

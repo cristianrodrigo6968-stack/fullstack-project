@@ -32,9 +32,9 @@ useEffect(() => {
     try {
       const c = JSON.parse(localStorage.getItem("carrito") || "[]");
       // Contar igual que agruparCarrito(): paquetes como 1 + sueltos individualmente
-      const ids = new Set(c.filter((i: any) => i.productoPadreId).map((i: any) => i.productoPadreId));
-      const sueltos = c.filter((i: any) => !i.productoPadreId).length;
-      setCarritoCount(ids.size + sueltos);
+      const ids = new Set(c.filter((i: any) => i.grupoCompraId).map((i: any) => i.grupoCompraId));
+const sueltos = c.filter((i: any) => !i.grupoCompraId).length;
+setCarritoCount(ids.size + sueltos);
     } catch { setCarritoCount(0); }
   };
   update();
