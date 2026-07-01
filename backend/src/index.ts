@@ -1217,6 +1217,14 @@ app.get("/pagos/pendientes-count", auth, async (req, res) => {
   });
   res.json({ total: count });
 });
+// Marcar como leídos (cliente)
+app.put("/cliente/mensajes/leidos", authCliente, async (req: any, res) => {
+  await prisma.mensaje.updateMany({
+    where: { clienteId: req.clienteId, emisor: "admin", leido: false },
+    data: { leido: true },
+  });
+  res.json({ ok: true });
+});
 // ===================== MENSAJES ADMIN =====================
 app.get("/mensajes", auth, async (req, res) => {
   const clientes = await prisma.client.findMany({
