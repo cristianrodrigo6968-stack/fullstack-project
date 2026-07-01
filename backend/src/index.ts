@@ -1730,18 +1730,13 @@ app.get("/pagos/pendientes-count", auth, async (req, res) => {
   res.json({ total: count });
 });
 
-app.get("/mensajes/no-leidos-count", auth, async (req, res) => {
-  const count = await prisma.mensaje.count({
-    where: { emisor: "cliente", leido: false },
+// Marcar como leídos (cliente)
+app.put("/cliente/mensajes/leidos", authCliente, async (req: any, res) => {
+  await prisma.mensaje.updateMany({
+    where: { clienteId: req.clienteId, emisor: "admin", leido: false },
+    data: { leido: true },
   });
-  res.json({ total: count });
-});
-
-app.get("/pagos/pendientes-count", auth, async (req, res) => {
-  const count = await prisma.pago.count({
-    where: { estado: "pendiente" },
-  });
-  res.json({ total: count });
+  res.json({ ok: true });
 });
 
 // ===================== INICIO SERVIDOR =====================
