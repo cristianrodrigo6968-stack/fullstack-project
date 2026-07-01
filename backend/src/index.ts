@@ -1309,6 +1309,12 @@ app.get("/cliente/me", authCliente, async (req: any, res) => {
   if (!cliente) return res.status(404).json({ error: "Cliente no encontrado" });
   res.json(cliente);
 });
+app.get("/cliente/mensajes/no-leidos-count", authCliente, async (req: any, res) => {
+  const count = await prisma.mensaje.count({
+    where: { clienteId: req.clienteId, emisor: "admin", leido: false },
+  });
+  res.json({ total: count });
+});
 app.get("/cliente/mensajes", authCliente, async (req: any, res) => {
   const mensajes = await prisma.mensaje.findMany({
     where: { clienteId: req.clienteId },
