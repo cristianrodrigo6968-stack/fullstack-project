@@ -1730,19 +1730,20 @@ app.get("/pagos/pendientes-count", auth, async (req, res) => {
   res.json({ total: count });
 });
 
-app.get("/cliente/mensajes/no-leidos-count", authCliente, async (req: any, res) => {
+app.get("/mensajes/no-leidos-count", auth, async (req, res) => {
   const count = await prisma.mensaje.count({
-    where: { clienteId: req.clienteId, emisor: "admin", leido: false },
+    where: { emisor: "cliente", leido: false },
   });
   res.json({ total: count });
 });
-app.put("/cliente/mensajes/leidos", authCliente, async (req: any, res) => {
-  await prisma.mensaje.updateMany({
-    where: { clienteId: req.clienteId, emisor: "admin", leido: false },
-    data: { leido: true },
+
+app.get("/pagos/pendientes-count", auth, async (req, res) => {
+  const count = await prisma.pago.count({
+    where: { estado: "pendiente" },
   });
-  res.json({ ok: true });
+  res.json({ total: count });
 });
+
 // ===================== INICIO SERVIDOR =====================
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en el puerto ${PORT}`);

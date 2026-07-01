@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
- "scripts": {
- "build": "prisma generate && tsc",
-  "postinstall": "prisma migrate deploy",
-  "start": "node dist/index.js"
-},
+  "scripts": {
+    "build": "prisma generate && tsc",
+    "postinstall": "prisma migrate deploy",
+    "start": "node dist/index.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -28,7 +28,7 @@
     "prisma": "^6.19.3",
     "twilio": "^6.0.2"
   },
-   "devDependencies": {
+  "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
@@ -41,6 +41,7 @@
     "@types/twilio": "^3.19.2",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
+    "tsx": "^4.22.4",
     "typescript": "^6.0.3"
   },
   "prisma": {
