@@ -1203,7 +1203,20 @@ app.post("/ediciones/:id/archivo", auth, upload.single("archivo"), async (req: a
     res.status(500).json({ error: "Error al subir archivo" });
   }
 });
+// ===================== NOTIFICACIONES =====================
+app.get("/mensajes/no-leidos-count", auth, async (req, res) => {
+  const count = await prisma.mensaje.count({
+    where: { emisor: "cliente", leido: false },
+  });
+  res.json({ total: count });
+});
 
+app.get("/pagos/pendientes-count", auth, async (req, res) => {
+  const count = await prisma.pago.count({
+    where: { estado: "pendiente" },
+  });
+  res.json({ total: count });
+});
 // ===================== MENSAJES ADMIN =====================
 app.get("/mensajes", auth, async (req, res) => {
   const clientes = await prisma.client.findMany({
@@ -1716,28 +1729,6 @@ app.post("/items-pedido/:id/archivo", auth, upload.single("archivo"), async (req
 });
 
 // ===================== NOTIFICACIONES =====================
-app.get("/mensajes/no-leidos-count", auth, async (req, res) => {
-  const count = await prisma.mensaje.count({
-    where: { emisor: "cliente", leido: false },
-  });
-  res.json({ total: count });
-});
-
-app.get("/pagos/pendientes-count", auth, async (req, res) => {
-  const count = await prisma.pago.count({
-    where: { estado: "pendiente" },
-  });
-  res.json({ total: count });
-});
-
-// Marcar como leídos (cliente)
-app.put("/cliente/mensajes/leidos", authCliente, async (req: any, res) => {
-  await prisma.mensaje.updateMany({
-    where: { clienteId: req.clienteId, emisor: "admin", leido: false },
-    data: { leido: true },
-  });
-  res.json({ ok: true });
-});
 
 // ===================== INICIO SERVIDOR =====================
 app.listen(PORT, () => {
