@@ -30,6 +30,23 @@ const redondearAdelanto = (valor: number): number => {
 
 const getPrecioFinal = (precio: number, descuento: number) =>
   descuento > 0 ? precio - (precio * descuento) / 100 : precio;
+
+const getCategoriaFiltro = (p: any): "libro" | "revista" | "otro" => {
+  if (p.componentes && Array.isArray(p.componentes) && p.componentes.length > 0) {
+    const tipos = new Set(p.componentes.map((c: any) => c.tipo));
+    if (tipos.size === 1) {
+      if (tipos.has("libro")) return "libro";
+      if (tipos.has("revista")) return "revista";
+      return "otro";
+    }
+    return "otro";
+  }
+  const n = p.nombre.toLowerCase();
+  if (n.includes("libro")) return "libro";
+  if (n.includes("revista") || n.includes("director") || n.includes("fundador") || n.includes("artículo") || n.includes("articulo")) return "revista";
+  return "otro";
+};
+
 const getComponenteLabel = (comp: any): string => {
   if (comp.tipo === "libro") return `📖 Libro Categoría ${comp.categoria}`;
   if (comp.tipo === "revista") {
@@ -64,8 +81,8 @@ function ClienteHacerPedido() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [carrito, setCarrito] = useState<Record<number, { producto: Producto; cantidad: number }>>({});
-const [paso, setPaso] = useState<"catalogo" | "carrito" | "pago" | "confirmacion">("catalogo");
-
+  const [paso, setPaso] = useState<"catalogo" | "carrito" | "pago" | "confirmacion">("catalogo");
+  const [filtroCategoria, setFiltroCategoria] = useState<"todos" | "libro" | "revista" | "otro">("todos");
   const [clienteDatos, setClienteDatos] = useState<ClienteDatos>({
     nombreCompleto: "",
     ci: "",
@@ -402,6 +419,33 @@ const [paso, setPaso] = useState<"catalogo" | "carrito" | "pago" | "confirmacion
           <div style={{ textAlign: "center", padding: 80 }}><Spinner /></div>
         ) : paso === "catalogo" ? (
           <>
+            <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+              {[
+                { key: "todos", label: "Todos" },
+                { key: "libro", label: "📖 Libros" },
+                { key: "revista", label: "📰 Revistas" },
+                { key: "otro", label: "📦 Otros" },
+              ].map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => setFiltroCategoria(f.key as any)}
+                  style={{
+                    padding: "8px 18px",
+                    borderRadius: 99,
+                    border: filtroCategoria === f.key ? "2px solid #6366f1" : "1px solid #1e1b4b",
+                    background: filtroCategoria === f.key ? "rgba(99,102,241,.15)" : "#0d0d1a",
+                    color: filtroCategoria === f.key ? "#a5b4fc" : "#64748b",
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    transition: "all .2s",
+                  }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
             <div
               style={{
                 display: "grid",
@@ -409,7 +453,7 @@ const [paso, setPaso] = useState<"catalogo" | "carrito" | "pago" | "confirmacion
                 gap: 28,
               }}
             >
-              {productos.map((p) => {
+              {productos.filter(p => filtroCategoria === "todos" || getCategoriaFiltro(p) === filtroCategoria).map((p) => {
                 const precioFinal = getPrecioFinal(p.precio, p.descuento);
                 const enCarrito = carrito[p.id]?.cantidad || 0;
                 const bounce = bounceId === p.id;

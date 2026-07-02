@@ -23,6 +23,21 @@ const getCategoria = (nombre: string): string => {
   if (n.includes("artículo") || n.includes("articulo") || n.includes("autor")) return "autor";
   return "otro";
 };
+const getCategoriaFiltro = (p: any): "libro" | "revista" | "otro" => {
+  if (p.componentes && Array.isArray(p.componentes) && p.componentes.length > 0) {
+    const tipos = new Set(p.componentes.map((c: any) => c.tipo));
+    if (tipos.size === 1) {
+      if (tipos.has("libro")) return "libro";
+      if (tipos.has("revista")) return "revista";
+      return "otro";
+    }
+    return "otro";
+  }
+  const n = p.nombre.toLowerCase();
+  if (n.includes("libro")) return "libro";
+  if (n.includes("revista") || n.includes("director") || n.includes("fundador") || n.includes("artículo") || n.includes("articulo")) return "revista";
+  return "otro";
+};
 const getComponenteLabel = (comp: any): string => {
   if (comp.tipo === "libro") return `📖 Libro Categoría ${comp.categoria}`;
   if (comp.tipo === "revista") {
@@ -461,6 +476,7 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
     try { return JSON.parse(localStorage.getItem("carrito") || "[]"); }
     catch { return []; }
   });
+  const [filtroCategoria, setFiltroCategoria] = useState<"todos" | "libro" | "revista" | "otro">("todos");
   const toastIdRef = useRef(0);
 
   useEffect(() => {
@@ -524,7 +540,7 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
       [pid]: { ...prev[pid], toasts: (prev[pid]?.toasts ?? []).filter(t => t.id !== newToast) },
     })), 1800);
   };
-
+  
   if (loading) return (
     <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 80 }}>
       <div style={{
@@ -536,15 +552,46 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
     </div>
   );
 
-  if (productos.length === 0) return (
+ if (productos.length === 0) return (
     <p style={{ color: "#475569", textAlign: "center", gridColumn: "1/-1", padding: 60, fontSize: 15 }}>
       Próximamente nuevos servicios.
     </p>
   );
 
+  const productosFiltrados = filtroCategoria === "todos"
+    ? productos
+    : productos.filter(p => getCategoriaFiltro(p) === filtroCategoria);
+
   return (
     <>
-      {productos.map((p: any) => {
+      <div style={{ gridColumn: "1/-1", display: "flex", gap: 10, justifyContent: "center", marginBottom: 12, flexWrap: "wrap" }}>
+        {[
+          { key: "todos", label: "Todos" },
+          { key: "libro", label: "📖 Libros" },
+          { key: "revista", label: "📰 Revistas" },
+          { key: "otro", label: "📦 Otros" },
+        ].map(f => (
+          <button
+            key={f.key}
+            onClick={() => setFiltroCategoria(f.key as any)}
+            style={{
+              padding: "8px 18px",
+              borderRadius: 99,
+              border: filtroCategoria === f.key ? "2px solid #6366f1" : "1px solid #1e1b4b",
+              background: filtroCategoria === f.key ? "rgba(99,102,241,.15)" : "#0d0d1a",
+              color: filtroCategoria === f.key ? "#a5b4fc" : "#64748b",
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              transition: "all .2s",
+            }}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+      {productosFiltrados.map((p: any) => {
         const precioFinal = getPrecioFinal(p.precio, p.descuento);
         const fb = feedbacks[p.id];
         const count = fb?.count ?? 0;
