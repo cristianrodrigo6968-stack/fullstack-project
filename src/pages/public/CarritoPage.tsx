@@ -312,9 +312,9 @@ function CarritoPage() {
                 <h3 style={{ margin: "0 0 5px", fontSize: 17, fontWeight: 700, color: "#f1f5f9" }}>📋 Tus datos de contacto</h3>
                 <p style={{ color: "#475569", fontSize: 13, margin: "0 0 22px", lineHeight: 1.6 }}>La asociación te contactará a estos datos para gestionar tu pedido.</p>
                 <label style={labelStyle}>Celular</label>
-                <input className="cart-input" placeholder="Ej: 70012345" value={celular} onChange={e => setCelular(e.target.value.replace(/\D/g, ""))} style={{ marginBottom: 14 }} />
+                <input className="cart-input" type="tel" inputMode="numeric" pattern="[0-9]*" placeholder="Ej: 70012345" value={celular} onChange={e => setCelular(e.target.value.replace(/\D/g, ""))} style={{ marginBottom: 14 }} />
                 <label style={labelStyle}>Cédula de identidad (CI)</label>
-                <input className="cart-input" placeholder="Ej: 1234567" value={ci} onChange={e => setCi(e.target.value.replace(/\D/g, ""))} style={{ marginBottom: 24 }} />
+                <input className="cart-input" type="tel" inputMode="numeric" pattern="[0-9]*" placeholder="Ej: 1234567" value={ci} onChange={e => setCi(e.target.value.replace(/\D/g, ""))} style={{ marginBottom: 24 }} />
                 <div style={{ display: "flex", gap: 10 }}>
                   <button className="step-btn" onClick={handleContinuarDatos} style={{ flex: 1, padding: 13, background: "linear-gradient(135deg,#10b981,#059669)", border: "none", borderRadius: 12, color: "white", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 2px 12px rgba(16,185,129,.25)" }}>Continuar →</button>
                   <button className="btn-volver-paso" onClick={() => setStep("carrito")}>← Volver</button>
@@ -352,7 +352,7 @@ function CarritoPage() {
                     <label style={labelStyle}>Nombre completo</label>
                     <input className="cart-input" placeholder="Tu nombre completo (solo letras)" value={nombreDeclarado} onChange={e => setNombreDeclarado(soloLetrasMayusculas(e.target.value))} />
                     <label style={labelStyle}>Monto depositado (Bs)</label>
-                    <input className="cart-input" placeholder={`Ej: ${adelanto}`} type="number" value={monto} onChange={e => setMonto(e.target.value)} />
+                    <input className="cart-input" type="text" inputMode="numeric" pattern="[0-9]*" placeholder={`Ej: ${adelanto}`} value={monto} onChange={e => setMonto(e.target.value.replace(/\D/g, ""))} />
                     {modo === "subir" && (
                       <>
                         <label style={labelStyle}>Foto del comprobante</label>
