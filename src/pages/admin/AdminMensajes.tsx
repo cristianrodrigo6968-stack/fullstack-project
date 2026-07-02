@@ -27,7 +27,14 @@ interface Mensaje {
   leido: boolean;
   createdAt: string;
 }
-
+interface ClienteBusqueda {
+  id: number;
+  nombreCompleto: string | null;
+  nombres: string | null;
+  apellidoPaterno: string | null;
+  apellidoMaterno: string | null;
+  fotografia: string | null;
+}
 function AdminMensajes() {
   const { token } = useAuth();
   const { isMobile } = useWindowSize();
@@ -37,8 +44,13 @@ function AdminMensajes() {
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [texto, setTexto] = useState("");
   const [archivos, setArchivos] = useState<File[]>([]);
-  const [loading, setLoading] = useState(true);
+ const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
+  const [mostrarNuevo, setMostrarNuevo] = useState(false);
+  const [todosClientes, setTodosClientes] = useState<ClienteBusqueda[]>([]);
+  const [cargandoTodos, setCargandoTodos] = useState(false);
+  const [busquedaNuevo, setBusquedaNuevo] = useState("");
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,9 +79,32 @@ function AdminMensajes() {
       console.warn("Error al cargar mensajes:", err);
     }
   }, [headers]);
+  const cargarTodosClientes = useCallback(async () => {
+    setCargandoTodos(true);
+    try {
+      const res = await fetch(`${API_URL}/clients`, { headers: headers() });
+      if (res.ok) setTodosClientes(await res.json());
+    } catch (err) {
+      console.warn("Error al cargar clientes:", err);
+    }
+    setCargandoTodos(false);
+  }, [headers]);
+
+  const iniciarConversacion = (c: ClienteBusqueda) => {
+    const nombre = c.nombreCompleto || [c.nombres, c.apellidoPaterno, c.apellidoMaterno].filter(Boolean).join(" ") || "Sin nombre";
+    setClientes(prev => {
+      if (prev.some(existing => existing.id === c.id)) return prev;
+      return [{ id: c.id, nombre, fotografia: c.fotografia, ultimoMensaje: null, noLeidos: 0 }, ...prev];
+    });
+    setSelectedId(c.id);
+    setMostrarNuevo(false);
+    setBusquedaNuevo("");
+  };
 
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
-
+  useEffect(() => {
+    if (mostrarNuevo) cargarTodosClientes();
+  }, [mostrarNuevo, cargarTodosClientes]);
   useEffect(() => {
     cargarLista();
     const interval = setInterval(cargarLista, 5000);
@@ -142,6 +177,15 @@ function AdminMensajes() {
 
   const clienteSeleccionado = clientes.find(c => c.id === selectedId);
 
+  const clientesFiltrados = clientes.filter(c =>
+    c.nombre.toLowerCase().includes(busqueda.toLowerCase())
+  );
+
+  const todosFiltrados = todosClientes.filter(c => {
+    const nombre = c.nombreCompleto || [c.nombres, c.apellidoPaterno, c.apellidoMaterno].filter(Boolean).join(" ") || "";
+    return nombre.toLowerCase().includes(busquedaNuevo.toLowerCase());
+  });
+
   const renderContenido = (m: Mensaje) => (
     <>
       {m.texto && <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{m.texto}</p>}
@@ -177,13 +221,31 @@ function AdminMensajes() {
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "320px 1fr", gap: 16, height: isMobile ? "auto" : "calc(100vh - 220px)" }}>
         {/* Lista de clientes */}
         <div translate="no" style={{ background: "#1e293b", borderRadius: 14, overflow: "auto", display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: 16, borderBottom: "1px solid #334155", fontWeight: "bold", fontSize: 14, color: "#94a3b8" }}>Clientes ({clientes.length})</div>
+          <div style={{ padding: 16, borderBottom: "1px solid #334155" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontWeight: "bold", fontSize: 14, color: "#94a3b8" }}>Clientes ({clientes.length})</span>
+              <button
+                onClick={() => setMostrarNuevo(true)}
+                style={{ background: "#3b82f6", border: "none", borderRadius: 8, color: "white", cursor: "pointer", padding: "6px 12px", fontSize: 12, fontWeight: "bold" }}
+              >
+                + Nuevo
+              </button>
+            </div>
+            <input
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              placeholder="Buscar cliente..."
+              style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #334155", background: "#0f172a", color: "white", fontSize: 13, boxSizing: "border-box" }}
+            />
+          </div>
           {loading ? (
             <p style={{ color: "#64748b", textAlign: "center", padding: 20 }}>Cargando...</p>
-          ) : clientes.length === 0 ? (
-            <p style={{ color: "#64748b", textAlign: "center", padding: 20 }}>No hay conversaciones aún.</p>
+          ) : clientesFiltrados.length === 0 ? (
+            <p style={{ color: "#64748b", textAlign: "center", padding: 20 }}>
+              {busqueda ? "No se encontraron clientes." : "No hay conversaciones aún."}
+            </p>
           ) : (
-            clientes.map(c => (
+            clientesFiltrados.map(c => (
               <div key={c.id} onClick={() => setSelectedId(c.id)} style={{ padding: 14, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background: selectedId === c.id ? "#0f172a" : "transparent", borderBottom: "1px solid #334155", borderLeft: selectedId === c.id ? "4px solid #3b82f6" : "4px solid transparent" }}>
                 <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#334155", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, overflow: "hidden" }}>
                   {c.fotografia ? <img src={c.fotografia} alt="foto" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👤"}
@@ -247,6 +309,55 @@ function AdminMensajes() {
           <div style={{ background: "#1e293b", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: 15 }}>{!isMobile && "Selecciona una conversación para ver los mensajes"}</div>
         )}
       </div>
+
+      {mostrarNuevo && (
+        <div
+          onClick={() => setMostrarNuevo(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 20 }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: "#1e293b", borderRadius: 14, width: "100%", maxWidth: 420, maxHeight: "70vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
+          >
+            <div style={{ padding: 16, borderBottom: "1px solid #334155", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontWeight: "bold", color: "white", fontSize: 15 }}>Iniciar conversación</span>
+              <button onClick={() => setMostrarNuevo(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 18 }}>✕</button>
+            </div>
+            <div style={{ padding: 16, borderBottom: "1px solid #334155" }}>
+              <input
+                autoFocus
+                value={busquedaNuevo}
+                onChange={e => setBusquedaNuevo(e.target.value)}
+                placeholder="Buscar por nombre..."
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #334155", background: "#0f172a", color: "white", fontSize: 14, boxSizing: "border-box" }}
+              />
+            </div>
+            <div style={{ overflowY: "auto", flex: 1 }}>
+              {cargandoTodos ? (
+                <p style={{ color: "#64748b", textAlign: "center", padding: 20 }}>Cargando...</p>
+              ) : todosFiltrados.length === 0 ? (
+                <p style={{ color: "#64748b", textAlign: "center", padding: 20 }}>No se encontraron clientes.</p>
+              ) : (
+                todosFiltrados.map(c => {
+                  const nombre = c.nombreCompleto || [c.nombres, c.apellidoPaterno, c.apellidoMaterno].filter(Boolean).join(" ") || "Sin nombre";
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => iniciarConversacion(c)}
+                      style={{ padding: 14, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", borderBottom: "1px solid #334155" }}
+                    >
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#334155", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, overflow: "hidden" }}>
+                        {c.fotografia ? <img src={c.fotografia} alt="foto" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👤"}
+                      </div>
+                      <p style={{ color: "white", fontSize: 13, margin: 0 }}>{nombre}</p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
