@@ -83,7 +83,10 @@ const auth = (req: express.Request, res: express.Response, next: express.NextFun
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ error: "No token" });
   try {
-    const decoded = jwt.verify(token, SECRET);
+    const decoded = jwt.verify(token, SECRET) as any;
+    if (decoded.role !== "admin") {
+      return res.status(403).json({ error: "Acceso solo para administradores" });
+    }
     req.user = decoded;
     next();
   } catch {
