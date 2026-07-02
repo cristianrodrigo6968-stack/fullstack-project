@@ -27,6 +27,8 @@ interface ClienteItem {
   email: string | null;
   fechaNacimiento: string | null;
   ciudad: string | null;
+  profesion: string | null;
+  fotografia: string | null;
 }
 interface EdicionItem {
   id: number; numero: number;
@@ -66,7 +68,74 @@ function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onCon
     </div>
   );
 }
+function generarDocumentoParticipantes(m: Magazine) {
+  type Persona = { nombre: string; profesion: string; foto: string | null };
+  const personas: Persona[] = [];
+  const vistos = new Set<number>();
 
+  if (m.cliente) {
+    personas.push({
+      nombre: m.cliente.nombreCompleto || [m.cliente.nombres, m.cliente.apellidoPaterno, m.cliente.apellidoMaterno].filter(Boolean).join(" "),
+      profesion: m.cliente.profesion || "—",
+      foto: m.cliente.fotografia || null,
+    });
+    vistos.add(m.cliente.id);
+  }
+
+  (m.ediciones || []).forEach(ed => {
+    (ed.articles || []).forEach(a => {
+      if (a.cliente && !vistos.has(a.cliente.id)) {
+        vistos.add(a.cliente.id);
+        personas.push({
+          nombre: a.cliente.nombreCompleto || [a.cliente.nombres, a.cliente.apellidoPaterno, a.cliente.apellidoMaterno].filter(Boolean).join(" "),
+          profesion: a.cliente.profesion || "—",
+          foto: a.cliente.fotografia || null,
+        });
+      }
+    });
+  });
+
+  if (personas.length === 0) {
+    alert("No hay personas con datos vinculados en esta revista todavía.");
+    return;
+  }
+
+  const filas = personas.map(p => `
+    <tr>
+      <td style="padding:10px;border-bottom:1px solid #ccc;">
+        ${p.foto ? `<img src="${p.foto}" width="70" height="70" style="object-fit:cover;border-radius:50%;" />` : "—"}
+      </td>
+      <td style="padding:10px;border-bottom:1px solid #ccc;font-weight:bold;">${p.nombre}</td>
+      <td style="padding:10px;border-bottom:1px solid #ccc;">${p.profesion}</td>
+    </tr>
+  `).join("");
+
+  const html = `
+    <html><head><meta charset="UTF-8"></head>
+    <body style="font-family:Arial,sans-serif;">
+      <h2>${m.title}</h2>
+      <p>Listado de participantes</p>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr>
+          <th style="text-align:left;padding:10px;">Foto</th>
+          <th style="text-align:left;padding:10px;">Nombre</th>
+          <th style="text-align:left;padding:10px;">Profesión</th>
+        </tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </body></html>
+  `;
+
+  const blob = new Blob(["\ufeff", html], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${m.title.replace(/\s+/g, "_")}_participantes.doc`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 const buildSenapiJSON = (cliente: ClienteItem): object => ({
   nombres: cliente.nombres || "",
   apellidoPaterno: cliente.apellidoPaterno || "",
@@ -93,10 +162,31 @@ function EdicionCard({
   const [adding, setAdding] = useState(false);
   const [nuevoClienteId, setNuevoClienteId] = useState("");
   const [nuevoTitulo, setNuevoTitulo] = useState("");
+  const [tituloDirector, setTituloDirector] = useState("");
+  const [addingDirector, setAddingDirector] = useState(false);
 
   const NOMBRES = ["PRIMERA", "SEGUNDA", "TERCERA"];
   const numeroTexto = NOMBRES[ed.numero - 1] || `N° ${ed.numero}`;
   const articles = ed.articles ?? [];
+  const articuloDirector = articles.find(a => a.authors.some(au => au.id === selected.director.id));
+
+  const agregarArticuloDirector = async () => {
+    if (!tituloDirector.trim()) return;
+    setAddingDirector(true);
+    await fetch(`${API_URL}/articles`, {
+      method: "POST", headers,
+      body: JSON.stringify({
+        title: tituloDirector,
+        authorIds: [selected.director.id],
+        magazineId: selected.id,
+        clienteId: selected.cliente?.id || null,
+        edicionId: ed.id,
+      }),
+    });
+    setTituloDirector("");
+    setAddingDirector(false);
+    onRefresh();
+  };
 
   const subirArchivo = async (file: File) => {
     setSubiendoId(ed.id);
@@ -213,25 +303,49 @@ function EdicionCard({
           <div style={{
             background: "#1e293b", padding: "10px 14px", borderRadius: 8,
             marginTop: 12, marginBottom: 12,
-            display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
-            <div>
-              <p style={{ color: "#475569", fontSize: 10, margin: "0 0 3px", textTransform: "uppercase", letterSpacing: 1 }}>Director</p>
-              {selected.cliente ? (
-                <p style={{ color: "white", fontWeight: "bold", margin: 0, fontSize: 13 }}>
-                  {selected.cliente.nombreCompleto}
-                  <span style={{ color: "#64748b", fontWeight: "normal" }}> · CI {selected.cliente.ci} · {selected.cliente.extension}</span>
-                </p>
-              ) : (
-                <p style={{ color: "#64748b", margin: 0, fontSize: 13 }}>Sin director vinculado</p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <p style={{ color: "#475569", fontSize: 10, margin: "0 0 3px", textTransform: "uppercase", letterSpacing: 1 }}>Director</p>
+                {selected.cliente ? (
+                  <p style={{ color: "white", fontWeight: "bold", margin: 0, fontSize: 13 }}>
+                    {selected.cliente.nombreCompleto}
+                    <span style={{ color: "#64748b", fontWeight: "normal" }}> · CI {selected.cliente.ci} · {selected.cliente.extension}</span>
+                  </p>
+                ) : (
+                  <p style={{ color: "#64748b", margin: 0, fontSize: 13 }}>Sin director vinculado</p>
+                )}
+              </div>
+              {selected.cliente && (
+                <button
+                  onClick={() => { navigator.clipboard.writeText(JSON.stringify(buildSenapiJSON(selected.cliente!), null, 2)); alert("📋 Datos del director copiados"); }}
+                  title="Copiar JSON SENAPI del director"
+                  style={{ background: "#312e81", border: "none", padding: "5px 10px", borderRadius: 6, color: "#a78bfa", cursor: "pointer", fontSize: 13 }}
+                >📋</button>
               )}
             </div>
-            {selected.cliente && (
-              <button
-                onClick={() => { navigator.clipboard.writeText(JSON.stringify(buildSenapiJSON(selected.cliente!), null, 2)); alert("📋 Datos del director copiados"); }}
-                title="Copiar JSON SENAPI del director"
-                style={{ background: "#312e81", border: "none", padding: "5px 10px", borderRadius: 6, color: "#a78bfa", cursor: "pointer", fontSize: 13 }}
-              >📋</button>
+
+            {/* Título del artículo del director en esta edición */}
+            {articuloDirector ? (
+              <p style={{ color: "#94a3b8", fontSize: 12, margin: "10px 0 0" }}>
+                📌 Artículo: <strong style={{ color: "white" }}>{articuloDirector.title}</strong>
+              </p>
+            ) : (
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <input
+                  placeholder="Título del artículo del director"
+                  value={tituloDirector}
+                  onChange={e => setTituloDirector(e.target.value)}
+                  style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+                />
+                <button
+                  onClick={agregarArticuloDirector}
+                  disabled={addingDirector || !tituloDirector.trim()}
+                  style={{ ...btnBlue, opacity: !tituloDirector.trim() ? 0.4 : 1, cursor: !tituloDirector.trim() ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6 }}
+                >
+                  {addingDirector ? <Spinner /> : "➕ Agregar"}
+                </button>
+              </div>
             )}
           </div>
 
@@ -467,11 +581,19 @@ function Magazines() {
                 <h2 style={{ margin: "0 0 4px", fontSize: isMobile ? 20 : 26 }}>{selected.title}</h2>
                 <p style={{ color: "#64748b", margin: 0, fontSize: 14 }}>Director: <span style={{ color: "#94a3b8" }}>{selected.director?.name}</span></p>
               </div>
-              {selected.cliente && (
-                <span style={{ background: "#312e81", color: "#a78bfa", padding: "4px 14px", borderRadius: 99, fontSize: 12, fontWeight: "bold", whiteSpace: "nowrap" }}>
-                  👤 {selected.cliente.nombreCompleto}
-                </span>
-              )}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                {selected.cliente && (
+                  <span style={{ background: "#312e81", color: "#a78bfa", padding: "4px 14px", borderRadius: 99, fontSize: 12, fontWeight: "bold", whiteSpace: "nowrap" }}>
+                    👤 {selected.cliente.nombreCompleto}
+                  </span>
+                )}
+                <button
+                  onClick={() => generarDocumentoParticipantes(selected)}
+                  style={{ ...btnBlue, fontSize: 12, whiteSpace: "nowrap" }}
+                >
+                  📄 Descargar participantes (Word)
+                </button>
+              </div>
             </div>
 
             {selected.notas && (
