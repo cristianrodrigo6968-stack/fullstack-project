@@ -422,38 +422,43 @@ function Entregas() {
 
                         {/* Botones de estado + eliminar */}
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                          {!esEntregado && (
-                            <>
-                              <button
-                                className="estado-btn"
-                                disabled={esPendiente || actualizando === item.id}
-                                onClick={() => updateEstado(item.id, "pendiente")}
-                                style={{
-                                  background: esPendiente ? "rgba(148,163,184,0.15)" : "transparent",
-                                  borderColor: esPendiente ? "#94a3b8" : "#334155",
-                                  color: esPendiente ? "#94a3b8" : "#475569",
-                                }}
-                              >
-                                ⏳ Pendiente
-                              </button>
-                              <button
-                                className="estado-btn"
-                                disabled={esCompletado || actualizando === item.id}
-                                onClick={() => updateEstado(item.id, "completado")}
-                                style={{
-                                  background: esCompletado ? "rgba(34,197,94,0.15)" : "transparent",
-                                  borderColor: esCompletado ? "#22c55e" : "#334155",
-                                  color: esCompletado ? "#22c55e" : "#475569",
-                                }}
-                              >
-                                ✅ Completado
-                              </button>
-                              {actualizando === item.id && <Spinner />}
-                            </>
-                          )}
-                          {esEntregado && (
-                            <span style={{ fontSize: 12, color: "#60a5fa", fontWeight: 600 }}>📦 Entregado</span>
-                          )}
+                          <button
+                            className="estado-btn"
+                            disabled={esPendiente || actualizando === item.id}
+                            onClick={() => updateEstado(item.id, "pendiente")}
+                            style={{
+                              background: esPendiente ? "rgba(148,163,184,0.15)" : "transparent",
+                              borderColor: esPendiente ? "#94a3b8" : "#334155",
+                              color: esPendiente ? "#94a3b8" : "#475569",
+                            }}
+                          >
+                            ⏳ Pendiente
+                          </button>
+                          <button
+                            className="estado-btn"
+                            disabled={esCompletado || actualizando === item.id}
+                            onClick={() => updateEstado(item.id, "completado")}
+                            style={{
+                              background: esCompletado ? "rgba(34,197,94,0.15)" : "transparent",
+                              borderColor: esCompletado ? "#22c55e" : "#334155",
+                              color: esCompletado ? "#22c55e" : "#475569",
+                            }}
+                          >
+                            ✅ Completado
+                          </button>
+                          <button
+                            className="estado-btn"
+                            disabled={esEntregado || actualizando === item.id}
+                            onClick={() => updateEstado(item.id, "entregado")}
+                            style={{
+                              background: esEntregado ? "rgba(59,130,246,0.15)" : "transparent",
+                              borderColor: esEntregado ? "#60a5fa" : "#334155",
+                              color: esEntregado ? "#60a5fa" : "#475569",
+                            }}
+                          >
+                            📦 Entregado
+                          </button>
+                          {actualizando === item.id && <Spinner />}
                           <button
                             className="btn-eliminar"
                             disabled={eliminandoId === item.id}

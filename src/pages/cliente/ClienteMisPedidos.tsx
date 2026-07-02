@@ -82,7 +82,15 @@ function ClienteMisPedidos() {
     if (estado === "rechazado") return { bg: "#7f1d1d", color: "#ef4444" };
     return { bg: "#422006", color: "#f59e0b" };
   };
-
+const getEstadoPedidoDisplay = (p: Pedido) => {
+    if (p.estado === "rechazado") return { bg: "#7f1d1d", color: "#ef4444", label: "rechazado" };
+    if (p.items.length === 0) return { bg: "#422006", color: "#f59e0b", label: "en proceso" };
+    const todosEntregados = p.items.every(i => i.estado === "entregado");
+    const todosListos = p.items.every(i => i.estado === "completado" || i.estado === "entregado");
+    if (todosEntregados) return { bg: "#1e3a5f", color: "#60a5fa", label: "entregado" };
+    if (todosListos) return { bg: "#14532d", color: "#22c55e", label: "completado" };
+    return { bg: "#422006", color: "#f59e0b", label: "en proceso" };
+  };
   const getTipoLabel = (item: ItemPedido) => {
     const t = (item.titulo || "").toLowerCase();
     const tip = (item.tipo || "").toLowerCase();
@@ -113,7 +121,7 @@ function ClienteMisPedidos() {
 
   // ── Vista detalle de un pedido ──
   if (selected) {
-    const scPedido = getEstadoPedidoColor(selected.estado);
+    const scPedido = getEstadoPedidoDisplay(selected);
     const totalItemsPedido = selected.items.length;
     const completadosPedido = selected.items.filter(i => i.estado === "completado" || i.estado === "entregado").length;
     const progresoPedido = totalItemsPedido > 0 ? Math.round((completadosPedido / totalItemsPedido) * 100) : 0;
@@ -130,7 +138,7 @@ function ClienteMisPedidos() {
               fontSize: 12, padding: "3px 12px", borderRadius: 99,
               background: scPedido.bg, color: scPedido.color, fontWeight: "bold",
             }}>
-              {selected.estado}
+              {scPedido.label}
             </span>
             <span style={{ color: "#64748b", fontSize: 12 }}>
               {new Date(selected.creadoEn).toLocaleDateString()}
@@ -259,7 +267,7 @@ function ClienteMisPedidos() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {pedidos.map(p => {
-            const sc = getEstadoPedidoColor(p.estado);
+            const sc = getEstadoPedidoDisplay(p);
             const totalPedido = p.items.length;
             const completadosItemPedido = p.items.filter(i => i.estado === "completado" || i.estado === "entregado").length;
             const progresoItemPedido = totalPedido > 0 ? Math.round((completadosItemPedido / totalPedido) * 100) : 0;
@@ -296,7 +304,7 @@ function ClienteMisPedidos() {
                       fontSize: 11, padding: "2px 10px", borderRadius: 99,
                       background: sc.bg, color: sc.color, fontWeight: "bold",
                     }}>
-                      {p.estado}
+                      {sc.label}
                     </span>
                     <span style={{ color: "#64748b", fontSize: 18 }}>→</span>
                   </div>
