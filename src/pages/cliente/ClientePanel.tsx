@@ -126,8 +126,7 @@ function ClientePanel() {
           </div>
         )}
 
-        {section === "inicio" && <ClienteInicio />}
-       
+        {section === "inicio" && <ClienteInicio onNavigate={handleSection} />}
         {section === "contenido" && <ClienteContenido />}
         {section === "mensajes" && <ClienteMensajes />}
         {section === "password" && <ClientePassword />}
