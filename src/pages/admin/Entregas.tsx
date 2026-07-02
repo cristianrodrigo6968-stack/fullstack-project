@@ -228,6 +228,11 @@ function Entregas() {
     acc[id].items.push(item);
     return acc;
   }, {} as Record<number, { cliente: ItemPedido["cliente"]; items: ItemPedido[] }>);
+  const gruposOrdenados = Object.values(groupedByClient).sort((a, b) => {
+    const maxA = Math.max(...a.items.map(i => new Date(i.creadoEn).getTime()));
+    const maxB = Math.max(...b.items.map(i => new Date(i.creadoEn).getTime()));
+    return maxB - maxA;
+  });
 
   const stats = [
     { label: "Pendientes",  value: itemsMes.filter(i => i.estado === "pendiente").length,  color: "#94a3b8", icon: "⏳" },
@@ -307,7 +312,7 @@ function Entregas() {
           <p style={{ color: "#475569", margin: 0, fontSize: 15 }}>No hay pedidos en {mesLabel} {anio}</p>
         </div>
       ) : (
-        Object.values(groupedByClient).map(({ cliente, items: clientItems }) => {
+        gruposOrdenados.map(({ cliente, items: clientItems }) => {
           const isSelected = selectedClientId === cliente.id;
           const todosEntregados = clientItems.every(i => i.estado === "entregado");
           const desgloses = clientItems.map(i => parsearTitulo(i.titulo, i.tipo, i.tipoAutor, i.periodicidad));
