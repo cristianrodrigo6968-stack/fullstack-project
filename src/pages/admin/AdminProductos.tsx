@@ -22,6 +22,8 @@ type SubtipoRevista = "director" | "fundador" | "articulo_rp" | "articulo_sp";
 interface Componente {
   tipo: TipoComponente;
   categoria?: CategoriaLibro;
+  conIsbn?: boolean;
+  conSenapi?: boolean;
   subtipo?: SubtipoRevista;
   meses?: 1 | 3;
 }
@@ -34,7 +36,10 @@ const SUBTIPO_LABELS: Record<SubtipoRevista, string> = {
 };
 
 function componenteLabel(c: Componente): string {
-  if (c.tipo === "libro") return `📖 Libro Cat. ${c.categoria}`;
+  if (c.tipo === "libro") {
+    const extras = [c.conIsbn ? "ISBN" : null, c.conSenapi ? "SENAPI" : null].filter(Boolean).join(" + ");
+    return `📖 Libro Cat. ${c.categoria}${extras ? ` (${extras})` : ""}`;
+  }
   if (c.tipo === "revista") {
     const sub = c.subtipo ? SUBTIPO_LABELS[c.subtipo] : "";
     const dur = c.meses ? ` (${c.meses} mes${c.meses > 1 ? "es" : ""})` : "";
@@ -65,17 +70,33 @@ function ComponenteEditor({ comp, onChange, onRemove }: {
         ))}
       </div>
 
-      {/* Sub-opciones Libro */}
+     {/* Sub-opciones Libro */}
       {comp.tipo === "libro" && (
         <>
           <label style={labelStyle}>Categoría</label>
-          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
             {(["A", "B", "C"] as CategoriaLibro[]).map(c => (
               <button key={c} onClick={() => onChange({ ...comp, categoria: c })}
                 className={`tipo-btn${comp.categoria === c ? " selected" : ""}`}>
                 Cat. {c}
               </button>
             ))}
+          </div>
+
+          <label style={labelStyle}>Extras</label>
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            <button
+              onClick={() => onChange({ ...comp, conIsbn: !comp.conIsbn })}
+              className={`tipo-btn${comp.conIsbn ? " selected" : ""}`}
+            >
+              {comp.conIsbn ? "✓ " : ""}ISBN
+            </button>
+            <button
+              onClick={() => onChange({ ...comp, conSenapi: !comp.conSenapi })}
+              className={`tipo-btn${comp.conSenapi ? " selected" : ""}`}
+            >
+              {comp.conSenapi ? "✓ " : ""}SENAPI
+            </button>
           </div>
         </>
       )}
