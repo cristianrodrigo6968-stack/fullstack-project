@@ -28,7 +28,7 @@ import Notes from "./pages/admin/Notes";
 
 // Páginas del cliente
 import ClientePanel from "./pages/cliente/ClientePanel";
-import ClienteEntregas from "./pages/cliente/ClienteEntregas";
+
 import ClienteHacerPedido from "./pages/cliente/ClienteHacerPedido";
 import ClienteInicio from "./pages/cliente/ClienteInicio";
 import ClienteMensajes from "./pages/cliente/ClienteMensajes";
@@ -68,7 +68,7 @@ function App() {
         {/* Cliente */}
         <Route path="/cliente" element={<ClientProtectedRoute><ClientePanel /></ClientProtectedRoute>} />
       
-        <Route path="/cliente/entregas" element={<ClientProtectedRoute><ClienteEntregas /></ClientProtectedRoute>} />
+     
         <Route path="/cliente/hacer-pedido" element={<ClientProtectedRoute><ClienteHacerPedido /></ClientProtectedRoute>} />
         <Route path="/cliente/inicio" element={<ClientProtectedRoute><ClienteInicio /></ClientProtectedRoute>} />
         <Route path="/cliente/mensajes" element={<ClientProtectedRoute><ClienteMensajes /></ClientProtectedRoute>} />
