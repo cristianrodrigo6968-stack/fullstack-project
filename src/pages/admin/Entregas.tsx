@@ -37,7 +37,6 @@ function parsearTitulo(titulo: string | null, tipo: string, tipoAutor: string | 
   const t = (titulo || "").toLowerCase();
   const tip = (tipo || "").toLowerCase();
 
-  // LIBRO
   if (tip === "libro" || t.includes("libro")) {
     let categoria: string | null = null;
     if (t.includes("categoría a") || t.includes("categoria a")) categoria = "Categoría A";
@@ -46,7 +45,6 @@ function parsearTitulo(titulo: string | null, tipo: string, tipoAutor: string | 
     return { tipoVisual: "libro", icono: "📖", color: "#3b82f6", lineaPrincipal: "Libro", lineaSecundaria: categoria };
   }
 
-  // REVISTA / ARTÍCULO / DIRECTOR / FUNDADOR
   if (
     tip === "edicion_revista" || tip === "articulo" || tip === "fundador" || tip === "revista" ||
     t.includes("revista") || t.includes("director") || t.includes("artículo") ||
@@ -67,7 +65,6 @@ function parsearTitulo(titulo: string | null, tipo: string, tipoAutor: string | 
     return { tipoVisual: "revista", icono: "📰", color: "#f59e0b", lineaPrincipal: "Revista", lineaSecundaria };
   }
 
-  // OTRO
   return { tipoVisual: "otro", icono: "📦", color: "#64748b", lineaPrincipal: titulo || tipo, lineaSecundaria: null };
 }
 
@@ -138,7 +135,7 @@ function BarraProgreso({ items }: { items: ItemPedido[] }) {
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-        <span style={{ color: "#475569", fontSize: 11 }}>Progreso general</span>
+        <span style={{ color: "#475569", fontSize: 11 }}>Progreso de este pedido</span>
         <span style={{ color, fontSize: 12, fontWeight: 700 }}>{pct}%</span>
       </div>
       <div style={{ height: 8, background: "#1e293b", borderRadius: 99, overflow: "hidden" }}>
@@ -160,7 +157,7 @@ function Entregas() {
 
   const [items, setItems] = useState<ItemPedido[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [selectedPedidoId, setSelectedPedidoId] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
@@ -202,43 +199,65 @@ function Entregas() {
     setEliminandoId(null);
   };
 
-  const eliminarTodosCliente = async (clientItems: ItemPedido[]) => {
-    for (const item of clientItems) {
+  const eliminarTodosPedido = async (pedidoItems: ItemPedido[]) => {
+    for (const item of pedidoItems) {
       await fetch(`${API_URL}/items-pedido/${item.id}`, { method: "DELETE", headers });
     }
     await loadItems();
   };
 
-  const marcarTodosEntregados = async (clientItems: ItemPedido[]) => {
-    const pendientes = clientItems.filter(i => i.estado !== "entregado");
+  const marcarTodosEntregados = async (pedidoItems: ItemPedido[]) => {
+    const pendientes = pedidoItems.filter(i => i.estado !== "entregado");
     for (const item of pendientes) {
       await fetch(`${API_URL}/items-pedido/${item.id}`, { method: "PUT", headers, body: JSON.stringify({ estado: "entregado" }) });
     }
     await loadItems();
   };
 
+  // Numeración de pedido relativa a cada cliente (calculada sobre TODOS los items, sin filtrar por mes)
+  const numeroPedidoMap = (() => {
+    const pedidosPorCliente: Record<number, { pedidoId: number; creadoEn: string }[]> = {};
+    items.forEach(item => {
+      const cid = item.cliente.id;
+      if (!pedidosPorCliente[cid]) pedidosPorCliente[cid] = [];
+      if (!pedidosPorCliente[cid].some(p => p.pedidoId === item.pedidoId)) {
+        pedidosPorCliente[cid].push({ pedidoId: item.pedidoId, creadoEn: item.creadoEn });
+      }
+    });
+    const map: Record<number, number> = {};
+    Object.values(pedidosPorCliente).forEach(lista => {
+      const ordenado = [...lista].sort((a, b) => new Date(a.creadoEn).getTime() - new Date(b.creadoEn).getTime());
+      ordenado.forEach((p, idx) => { map[p.pedidoId] = idx + 1; });
+    });
+    return map;
+  })();
+
   const itemsMes = items.filter(item => {
     const fecha = new Date(item.creadoEn);
     return fecha.getMonth() === mes && fecha.getFullYear() === anio;
   });
 
-  const groupedByClient = itemsMes.reduce((acc, item) => {
-    const id = item.cliente.id;
-    if (!acc[id]) acc[id] = { cliente: item.cliente, items: [] };
+  // Agrupar por PEDIDO, no por cliente — evita mezclar pedidos viejos completados con nuevos pendientes
+  const groupedByPedido = itemsMes.reduce((acc, item) => {
+    const id = item.pedidoId;
+    if (!acc[id]) acc[id] = { cliente: item.cliente, pedidoId: item.pedidoId, items: [] };
     acc[id].items.push(item);
     return acc;
-  }, {} as Record<number, { cliente: ItemPedido["cliente"]; items: ItemPedido[] }>);
-  const gruposOrdenados = Object.values(groupedByClient).sort((a, b) => {
+  }, {} as Record<number, { cliente: ItemPedido["cliente"]; pedidoId: number; items: ItemPedido[] }>);
+
+  const gruposOrdenados = Object.values(groupedByPedido).sort((a, b) => {
     const maxA = Math.max(...a.items.map(i => new Date(i.creadoEn).getTime()));
     const maxB = Math.max(...b.items.map(i => new Date(i.creadoEn).getTime()));
     return maxB - maxA;
   });
 
+  const clientesUnicos = new Set(itemsMes.map(i => i.cliente.id)).size;
+
   const stats = [
     { label: "Pendientes",  value: itemsMes.filter(i => i.estado === "pendiente").length,  color: "#94a3b8", icon: "⏳" },
     { label: "Completados", value: itemsMes.filter(i => i.estado === "completado").length, color: "#22c55e", icon: "✅" },
     { label: "Entregados",  value: itemsMes.filter(i => i.estado === "entregado").length,  color: "#3b82f6", icon: "📦" },
-    { label: "Clientes",    value: Object.keys(groupedByClient).length,                    color: "#a855f7", icon: "👤" },
+    { label: "Clientes",    value: clientesUnicos,                                          color: "#a855f7", icon: "👤" },
   ];
 
   return (
@@ -306,24 +325,30 @@ function Entregas() {
             <div key={i} style={{ background: "#0f172a", borderRadius: 16, height: 80, border: "1px solid #1e293b", opacity: 0.5, animation: "pulse 1.5s ease-in-out infinite" }} />
           ))}
         </div>
-      ) : Object.keys(groupedByClient).length === 0 ? (
+      ) : gruposOrdenados.length === 0 ? (
         <div style={{ background: "#0f172a", border: "1px dashed #1e293b", borderRadius: 16, padding: "60px 40px", textAlign: "center" }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
           <p style={{ color: "#475569", margin: 0, fontSize: 15 }}>No hay pedidos en {mesLabel} {anio}</p>
         </div>
       ) : (
-        gruposOrdenados.map(({ cliente, items: clientItems }) => {
-          const isSelected = selectedClientId === cliente.id;
-          const todosEntregados = clientItems.every(i => i.estado === "entregado");
-          const desgloses = clientItems.map(i => parsearTitulo(i.titulo, i.tipo, i.tipoAutor, i.periodicidad));
+        gruposOrdenados.map(({ cliente, pedidoId, items: pedidoItems }) => {
+          const isSelected = selectedPedidoId === pedidoId;
+          const todosEntregados = pedidoItems.every(i => i.estado === "entregado");
+          const desgloses = pedidoItems.map(i => parsearTitulo(i.titulo, i.tipo, i.tipoAutor, i.periodicidad));
+          const numeroPedido = numeroPedidoMap[pedidoId] || pedidoId;
 
           return (
-            <div key={cliente.id} className="client-card">
-              <div className="client-header" onClick={() => setSelectedClientId(isSelected ? null : cliente.id)}>
+            <div key={pedidoId} className="client-card">
+              <div className="client-header" onClick={() => setSelectedPedidoId(isSelected ? null : pedidoId)}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 14, flex: 1, minWidth: 0 }}>
                   <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, marginTop: 2 }}>👤</div>
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 15, marginBottom: 8 }}>{cliente.nombreCompleto || "Cliente sin nombre"}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                      <span style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 15 }}>{cliente.nombreCompleto || "Cliente sin nombre"}</span>
+                      <span style={{ background: "rgba(99,102,241,.12)", color: "#a5b4fc", fontSize: 11, fontWeight: 700, padding: "2px 10px", borderRadius: 99 }}>
+                        Pedido #{numeroPedido}
+                      </span>
+                    </div>
 
                     {/* Chips desglose */}
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
@@ -338,16 +363,16 @@ function Entregas() {
                     </div>
 
                     {/* Barra de progreso */}
-                    <BarraProgreso items={clientItems} />
+                    <BarraProgreso items={pedidoItems} />
 
-                    {/* Acciones del cliente */}
+                    {/* Acciones del pedido */}
                     <div onClick={e => e.stopPropagation()} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
                       {!todosEntregados && (
                         <button
                           className="btn-entregado"
                           onClick={() => showConfirm(
-                            `¿Marcar todos los ítems de ${cliente.nombreCompleto || "este cliente"} como entregados?`,
-                            () => marcarTodosEntregados(clientItems)
+                            `¿Marcar todos los ítems del Pedido #${numeroPedido} de ${cliente.nombreCompleto || "este cliente"} como entregados?`,
+                            () => marcarTodosEntregados(pedidoItems)
                           )}
                         >
                           📦 Marcar todo como entregado
@@ -359,8 +384,8 @@ function Entregas() {
                       <button
                         className="btn-eliminar"
                         onClick={() => showConfirm(
-                          `¿Eliminar todos los ítems de ${cliente.nombreCompleto || "este cliente"}? Esta acción no se puede deshacer.`,
-                          () => eliminarTodosCliente(clientItems)
+                          `¿Eliminar todos los ítems del Pedido #${numeroPedido} de ${cliente.nombreCompleto || "este cliente"}? Esta acción no se puede deshacer.`,
+                          () => eliminarTodosPedido(pedidoItems)
                         )}
                       >
                         🗑 Eliminar todos
@@ -374,7 +399,7 @@ function Entregas() {
               {/* ITEMS EXPANDIDOS */}
               {isSelected && (
                 <div style={{ padding: "12px 16px 16px" }}>
-                  {clientItems.map(item => {
+                  {pedidoItems.map(item => {
                     const desglose = parsearTitulo(item.titulo, item.tipo, item.tipoAutor, item.periodicidad);
                     const esPendiente = item.estado === "pendiente";
                     const esCompletado = item.estado === "completado";
