@@ -769,7 +769,7 @@ const [paso, setPaso] = useState<"catalogo" | "carrito" | "pago" | "confirmacion
                     </>
                   )}
                   <label style={labelStyle}>Monto depositado (Bs)</label>
-                  <input className="cart-input" placeholder={`Ej: ${adelanto}`} type="number" value={montoDeclarado} onChange={(e) => setMontoDeclarado(e.target.value)} />
+                  <input className="cart-input" type="text" inputMode="numeric" pattern="[0-9]*" placeholder={`Ej: ${adelanto}`} value={montoDeclarado} onChange={(e) => setMontoDeclarado(e.target.value.replace(/\D/g, ""))} />
                   {modo === "subir" && (
                     <>
                       <label style={labelStyle}>Foto del comprobante</label>
