@@ -632,8 +632,8 @@ const [paso, setPaso] = useState<"catalogo" | "carrito" | "pago" | "confirmacion
             )}
           </>
         ) : paso === "carrito" ? (
-          /* ─── REVISIÓN DE CARRITO ─── */
-          <div style={{ maxWidth: 680, margin: "0 auto" }}>
+  /* ─── REVISIÓN DE CARRITO ─── */
+  <div style={{ maxWidth: 680, margin: "0 auto" }}>
     <button
       onClick={() => setPaso("catalogo")}
       style={{ background: "none", border: "none", color: "#818cf8", fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 20, fontFamily: "inherit" }}
@@ -641,7 +641,21 @@ const [paso, setPaso] = useState<"catalogo" | "carrito" | "pago" | "confirmacion
       ← Seguir comprando
     </button>
 
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+    {totalItems === 0 ? (
+      <div style={{ textAlign: "center", padding: "70px 40px", background: "#0d0d1a", borderRadius: 20, border: "1px solid #1e1b4b" }}>
+        <div style={{ fontSize: 64, marginBottom: 18 }}>🛒</div>
+        <p style={{ color: "#475569", fontSize: 17, margin: "0 0 24px" }}>Tu carrito está vacío.</p>
+        <button
+          className="step-btn"
+          onClick={() => setPaso("catalogo")}
+          style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", padding: "12px 28px", borderRadius: 12, color: "white", fontWeight: 700, cursor: "pointer", fontSize: 14, boxShadow: "0 4px 16px rgba(99,102,241,.4)" }}
+        >
+          Ir al catálogo
+        </button>
+      </div>
+    ) : (
+      <>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
       {Object.values(carrito).map(({ producto, cantidad }) => {
         const esPaquete = producto.componentes && producto.componentes.length > 0;
         const precioUnit = getPrecioFinal(producto.precio, producto.descuento);
@@ -704,12 +718,14 @@ const [paso, setPaso] = useState<"catalogo" | "carrito" | "pago" | "confirmacion
     </div>
 
     <button
-      className="step-btn"
-      onClick={() => setPaso("pago")}
-      style={{ width: "100%", padding: 16, background: "linear-gradient(135deg,#10b981,#059669)", border: "none", borderRadius: 14, color: "white", fontWeight: 700, fontSize: 17, cursor: "pointer", boxShadow: "0 4px 20px rgba(16,185,129,.3)" }}
-    >
-      💳 Proceder al pago
-    </button>
+          className="step-btn"
+          onClick={() => setPaso("pago")}
+          style={{ width: "100%", padding: 16, background: "linear-gradient(135deg,#10b981,#059669)", border: "none", borderRadius: 14, color: "white", fontWeight: 700, fontSize: 17, cursor: "pointer", boxShadow: "0 4px 20px rgba(16,185,129,.3)" }}
+        >
+          💳 Proceder al pago
+        </button>
+      </>
+    )}
   </div>
         ) : (
           /* ─── PANTALLA DE PAGO ─── */
