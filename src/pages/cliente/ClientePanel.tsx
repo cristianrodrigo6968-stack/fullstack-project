@@ -6,7 +6,6 @@ import ClienteMisPedidos from "./ClienteMisPedidos";
 import ClienteHacerPedido from "./ClienteHacerPedido";
 import ClienteProgreso from "./ClienteProgreso";
 import ClienteMensajes from "./ClienteMensajes";
-import ClienteEntregas from "./ClienteEntregas";
 import ClienteContenido from "./ClienteContenido";
 import ClientePassword from "./ClientePassword";
 
@@ -56,7 +55,6 @@ function ClientePanel() {
   const menuItems = [
     { key: "inicio", label: "🏠 Inicio" },
     { key: "progreso", label: "📚 Mi Progreso" },
-    { key: "entregas", label: "📦 Mis Entregas" },
     { key: "contenido", label: "📁 Mi Contenido" },
     { key: "mensajes", label: "💬 Mensajes", badge: unreadMessages },
     { key: "password", label: "🔑 Cambiar Contraseña" },
@@ -131,7 +129,6 @@ function ClientePanel() {
 
         {section === "inicio" && <ClienteInicio />}
         {section === "progreso" && <ClienteProgreso />}
-        {section === "entregas" && <ClienteEntregas />}
         {section === "contenido" && <ClienteContenido />}
         {section === "mensajes" && <ClienteMensajes />}
         {section === "password" && <ClientePassword />}
