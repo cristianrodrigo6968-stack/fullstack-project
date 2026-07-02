@@ -11,6 +11,7 @@ interface Producto {
   precio: number;
   descuento: number;
   imagenUrl?: string;
+  componentes?: any[];
 }
 
 interface ClienteDatos {
@@ -29,7 +30,17 @@ const redondearAdelanto = (valor: number): number => {
 
 const getPrecioFinal = (precio: number, descuento: number) =>
   descuento > 0 ? precio - (precio * descuento) / 100 : precio;
-
+const getComponenteLabel = (comp: any): string => {
+  if (comp.tipo === "libro") return `📖 Libro Categoría ${comp.categoria}`;
+  if (comp.tipo === "revista") {
+    const subtipoLabel = comp.subtipo === "director" ? "Director de revista" :
+                         comp.subtipo === "fundador" ? "Fundador" :
+                         comp.subtipo === "articulo_rp" ? "Artículo (redacción y publicación)" :
+                         "Artículo (solo publicación)";
+    return `📰 ${subtipoLabel}${comp.meses ? ` (${comp.meses} mes${comp.meses > 1 ? "es" : ""})` : ""}`;
+  }
+  return "📦 Otro servicio";
+};
 function Spinner() {
   return (
     <>
@@ -166,16 +177,32 @@ function ClienteHacerPedido() {
 
   const nombreParaPago = clienteDatos.nombreCompleto || nombreIngresado || "";
 
-  const getProductosPayload = () => {
+ const getProductosPayload = () => {
     const payload: any[] = [];
     Object.values(carrito).forEach(({ producto, cantidad }) => {
       for (let i = 0; i < cantidad; i++) {
-        payload.push({
-          id: producto.id,
-          nombre: producto.nombre,
-          tipo: "producto",
-          precioUnitario: getPrecioFinal(producto.precio, producto.descuento),
-        });
+        if (producto.componentes && Array.isArray(producto.componentes) && producto.componentes.length > 0) {
+          const totalComponentes = producto.componentes.length;
+          producto.componentes.forEach((comp: any) => {
+            const nombreComp = getComponenteLabel(comp);
+            const precioUnitario = comp.precio || (producto.precio / totalComponentes);
+            const precioConDescuento = producto.descuento > 0
+              ? precioUnitario - (precioUnitario * producto.descuento / 100)
+              : precioUnitario;
+            payload.push({
+              nombre: nombreComp,
+              tipo: comp.tipo,
+              precioUnitario: precioConDescuento,
+            });
+          });
+        } else {
+          payload.push({
+            id: producto.id,
+            nombre: producto.nombre,
+            tipo: "producto",
+            precioUnitario: getPrecioFinal(producto.precio, producto.descuento),
+          });
+        }
       }
     });
     return payload;
