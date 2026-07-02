@@ -96,6 +96,8 @@ function CarritoPage() {
     nombre: p.nombre,
     tipo: p.tipo || "producto",
     precioUnitario: p.descuento > 0 ? p.precio - (p.precio * p.descuento / 100) : p.precio,
+    conIsbn: p.conIsbn || false,
+    conSenapi: p.conSenapi || false,
   }));
 };
   const handleSubirComprobante = async () => {

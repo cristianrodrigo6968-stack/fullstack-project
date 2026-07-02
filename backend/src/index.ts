@@ -702,14 +702,16 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
           }
 
           if (precioFinal !== null && precioFinal > 0) {
-            montoTotal += precioFinal;
-            itemsParaPedido.push({
-              tipo: item.tipo || "producto",
-              titulo: nombreProducto,
-              notas: `Precio unitario: Bs ${precioFinal.toFixed(2)}`,
-              precioUnitario: precioFinal,
-            });
-          }
+  montoTotal += precioFinal;
+  itemsParaPedido.push({
+    tipo: item.tipo || "producto",
+    titulo: nombreProducto,
+    notas: `Precio unitario: Bs ${precioFinal.toFixed(2)}`,
+    precioUnitario: precioFinal,
+    conIsbn: item.conIsbn || false,
+    conSenapi: item.conSenapi || false,
+  });
+}
         }
       }
     } catch (err) {
@@ -733,13 +735,15 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
       montoTotal,
       montoPagado: pago.monto,
       items: {
-        create: itemsParaPedido.map(item => ({
-          tipo: item.tipo,
-          titulo: item.titulo,
-          notas: item.notas,
-          precioUnitario: item.precioUnitario,
-        })),
-      },
+  create: itemsParaPedido.map(item => ({
+    tipo: item.tipo,
+    titulo: item.titulo,
+    notas: item.notas,
+    precioUnitario: item.precioUnitario,
+    conIsbn: item.conIsbn || false,
+    conSenapi: item.conSenapi || false,
+  })),
+},
     },
   });
   await prisma.pago.update({ where: { id: pago.id }, data: { pedidoId: nuevoPedido.id } });

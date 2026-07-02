@@ -487,18 +487,20 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
           ? precioUnitario - (precioUnitario * producto.descuento / 100)
           : precioUnitario;
         return {
-          id: `${producto.id}_comp_${idx}`,
-          nombre: nombreComp,
-          descripcion: `Componente de ${producto.nombre}`,
-          precio: precioConDescuento,
-          descuento: 0,
-          imagenUrl: producto.imagenUrl,
-          tipo: comp.tipo,
-          componente: true,
-          productoPadreId: producto.id,
-          nombrePadre: producto.nombre,
-          grupoCompraId: grupoId,
-        };
+  id: `${producto.id}_comp_${idx}`,
+  nombre: nombreComp,
+  descripcion: `Componente de ${producto.nombre}`,
+  precio: precioConDescuento,
+  descuento: 0,
+  imagenUrl: producto.imagenUrl,
+  tipo: comp.tipo,
+  componente: true,
+  productoPadreId: producto.id,
+  nombrePadre: producto.nombre,
+  grupoCompraId: grupoId,
+  conIsbn: comp.conIsbn || false,
+  conSenapi: comp.conSenapi || false,
+};
       });
       setCarrito(prev => [...prev, ...nuevosItems]);
     } else {

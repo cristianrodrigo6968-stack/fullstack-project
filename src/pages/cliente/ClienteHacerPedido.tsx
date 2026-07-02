@@ -184,17 +184,19 @@ function ClienteHacerPedido() {
         if (producto.componentes && Array.isArray(producto.componentes) && producto.componentes.length > 0) {
           const totalComponentes = producto.componentes.length;
           producto.componentes.forEach((comp: any) => {
-            const nombreComp = getComponenteLabel(comp);
-            const precioUnitario = comp.precio || (producto.precio / totalComponentes);
-            const precioConDescuento = producto.descuento > 0
-              ? precioUnitario - (precioUnitario * producto.descuento / 100)
-              : precioUnitario;
-            payload.push({
-              nombre: nombreComp,
-              tipo: comp.tipo,
-              precioUnitario: precioConDescuento,
-            });
-          });
+  const nombreComp = getComponenteLabel(comp);
+  const precioUnitario = comp.precio || (producto.precio / totalComponentes);
+  const precioConDescuento = producto.descuento > 0
+    ? precioUnitario - (precioUnitario * producto.descuento / 100)
+    : precioUnitario;
+  payload.push({
+    nombre: nombreComp,
+    tipo: comp.tipo,
+    precioUnitario: precioConDescuento,
+    conIsbn: comp.conIsbn || false,
+    conSenapi: comp.conSenapi || false,
+  });
+});
         } else {
           payload.push({
             id: producto.id,
