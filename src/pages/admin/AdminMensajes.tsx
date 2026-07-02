@@ -64,7 +64,15 @@ function AdminMensajes() {
   const cargarLista = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/mensajes`, { headers: headers() });
-      if (res.ok && mountedRef.current) setClientes(await res.json());
+      if (res.ok && mountedRef.current) {
+        const data: ClienteChat[] = await res.json();
+        setClientes(prev => {
+          const pendientes = prev.filter(
+            p => p.ultimoMensaje === null && !data.some(d => d.id === p.id)
+          );
+          return [...pendientes, ...data];
+        });
+      }
     } catch (err) {
       console.warn("Error al cargar lista de mensajes:", err);
     }

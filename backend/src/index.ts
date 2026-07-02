@@ -987,6 +987,14 @@ app.put("/clients/form/:token", async (req, res) => {
   }
   if (tareas.length > 0) await prisma.clienteTask.createMany({ data: tareas });
   await prisma.entrega.create({ data: { estado: "pendiente", clienteId: updated.id } });
+  await prisma.mensaje.create({
+    data: {
+      clienteId: updated.id,
+      emisor: "admin",
+      texto: "¡Gracias por confiar en la Asociación de Escritores Vanguardistas! Cualquier duda o consulta, no dudes en escribirnos a través de este medio. Te responderemos a la brevedad posible.",
+      leido: false,
+    },
+  });
 });
 
 // ===================== CLIENTES: CRUD =====================
