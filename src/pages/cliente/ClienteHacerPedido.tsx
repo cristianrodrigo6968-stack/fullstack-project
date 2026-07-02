@@ -656,54 +656,43 @@ const [paso, setPaso] = useState<"catalogo" | "carrito" | "pago" | "confirmacion
     ) : (
       <>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
-      {Object.values(carrito).map(({ producto, cantidad }) => {
-        const esPaquete = producto.componentes && producto.componentes.length > 0;
-        const precioUnit = getPrecioFinal(producto.precio, producto.descuento);
-        const totalItem = precioUnit * cantidad;
+  {Object.values(carrito).flatMap(({ producto, cantidad }) => {
+    const esPaquete = producto.componentes && producto.componentes.length > 0;
+    const precioUnit = getPrecioFinal(producto.precio, producto.descuento);
 
-        return (
-          <div key={producto.id} style={{ background: "#0d0d1a", borderRadius: 14, border: "1px solid #1e1b4b" }}>
-            <div style={{ padding: "14px 18px", borderBottom: "1px solid #1e1b4b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontWeight: "bold", color: "#f1f5f9" }}>
-                {esPaquete ? "🎁 " : ""}{producto.nombre}{cantidad > 1 ? ` ×${cantidad}` : ""}
-              </span>
-              <button
-                onClick={() => eliminarProducto(producto.id)}
-                style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 13 }}
-              >
-                ✕ {esPaquete ? "Eliminar paquete" : "Eliminar"}
-              </button>
-            </div>
+    return Array.from({ length: cantidad }).map((_, copia) => (
+      <div key={`${producto.id}_${copia}`} style={{ background: "#0d0d1a", borderRadius: 14, border: "1px solid #1e1b4b" }}>
+        <div style={{ padding: "14px 18px", borderBottom: "1px solid #1e1b4b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontWeight: "bold", color: "#f1f5f9" }}>
+            {esPaquete ? "🎁 " : ""}{producto.nombre}
+          </span>
+          <button
+            onClick={() => disminuirCantidad(producto.id)}
+            style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 13 }}
+          >
+            ✕ {esPaquete ? "Eliminar paquete" : "Eliminar"}
+          </button>
+        </div>
 
-            {esPaquete && (
-              <div style={{ padding: "8px 18px" }}>
-                {producto.componentes!.map((comp: any, idx: number) => (
-                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <span>✅</span>
-                    <span style={{ color: "#cbd5e1", fontSize: 13 }}>{getComponenteLabel(comp)}</span>
-                  </div>
-                ))}
+        {esPaquete && (
+          <div style={{ padding: "8px 18px" }}>
+            {producto.componentes!.map((comp: any, idx: number) => (
+              <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <span>✅</span>
+                <span style={{ color: "#cbd5e1", fontSize: 13 }}>{getComponenteLabel(comp)}</span>
               </div>
-            )}
-
-            <div style={{ padding: "10px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #1e293b", background: "#0a0a14" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button
-                  onClick={() => disminuirCantidad(producto.id)}
-                  style={{ background: "#1e1b4b", border: "none", color: "white", width: 26, height: 26, borderRadius: 6, cursor: "pointer" }}
-                >−</button>
-                <span style={{ color: "white", fontSize: 13 }}>{cantidad}</span>
-                <button
-                  onClick={() => agregarAlCarrito(producto)}
-                  style={{ background: "#1e1b4b", border: "none", color: "white", width: 26, height: 26, borderRadius: 6, cursor: "pointer" }}
-                >+</button>
-              </div>
-              <span style={{ color: "#22c55e", fontWeight: "bold", fontSize: 15 }}>Bs {totalItem.toFixed(2)}</span>
-            </div>
+            ))}
           </div>
-        );
-      })}
-    </div>
+        )}
+
+        <div style={{ padding: "10px 18px", textAlign: "right", borderTop: "1px solid #1e293b", background: "#0a0a14" }}>
+          <span style={{ color: "#f1f5f9", fontSize: 14 }}>Total: </span>
+          <span style={{ color: "#22c55e", fontWeight: "bold", fontSize: 16 }}>Bs {precioUnit.toFixed(2)}</span>
+        </div>
+      </div>
+    ));
+  })}
+</div>
 
     <div style={{ background: "#0d0d1a", border: "1px solid #1e1b4b", padding: "18px 22px", borderRadius: 14, marginBottom: 22 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
