@@ -45,9 +45,7 @@ function ClienteMisPedidos() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Pedido | null>(null);
-  const [observaciones, setObservaciones] = useState<Record<number, string>>({});
-  const [archivosObs, setArchivosObs] = useState<Record<number, File[]>>({});
-  const [enviandoObs, setEnviandoObs] = useState<number | null>(null);
+  
 
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -59,7 +57,11 @@ function ClienteMisPedidos() {
     if (res.ok) setPedidos(await res.json());
     setLoading(false);
   };
-
+const numeroDePedido = (pedidoId: number) => {
+    const ordenAscendente = [...pedidos].sort((a, b) => new Date(a.creadoEn).getTime() - new Date(b.creadoEn).getTime());
+    const idx = ordenAscendente.findIndex(p => p.id === pedidoId);
+    return idx === -1 ? pedidoId : idx + 1;
+  };
   useEffect(() => { load(); }, []);
 
   const verDetalle = async (pedidoId: number) => {
@@ -67,30 +69,7 @@ function ClienteMisPedidos() {
     if (res.ok) setSelected(await res.json());
   };
 
-  const enviarObservacion = async (itemId: number) => {
-    const nota = observaciones[itemId]?.trim();
-    const archivos = archivosObs[itemId] || [];
-    if (!nota && archivos.length === 0) return alert("Escribe una observación o adjunta un archivo");
-
-    setEnviandoObs(itemId);
-    const formData = new FormData();
-    if (nota) formData.append("nota", nota);
-    archivos.forEach(file => formData.append("archivos", file));
-
-    const res = await fetch(`${API_URL}/cliente/items/${itemId}/revision`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
-    if (res.ok) {
-      setObservaciones(prev => ({ ...prev, [itemId]: "" }));
-      setArchivosObs(prev => ({ ...prev, [itemId]: [] }));
-      if (selected) await verDetalle(selected.id);
-    } else {
-      alert("Error al enviar observación");
-    }
-    setEnviandoObs(null);
-  };
+  
 
   const getEstadoColor = (estado: string) => {
     if (estado === "completado") return { bg: "#14532d", color: "#22c55e" };
@@ -98,16 +77,24 @@ function ClienteMisPedidos() {
     return { bg: "#422006", color: "#f59e0b" };
   };
 
-  const getTipoLabel = (tipo: string) => {
-    const map: Record<string, string> = {
-      libroA: "📚 Libro Cat. A",
-      libroB: "📚 Libro Cat. B",
-      libroC: "📚 Libro Cat. C",
-      director: "📘 Director de Revista",
-      fundador: "🏆 Fundador de Revista",
-      autor: "📝 Autor de Artículo",
-    };
-    return map[tipo] || tipo;
+  const getTipoLabel = (item: ItemPedido) => {
+    const t = (item.titulo || "").toLowerCase();
+    const tip = (item.tipo || "").toLowerCase();
+    if (tip === "libro" || t.includes("libro")) {
+      let cat = "";
+      if (t.includes("categoría a") || t.includes("categoria a")) cat = " — Categoría A";
+      else if (t.includes("categoría b") || t.includes("categoria b")) cat = " — Categoría B";
+      else if (t.includes("categoría c") || t.includes("categoria c")) cat = " — Categoría C";
+      return `📚 Libro${cat}`;
+    }
+    if (tip === "revista" || t.includes("revista") || t.includes("director") || t.includes("artículo") || t.includes("articulo") || t.includes("fundador")) {
+      if (t.includes("director")) return "📘 Director de Revista";
+      if (t.includes("fundador")) return "🏆 Fundador de Revista";
+      if (t.includes("redacc")) return "📝 Artículo (redacción y publicación)";
+      if (t.includes("publicac")) return "📝 Artículo (solo publicación)";
+      return "📰 Revista";
+    }
+    return item.titulo || "📦 Servicio";
   };
 
   if (selected) {
@@ -116,7 +103,7 @@ function ClienteMisPedidos() {
         <button onClick={() => setSelected(null)} style={btnGray}>← Volver a mis pedidos</button>
         <div style={{ background: "#1e293b", padding: isMobile ? 20 : 28, borderRadius: 14, marginTop: 20 }}>
           <h2 style={{ marginBottom: 6, fontSize: isMobile ? 18 : 24 }}>
-            Pedido #{selected.id}
+            Pedido #{numeroDePedido(selected.id)}
           </h2>
           <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
             <span style={{
@@ -153,19 +140,18 @@ function ClienteMisPedidos() {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {selected.items.map(item => {
               const sc = getEstadoColor(item.estado);
+              const estadoLabel = item.estado === "completado" ? "✅ Completado" : "⏳ Pendiente";
               return (
                 <div key={item.id} style={{ background: "#0f172a", padding: 16, borderRadius: 10, borderLeft: `4px solid ${sc.color}` }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ color: "#60a5fa", fontWeight: "bold" }}>{getTipoLabel(item.tipo)}</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ color: "#60a5fa", fontWeight: "bold" }}>{getTipoLabel(item)}</span>
                     <span style={{
                       fontSize: 11, padding: "2px 10px", borderRadius: 99,
                       background: sc.bg, color: sc.color, fontWeight: "bold",
                     }}>
-                      {item.estado}
+                      {estadoLabel}
                     </span>
                   </div>
-                  {item.titulo && <p style={{ color: "white", marginBottom: 4 }}>📌 {item.titulo}</p>}
-                  {item.notas && <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>📝 {item.notas}</p>}
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                     {item.conSenapi && <span style={badgeStyle}>SENAPI</span>}
                     {item.conIsbn && <span style={badgeStyle}>ISBN</span>}
@@ -173,59 +159,6 @@ function ClienteMisPedidos() {
                     {item.tipoAutor && <span style={badgeStyle}>{item.tipoAutor === "soloTitulo" ? "Solo título" : "Con contenido"}</span>}
                     {item.asociacionEncargaTitulo && <span style={badgeStyle}>Título por asociación</span>}
                   </div>
-
-                  {/* Timeline de revisiones */}
-                  {item.revisiones.length > 0 && (
-                    <div style={{ marginTop: 12, borderTop: "1px solid #334155", paddingTop: 12 }}>
-                      <p style={{ color: "#64748b", fontSize: 11, marginBottom: 8, textTransform: "uppercase" }}>Historial de revisiones</p>
-                      {item.revisiones.map(rev => (
-                        <div key={rev.id} style={{ marginBottom: 10, paddingLeft: 12, borderLeft: "2px solid #334155" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                            <span style={{ color: rev.autorTipo === "admin" ? "#60a5fa" : "#a78bfa", fontSize: 12, fontWeight: "bold" }}>
-                              {rev.autorTipo === "admin" ? "🔵 Asociación" : "🟣 Tú"} — Ronda {rev.ronda}
-                            </span>
-                            <span style={{ color: "#64748b", fontSize: 11 }}>{new Date(rev.creadoEn).toLocaleDateString()}</span>
-                          </div>
-                          {rev.nota && <p style={{ color: "#94a3b8", fontSize: 12, marginBottom: 4 }}>{rev.nota}</p>}
-                          {rev.archivos.length > 0 && (
-                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                              {rev.archivos.map((url, i) => (
-                                <a key={i} href={url} target="_blank" rel="noreferrer" style={{ color: "#60a5fa", fontSize: 11, textDecoration: "underline" }}>
-                                  📎 Archivo {i + 1}
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Enviar observación (solo si no está completado) */}
-                  {item.estado !== "completado" && (
-                    <div style={{ marginTop: 12, borderTop: "1px solid #334155", paddingTop: 12 }}>
-                      <textarea
-                        placeholder="Escribe tu observación..."
-                        value={observaciones[item.id] || ""}
-                        onChange={e => setObservaciones(prev => ({ ...prev, [item.id]: e.target.value }))}
-                        rows={2}
-                        style={{ width: "100%", padding: 8, borderRadius: 6, border: "none", background: "#1e293b", color: "white", fontSize: 12, resize: "none", boxSizing: "border-box", marginBottom: 6 }}
-                      />
-                      <input
-                        type="file"
-                        multiple
-                        onChange={e => setArchivosObs(prev => ({ ...prev, [item.id]: Array.from(e.target.files || []) }))}
-                        style={{ color: "white", fontSize: 11, marginBottom: 6 }}
-                      />
-                      <button
-                        onClick={() => enviarObservacion(item.id)}
-                        disabled={enviandoObs === item.id}
-                        style={{ ...btnBlue, marginTop: 6, fontSize: 12, padding: "6px 12px" }}
-                      >
-                        {enviandoObs === item.id ? "Enviando..." : "📤 Enviar observación"}
-                      </button>
-                    </div>
-                  )}
                 </div>
               );
             })}
@@ -261,7 +194,7 @@ function ClienteMisPedidos() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
                   <div>
                     <p style={{ color: "white", fontWeight: "bold", fontSize: 15 }}>
-                      Pedido #{p.id}
+                      Pedido #{numeroDePedido(p.id)}
                     </p>
                     <p style={{ color: "#94a3b8", fontSize: 12, marginTop: 4 }}>
                       {p.items.length} ítems · {new Date(p.creadoEn).toLocaleDateString()}
@@ -289,7 +222,6 @@ function ClienteMisPedidos() {
   );
 }
 
-const btnBlue: React.CSSProperties = { background: "#3b82f6", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
 const btnGray: React.CSSProperties = { background: "#334155", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
 const badgeStyle: React.CSSProperties = { background: "#1e3a5f", color: "#60a5fa", padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: "bold" };
 
