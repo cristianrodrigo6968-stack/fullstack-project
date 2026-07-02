@@ -4,7 +4,6 @@ import { useWindowSize } from "../../hooks/useWindowSize";
 import ClienteInicio from "./ClienteInicio";
 import ClienteMisPedidos from "./ClienteMisPedidos";
 import ClienteHacerPedido from "./ClienteHacerPedido";
-import ClienteProgreso from "./ClienteProgreso";
 import ClienteMensajes from "./ClienteMensajes";
 import ClienteContenido from "./ClienteContenido";
 import ClientePassword from "./ClientePassword";
@@ -54,7 +53,7 @@ function ClientePanel() {
 
   const menuItems = [
     { key: "inicio", label: "🏠 Inicio" },
-    { key: "progreso", label: "📚 Mi Progreso" },
+    
     { key: "contenido", label: "📁 Mi Contenido" },
     { key: "mensajes", label: "💬 Mensajes", badge: unreadMessages },
     { key: "password", label: "🔑 Cambiar Contraseña" },
@@ -128,7 +127,7 @@ function ClientePanel() {
         )}
 
         {section === "inicio" && <ClienteInicio />}
-        {section === "progreso" && <ClienteProgreso />}
+       
         {section === "contenido" && <ClienteContenido />}
         {section === "mensajes" && <ClienteMensajes />}
         {section === "password" && <ClientePassword />}

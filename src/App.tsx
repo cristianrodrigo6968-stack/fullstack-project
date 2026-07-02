@@ -34,7 +34,7 @@ import ClienteInicio from "./pages/cliente/ClienteInicio";
 import ClienteMensajes from "./pages/cliente/ClienteMensajes";
 import ClienteMisPedidos from "./pages/cliente/ClienteMisPedidos";
 import ClientePassword from "./pages/cliente/ClientePassword";
-import ClienteProgreso from "./pages/cliente/ClienteProgreso";
+
 import ClienteContenido from "./pages/cliente/ClienteContenido";
 
 function App() {
@@ -74,7 +74,7 @@ function App() {
         <Route path="/cliente/mensajes" element={<ClientProtectedRoute><ClienteMensajes /></ClientProtectedRoute>} />
         <Route path="/cliente/pedidos" element={<ClientProtectedRoute><ClienteMisPedidos /></ClientProtectedRoute>} />
         <Route path="/cliente/password" element={<ClientProtectedRoute><ClientePassword /></ClientProtectedRoute>} />
-        <Route path="/cliente/progreso" element={<ClientProtectedRoute><ClienteProgreso /></ClientProtectedRoute>} />
+         
         <Route path="/cliente/contenido" element={<ClientProtectedRoute><ClienteContenido /></ClientProtectedRoute>} />
       </Routes>
     </div>
