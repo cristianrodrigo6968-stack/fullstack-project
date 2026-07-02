@@ -64,7 +64,7 @@ function ClienteHacerPedido() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [carrito, setCarrito] = useState<Record<number, { producto: Producto; cantidad: number }>>({});
-  const [paso, setPaso] = useState<"catalogo" | "pago" | "confirmacion">("catalogo");
+const [paso, setPaso] = useState<"catalogo" | "carrito" | "pago" | "confirmacion">("catalogo");
 
   const [clienteDatos, setClienteDatos] = useState<ClienteDatos>({
     nombreCompleto: "",
@@ -597,7 +597,7 @@ function ClienteHacerPedido() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setPaso("pago")}
+                  onClick={() => setPaso("carrito")}
                   style={{
                     padding: "10px 20px",
                     background: "linear-gradient(135deg,#10b981,#059669)",
@@ -631,6 +631,86 @@ function ClienteHacerPedido() {
               </div>
             )}
           </>
+        ) : paso === "carrito" ? (
+          /* ─── REVISIÓN DE CARRITO ─── */
+          <div style={{ maxWidth: 680, margin: "0 auto" }}>
+    <button
+      onClick={() => setPaso("catalogo")}
+      style={{ background: "none", border: "none", color: "#818cf8", fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 20, fontFamily: "inherit" }}
+    >
+      ← Seguir comprando
+    </button>
+
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+      {Object.values(carrito).map(({ producto, cantidad }) => {
+        const esPaquete = producto.componentes && producto.componentes.length > 0;
+        const precioUnit = getPrecioFinal(producto.precio, producto.descuento);
+        const totalItem = precioUnit * cantidad;
+
+        return (
+          <div key={producto.id} style={{ background: "#0d0d1a", borderRadius: 14, border: "1px solid #1e1b4b" }}>
+            <div style={{ padding: "14px 18px", borderBottom: "1px solid #1e1b4b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontWeight: "bold", color: "#f1f5f9" }}>
+                {esPaquete ? "🎁 " : ""}{producto.nombre}{cantidad > 1 ? ` ×${cantidad}` : ""}
+              </span>
+              <button
+                onClick={() => eliminarProducto(producto.id)}
+                style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 13 }}
+              >
+                ✕ {esPaquete ? "Eliminar paquete" : "Eliminar"}
+              </button>
+            </div>
+
+            {esPaquete && (
+              <div style={{ padding: "8px 18px" }}>
+                {producto.componentes!.map((comp: any, idx: number) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span>✅</span>
+                    <span style={{ color: "#cbd5e1", fontSize: 13 }}>{getComponenteLabel(comp)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ padding: "10px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #1e293b", background: "#0a0a14" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  onClick={() => disminuirCantidad(producto.id)}
+                  style={{ background: "#1e1b4b", border: "none", color: "white", width: 26, height: 26, borderRadius: 6, cursor: "pointer" }}
+                >−</button>
+                <span style={{ color: "white", fontSize: 13 }}>{cantidad}</span>
+                <button
+                  onClick={() => agregarAlCarrito(producto)}
+                  style={{ background: "#1e1b4b", border: "none", color: "white", width: 26, height: 26, borderRadius: 6, cursor: "pointer" }}
+                >+</button>
+              </div>
+              <span style={{ color: "#22c55e", fontWeight: "bold", fontSize: 15 }}>Bs {totalItem.toFixed(2)}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+
+    <div style={{ background: "#0d0d1a", border: "1px solid #1e1b4b", padding: "18px 22px", borderRadius: 14, marginBottom: 22 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <span style={{ color: "#64748b", fontSize: 14 }}>Total</span>
+        <span style={{ color: "#34d399", fontWeight: 800, fontSize: 22 }}>Bs {totalPrecio.toFixed(2)}</span>
+      </div>
+      <div style={{ height: 1, background: "#1e1b4b", marginBottom: 10 }} />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ color: "#64748b", fontSize: 13 }}>Adelanto sugerido (30%)</span>
+        <span style={{ color: "#818cf8", fontWeight: 700, fontSize: 16 }}>Bs {adelanto}</span>
+      </div>
+    </div>
+
+    <button
+      className="step-btn"
+      onClick={() => setPaso("pago")}
+      style={{ width: "100%", padding: 16, background: "linear-gradient(135deg,#10b981,#059669)", border: "none", borderRadius: 14, color: "white", fontWeight: 700, fontSize: 17, cursor: "pointer", boxShadow: "0 4px 20px rgba(16,185,129,.3)" }}
+    >
+      💳 Proceder al pago
+    </button>
+  </div>
         ) : (
           /* ─── PANTALLA DE PAGO ─── */
           <div style={{ maxWidth: 680, margin: "0 auto" }}>
@@ -736,7 +816,7 @@ function ClienteHacerPedido() {
               )}
             </div>
             <button
-              onClick={() => setPaso("catalogo")}
+              onClick={() => setPaso("carrito")}
               style={{
                 background: "transparent", border: "1px solid #1e1b4b",
                 borderRadius: 12, color: "#64748b", fontSize: 14,
