@@ -68,7 +68,7 @@ function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onCon
     </div>
   );
 }
-function generarDocumentoParticipantes(m: Magazine) {
+function generarDocumentoParticipantesEdicion(m: Magazine, ed: EdicionItem, numeroTexto: string) {
   type Persona = { nombre: string; profesion: string; foto: string | null };
   const personas: Persona[] = [];
   const vistos = new Set<number>();
@@ -82,21 +82,19 @@ function generarDocumentoParticipantes(m: Magazine) {
     vistos.add(m.cliente.id);
   }
 
-  (m.ediciones || []).forEach(ed => {
-    (ed.articles || []).forEach(a => {
-      if (a.cliente && !vistos.has(a.cliente.id)) {
-        vistos.add(a.cliente.id);
-        personas.push({
-          nombre: a.cliente.nombreCompleto || [a.cliente.nombres, a.cliente.apellidoPaterno, a.cliente.apellidoMaterno].filter(Boolean).join(" "),
-          profesion: a.cliente.profesion || "—",
-          foto: a.cliente.fotografia || null,
-        });
-      }
-    });
+  (ed.articles || []).forEach(a => {
+    if (a.cliente && !vistos.has(a.cliente.id)) {
+      vistos.add(a.cliente.id);
+      personas.push({
+        nombre: a.cliente.nombreCompleto || [a.cliente.nombres, a.cliente.apellidoPaterno, a.cliente.apellidoMaterno].filter(Boolean).join(" "),
+        profesion: a.cliente.profesion || "—",
+        foto: a.cliente.fotografia || null,
+      });
+    }
   });
 
   if (personas.length === 0) {
-    alert("No hay personas con datos vinculados en esta revista todavía.");
+    alert("No hay personas con datos vinculados en esta edición todavía.");
     return;
   }
 
@@ -113,7 +111,7 @@ function generarDocumentoParticipantes(m: Magazine) {
   const html = `
     <html><head><meta charset="UTF-8"></head>
     <body style="font-family:Arial,sans-serif;">
-      <h2>${m.title}</h2>
+      <h2>${m.title} — ${numeroTexto} Edición</h2>
       <p>Listado de participantes</p>
       <table style="width:100%;border-collapse:collapse;">
         <thead><tr>
@@ -130,7 +128,7 @@ function generarDocumentoParticipantes(m: Magazine) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${m.title.replace(/\s+/g, "_")}_participantes.doc`;
+  link.download = `${m.title.replace(/\s+/g, "_")}_${numeroTexto}_participantes.doc`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -168,8 +166,8 @@ function EdicionCard({
   const NOMBRES = ["PRIMERA", "SEGUNDA", "TERCERA"];
   const numeroTexto = NOMBRES[ed.numero - 1] || `N° ${ed.numero}`;
   const articles = ed.articles ?? [];
-  const articuloDirector = articles.find(a => a.authors.some(au => au.id === selected.director.id));
-
+const articuloDirector = articles.find(a => a.authors.some(au => au.id === selected.director.id));
+  const articlesSinDirector = articles.filter(a => a.id !== articuloDirector?.id);
   const agregarArticuloDirector = async () => {
     if (!tituloDirector.trim()) return;
     setAddingDirector(true);
@@ -261,6 +259,15 @@ function EdicionCard({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* Descargar participantes */}
+          <button
+            onClick={e => { e.stopPropagation(); generarDocumentoParticipantesEdicion(selected, ed, numeroTexto); }}
+            title="Descargar lista de participantes (Word)"
+            style={{ background: "#1e3a5f", border: "none", padding: "4px 10px", borderRadius: 6, color: "#60a5fa", cursor: "pointer", fontWeight: "bold", fontSize: 13 }}
+          >
+            📄
+          </button>
+
           {/* Botones archivo */}
           {ed.archivoUrl ? (
             <>
@@ -350,17 +357,17 @@ function EdicionCard({
           </div>
 
           {/* Lista autores */}
-          {articles.length === 0 ? (
+          {articlesSinDirector.length === 0 ? (
             <p style={{ color: "#475569", fontSize: 13, margin: "12px 0", textAlign: "center", padding: "16px 0", borderTop: "1px solid #1e293b" }}>
               Sin autores asignados
             </p>
           ) : (
             <div>
-              {articles.map((article, idx) => (
+              {articlesSinDirector.map((article, idx) => (
                 <div key={article.id} style={{
                   display: "flex", justifyContent: "space-between", alignItems: "center",
                   padding: "10px 0",
-                  borderBottom: idx < articles.length - 1 ? "1px solid #1e293b" : "none",
+                  borderBottom: idx < articlesSinDirector.length - 1 ? "1px solid #1e293b" : "none",
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ color: "#e2e8f0", fontSize: 14, fontWeight: 500, marginBottom: 2 }}>
@@ -581,19 +588,11 @@ function Magazines() {
                 <h2 style={{ margin: "0 0 4px", fontSize: isMobile ? 20 : 26 }}>{selected.title}</h2>
                 <p style={{ color: "#64748b", margin: 0, fontSize: 14 }}>Director: <span style={{ color: "#94a3b8" }}>{selected.director?.name}</span></p>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                {selected.cliente && (
-                  <span style={{ background: "#312e81", color: "#a78bfa", padding: "4px 14px", borderRadius: 99, fontSize: 12, fontWeight: "bold", whiteSpace: "nowrap" }}>
-                    👤 {selected.cliente.nombreCompleto}
-                  </span>
-                )}
-                <button
-                  onClick={() => generarDocumentoParticipantes(selected)}
-                  style={{ ...btnBlue, fontSize: 12, whiteSpace: "nowrap" }}
-                >
-                  📄 Descargar participantes (Word)
-                </button>
-              </div>
+              {selected.cliente && (
+                <span style={{ background: "#312e81", color: "#a78bfa", padding: "4px 14px", borderRadius: 99, fontSize: 12, fontWeight: "bold", whiteSpace: "nowrap" }}>
+                  👤 {selected.cliente.nombreCompleto}
+                </span>
+              )}
             </div>
 
             {selected.notas && (
