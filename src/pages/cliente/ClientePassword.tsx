@@ -32,7 +32,7 @@ function CampoPassword({ label, value, onChange }: { label: string; value: strin
 }
 
 function ClientePassword() {
-  const { token } = useAuth();
+  const { token, clearDebeCambiarPassword } = useAuth();
   const [actual, setActual] = useState("");
   const [nueva, setNueva] = useState("");
   const [confirmar, setConfirmar] = useState("");
@@ -74,6 +74,7 @@ function ClientePassword() {
       setActual("");
       setNueva("");
       setConfirmar("");
+      clearDebeCambiarPassword();
     }
     setGuardando(false);
   };

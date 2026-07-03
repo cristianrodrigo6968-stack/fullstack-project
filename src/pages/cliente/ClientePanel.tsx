@@ -11,9 +11,9 @@ import ClientePassword from "./ClientePassword";
 const API_URL = import.meta.env.VITE_API_URL;
 
 function ClientePanel() {
-  const { token, logout, username } = useAuth();
+  const { token, logout, username, debeCambiarPassword } = useAuth();
   const { isMobile } = useWindowSize();
-  const [section, setSection] = useState("inicio");
+  const [section, setSection] = useState(debeCambiarPassword ? "password" : "inicio");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
 const [unreadMessages, setUnreadMessages] = useState(0);
@@ -107,13 +107,19 @@ const [unreadMessages, setUnreadMessages] = useState(0);
         </div>
 
         {menuItems.map((item) => (
-          <button key={item.key} onClick={() => handleSection(item.key)} style={{
+          <button
+            key={item.key}
+            onClick={() => { if (!debeCambiarPassword || item.key === "password") handleSection(item.key); }}
+            disabled={debeCambiarPassword && item.key !== "password"}
+            style={{
             padding: "10px 16px", border: "none", borderRadius: 8,
-            cursor: "pointer", textAlign: "left",
+            cursor: (debeCambiarPassword && item.key !== "password") ? "not-allowed" : "pointer",
+            textAlign: "left",
             fontWeight: section === item.key ? "bold" : "normal",
             background: section === item.key ? "#3b82f6" : "#334155",
             color: "white", fontSize: 14,
             display: "flex", justifyContent: "space-between", alignItems: "center",
+            opacity: (debeCambiarPassword && item.key !== "password") ? 0.4 : 1,
           }}>
             <span>{item.label}</span>
             {item.badge != null && item.badge > 0 && section !== "mensajes" && section !== "contenido" && (
@@ -138,6 +144,11 @@ const [unreadMessages, setUnreadMessages] = useState(0);
       </div>
 
       <div style={{ flex: 1, padding: isMobile ? 20 : 40, color: "white", overflowY: "auto", minWidth: 0 }}>
+        {debeCambiarPassword && (
+          <div style={{ background: "#422006", border: "1px solid #f59e0b", color: "#fbbf24", padding: "12px 16px", borderRadius: 10, marginBottom: 20, fontSize: 14 }}>
+            🔒 Por seguridad, debes cambiar tu contraseña temporal antes de continuar.
+          </div>
+        )}
         {isMobile && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, background: "#1e293b", padding: "12px 16px", borderRadius: 10 }}>
             <span style={{ fontWeight: "bold", fontSize: 15 }}>

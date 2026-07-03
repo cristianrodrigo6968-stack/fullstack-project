@@ -74,7 +74,7 @@ function Login() {
         return;
       }
 
-      login(data.token, data.username, data.role, data.clienteId);
+      login(data.token, data.username, data.role, data.clienteId, data.debeCambiarPassword);
       if (data.role === "admin") {
         navigate("/admin");
       } else {
