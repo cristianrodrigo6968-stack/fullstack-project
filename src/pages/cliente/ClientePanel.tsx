@@ -15,8 +15,9 @@ function ClientePanel() {
   const { isMobile } = useWindowSize();
   const [section, setSection] = useState("inicio");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState(0);
-
+  
+const [unreadMessages, setUnreadMessages] = useState(0);
+  const [unreadTasks, setUnreadTasks] = useState(0);
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
@@ -36,9 +37,22 @@ function ClientePanel() {
     }
   };
 
+  const loadUnreadTasks = async () => {
+    try {
+      const res = await fetch(`${API_URL}/cliente/tareas/no-vistas-count`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadTasks(data.total ?? 0);
+      }
+    } catch (err) {
+      console.warn("Error cargando tareas no vistas", err);
+    }
+  };
+
   useEffect(() => {
     loadUnreadCount();
-    const interval = setInterval(loadUnreadCount, 10000);
+    loadUnreadTasks();
+    const interval = setInterval(() => { loadUnreadCount(); loadUnreadTasks(); }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -51,10 +65,17 @@ function ClientePanel() {
     }
   }, [section]);
 
-  const menuItems = [
+  // Al entrar a Mis Archivos, marcar tareas como vistas
+  useEffect(() => {
+    if (section === "contenido") {
+      setUnreadTasks(0);
+      fetch(`${API_URL}/cliente/tareas/vistas`, { method: "PUT", headers }).catch(() => {});
+    }
+  }, [section]);
+
+ const menuItems = [
     { key: "inicio", label: "🏠 Inicio" },
-    
-  { key: "contenido", label: "📋 Mis Archivos" },  
+    { key: "contenido", label: "📋 Mis Archivos", badge: unreadTasks },
     { key: "mensajes", label: "💬 Mensajes", badge: unreadMessages },
     { key: "password", label: "🔑 Cambiar Contraseña" },
     { key: "hacer-pedido", label: "🛒 Hacer Pedido" },
@@ -95,7 +116,7 @@ function ClientePanel() {
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
             <span>{item.label}</span>
-            {item.badge != null && item.badge > 0 && section !== "mensajes" && (
+            {item.badge != null && item.badge > 0 && section !== "mensajes" && section !== "contenido" && (
               <span style={{
                 background: "#ef4444", color: "white", fontSize: 11,
                 fontWeight: "bold", padding: "2px 8px", borderRadius: 99,

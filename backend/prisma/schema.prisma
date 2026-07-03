@@ -294,14 +294,15 @@ model RevisionItem {
   item         ItemPedido @relation(fields: [itemPedidoId], references: [id])
 }
 model TareaItem {
-  id           Int               @id @default(autoincrement())
-  itemPedidoId Int
-  titulo       String
-  descripcion  String?
-  completada   Boolean           @default(false)
-  creadoEn     DateTime          @default(now())
-  item         ItemPedido        @relation(fields: [itemPedidoId], references: [id])
-  comentarios  ComentarioTarea[]
+  id            Int               @id @default(autoincrement())
+  itemPedidoId  Int
+  titulo        String
+  descripcion   String?
+  completada    Boolean           @default(false)
+  vistaCliente  Boolean           @default(false)
+  creadoEn      DateTime          @default(now())
+  item          ItemPedido        @relation(fields: [itemPedidoId], references: [id])
+  comentarios   ComentarioTarea[]
 }
 
 model ComentarioTarea {

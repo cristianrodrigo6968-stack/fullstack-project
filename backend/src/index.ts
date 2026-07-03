@@ -1818,7 +1818,26 @@ app.post("/tareas/:id/comentarios", auth, upload.array("archivos", 5), async (re
   });
   res.json(comentario);
 });
+app.get("/cliente/tareas/no-vistas-count", authCliente, async (req: any, res) => {
+  const count = await prisma.tareaItem.count({
+    where: {
+      vistaCliente: false,
+      item: { pedido: { clienteId: req.clienteId } },
+    },
+  });
+  res.json({ total: count });
+});
 
+app.put("/cliente/tareas/vistas", authCliente, async (req: any, res) => {
+  await prisma.tareaItem.updateMany({
+    where: {
+      vistaCliente: false,
+      item: { pedido: { clienteId: req.clienteId } },
+    },
+    data: { vistaCliente: true },
+  });
+  res.json({ ok: true });
+});
 app.post("/cliente/tareas/:id/comentarios", authCliente, upload.array("archivos", 5), async (req: any, res) => {
   const tareaId = Number(req.params.id);
   const tarea = await prisma.tareaItem.findUnique({
