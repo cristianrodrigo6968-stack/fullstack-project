@@ -31,7 +31,11 @@ function CampoPassword({ label, value, onChange }: { label: string; value: strin
   );
 }
 
-function ClientePassword() {
+interface Props {
+  onNavigate?: (section: string) => void;
+}
+
+function ClientePassword({ onNavigate }: Props) {
   const { token, debeCambiarPassword, clearDebeCambiarPassword } = useAuth();
   const [actual, setActual] = useState("");
   const [nueva, setNueva] = useState("");
@@ -62,6 +66,7 @@ function ClientePassword() {
     }
 
     setGuardando(true);
+    const eraObligatorio = debeCambiarPassword;
     const res = await fetch(`${API_URL}/cliente/password`, {
       method: "PUT",
       headers: {
@@ -83,6 +88,9 @@ function ClientePassword() {
       setNueva("");
       setConfirmar("");
       clearDebeCambiarPassword();
+      if (eraObligatorio) {
+        setTimeout(() => onNavigate?.("inicio"), 800);
+      }
     }
     setGuardando(false);
   };
