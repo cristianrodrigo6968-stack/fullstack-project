@@ -205,7 +205,7 @@ function ClienteMensajes() {
             📖
           </div>
           <div>
-            <p style={{ color: "white", fontWeight: "bold", fontSize: 14, margin: 0 }}>Asociación Vanguardistas 3.0</p>
+            <p style={{ color: "white", fontWeight: "bold", fontSize: 14, margin: 0 }}>Asociación de Escritores Vanguardistas 3.0</p>
             <p style={{ color: "#64748b", fontSize: 12, margin: "2px 0 0" }}>Equipo editorial</p>
           </div>
         </div>
