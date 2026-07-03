@@ -158,12 +158,13 @@ function TareaCard({ tarea, onEnviar }: { tarea: Tarea; onEnviar: (tareaId: numb
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
         <input type="file" multiple ref={fileInputRef} onChange={handleFiles} style={{ display: "none" }} />
         <button onClick={() => fileInputRef.current?.click()} style={{ background: "#1e293b", border: "none", borderRadius: 8, color: "white", cursor: "pointer", padding: "9px 11px", fontSize: 14 }} title="Adjuntar archivos">📎</button>
-        <input
+        <textarea
           value={texto}
           onChange={e => setTexto(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && !e.shiftKey && enviar()}
-          placeholder="Escribe un comentario o sube un archivo..."
-          style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #334155", background: "#1e293b", color: "white", fontSize: 13 }}
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviar(); } }}
+          placeholder="Escribe un comentario o sube un archivo... (Shift+Enter para salto de línea)"
+          rows={1}
+          style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #334155", background: "#1e293b", color: "white", fontSize: 13, resize: "vertical", fontFamily: "inherit", minHeight: 38 }}
         />
         <button
           onClick={enviar}
@@ -173,6 +174,39 @@ function TareaCard({ tarea, onEnviar }: { tarea: Tarea; onEnviar: (tareaId: numb
           {enviando ? "..." : "Enviar"}
         </button>
       </div>
+    </div>
+  );
+}
+
+function ItemTareasAccordion({ item, onEnviar }: { item: ItemPedido; onEnviar: (tareaId: number, texto: string, archivos: File[]) => Promise<void> }) {
+  const [abierto, setAbierto] = useState(false);
+  const completadas = item.tareas.filter(t => t.completada).length;
+  const total = item.tareas.length;
+
+  return (
+    <div style={{ background: "#1e293b", borderRadius: 14, overflow: "hidden" }}>
+      <div
+        onClick={() => setAbierto(v => !v)}
+        style={{ padding: 16, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+      >
+        <div>
+          <p style={{ color: "#60a5fa", fontWeight: "bold", fontSize: 15, margin: 0 }}>{getTipoLabel(item)}</p>
+          <p style={{ color: "#64748b", fontSize: 12, margin: "4px 0 0" }}>{completadas}/{total} tarea{total !== 1 ? "s" : ""} completada{total !== 1 ? "s" : ""}</p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 60, height: 5, background: "#334155", borderRadius: 99, overflow: "hidden" }}>
+            <div style={{ width: `${total > 0 ? (completadas / total) * 100 : 0}%`, height: "100%", background: completadas === total ? "#22c55e" : "linear-gradient(90deg,#3b82f6,#6366f1)" }} />
+          </div>
+          <span style={{ color: "#475569", fontSize: 16, transform: abierto ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+        </div>
+      </div>
+      {abierto && (
+        <div style={{ padding: "0 16px 16px" }}>
+          {item.tareas.map(tarea => (
+            <TareaCard key={tarea.id} tarea={tarea} onEnviar={onEnviar} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -226,14 +260,9 @@ function ClienteContenido() {
           </p>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {itemsConTareas.map(item => (
-            <div key={item.id} style={{ background: "#1e293b", borderRadius: 14, padding: 18 }}>
-              <p style={{ color: "#60a5fa", fontWeight: "bold", fontSize: 15, marginBottom: 14 }}>{getTipoLabel(item)}</p>
-              {item.tareas.map(tarea => (
-                <TareaCard key={tarea.id} tarea={tarea} onEnviar={enviarComentario} />
-              ))}
-            </div>
+            <ItemTareasAccordion key={item.id} item={item} onEnviar={enviarComentario} />
           ))}
         </div>
       )}

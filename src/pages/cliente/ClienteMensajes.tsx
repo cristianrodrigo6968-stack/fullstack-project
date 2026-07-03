@@ -183,6 +183,33 @@ function ClienteMensajes() {
           boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
         }}
       >
+        {/* Cabecera del chat */}
+        <div
+          style={{
+            padding: "14px 20px",
+            borderBottom: "1px solid #334155",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            background: "#1e293b",
+          }}
+        >
+          <div
+            style={{
+              width: 40, height: 40, borderRadius: "50%",
+              background: "linear-gradient(135deg,#3b82f6,#6366f1)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 18, flexShrink: 0,
+            }}
+          >
+            📖
+          </div>
+          <div>
+            <p style={{ color: "white", fontWeight: "bold", fontSize: 14, margin: 0 }}>Asociación Vanguardistas 3.0</p>
+            <p style={{ color: "#64748b", fontSize: 12, margin: "2px 0 0" }}>Equipo editorial</p>
+          </div>
+        </div>
+
         {/* Zona de mensajes */}
         <div
           style={{

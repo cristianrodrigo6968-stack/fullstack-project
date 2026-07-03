@@ -104,6 +104,7 @@ function ClienteHacerPedido() {
   const toastIdRef = useRef(0);
   const [toasts, setToasts] = useState<{ id: number; productoId: number }[]>([]);
   const [bounceId, setBounceId] = useState<number | null>(null);
+  const [productoDetalle, setProductoDetalle] = useState<Producto | null>(null);
 
   const headers = {
     "Content-Type": "application/json",
@@ -461,6 +462,7 @@ function ClienteHacerPedido() {
                 return (
                   <div key={p.id} className="card-catalogo">
                     <div
+                      onClick={() => setProductoDetalle(p)}
                       style={{
                         position: "relative",
                         width: "100%",
@@ -527,12 +529,14 @@ function ClienteHacerPedido() {
 
                     <div style={{ padding: 22, flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
                       <h3
+                        onClick={() => setProductoDetalle(p)}
                         style={{
                           color: "white",
                           fontSize: 17,
                           fontWeight: 700,
                           margin: 0,
                           lineHeight: 1.3,
+                          cursor: "pointer",
                         }}
                       >
                         {p.nombre}
@@ -610,7 +614,51 @@ function ClienteHacerPedido() {
                 );
               })}
             </div>
+                {productoDetalle && (
+              <div
+                onClick={() => setProductoDetalle(null)}
+                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, padding: 20 }}
+              >
+                <div
+                  onClick={e => e.stopPropagation()}
+                  style={{ background: "#0d0d1a", border: "1px solid #1e1b4b", borderRadius: 18, maxWidth: 480, width: "100%", maxHeight: "85vh", overflowY: "auto", padding: 24 }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+                    <h3 style={{ color: "white", fontSize: 18, margin: 0 }}>{productoDetalle.nombre}</h3>
+                    <button onClick={() => setProductoDetalle(null)} style={{ background: "none", border: "none", color: "#64748b", fontSize: 18, cursor: "pointer" }}>✕</button>
+                  </div>
 
+                  {productoDetalle.imagenUrl && (
+                    <img src={productoDetalle.imagenUrl} alt={productoDetalle.nombre} style={{ width: "100%", borderRadius: 12, marginBottom: 14 }} />
+                  )}
+
+                  {productoDetalle.descripcion && (
+                    <div style={{ marginBottom: 14 }}>
+                      <p style={{ color: "#8b929e", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 6px" }}>Descripción</p>
+                      <p style={{ color: "#94a3b8", fontSize: 14, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>{productoDetalle.descripcion}</p>
+                    </div>
+                  )}
+
+                  {productoDetalle.componentes && productoDetalle.componentes.length > 0 && (
+                    <div style={{ background: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 14 }}>
+                      <p style={{ color: "white", fontSize: 14, fontWeight: "bold", marginBottom: 10 }}>🎁 Esta oferta incluye:</p>
+                      {productoDetalle.componentes.map((comp: any, idx: number) => (
+                        <p key={idx} style={{ color: "#cbd5e1", fontSize: 13, margin: "0 0 6px", display: "flex", alignItems: "center", gap: 6 }}>
+                          <span>✅</span> {getComponenteLabel(comp)}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => { agregarAlCarrito(productoDetalle); setProductoDetalle(null); }}
+                    style={{ width: "100%", padding: 13, background: "linear-gradient(135deg,#10b981,#059669)", border: "none", borderRadius: 12, color: "white", fontWeight: "bold", fontSize: 14, cursor: "pointer" }}
+                  >
+                    🛒 Comprar — Bs {getPrecioFinal(productoDetalle.precio, productoDetalle.descuento).toFixed(2)}
+                  </button>
+                </div>
+              </div>
+            )}
             {totalItems > 0 && (
               <div
                 style={{

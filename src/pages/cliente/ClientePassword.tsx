@@ -3,6 +3,34 @@ import { useAuth } from "../../context/AuthContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+function CampoPassword({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <label style={{ color: "#94a3b8", fontSize: 12, textTransform: "uppercase", display: "block", marginBottom: 6 }}>{label}</label>
+      <div style={{ position: "relative" }}>
+        <input
+          type={visible ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          style={{ ...inputStyle, paddingRight: 40 }}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible(v => !v)}
+          style={{
+            position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+            background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 16,
+          }}
+          title={visible ? "Ocultar" : "Mostrar"}
+        >
+          {visible ? "🙈" : "👁️"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ClientePassword() {
   const { token } = useAuth();
   const [actual, setActual] = useState("");
@@ -65,32 +93,10 @@ function ClientePassword() {
           </div>
         )}
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ color: "#94a3b8", fontSize: 12, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Contraseña actual</label>
-          <input
-            type="password"
-            value={actual}
-            onChange={(e) => setActual(e.target.value)}
-            style={inputStyle}
-          />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ color: "#94a3b8", fontSize: 12, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Nueva contraseña</label>
-          <input
-            type="password"
-            value={nueva}
-            onChange={(e) => setNueva(e.target.value)}
-            style={inputStyle}
-          />
-        </div>
+        <CampoPassword label="Contraseña actual" value={actual} onChange={setActual} />
+        <CampoPassword label="Nueva contraseña" value={nueva} onChange={setNueva} />
         <div style={{ marginBottom: 20 }}>
-          <label style={{ color: "#94a3b8", fontSize: 12, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Confirmar nueva contraseña</label>
-          <input
-            type="password"
-            value={confirmar}
-            onChange={(e) => setConfirmar(e.target.value)}
-            style={inputStyle}
-          />
+          <CampoPassword label="Confirmar nueva contraseña" value={confirmar} onChange={setConfirmar} />
         </div>
 
         <button
