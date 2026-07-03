@@ -16,6 +16,7 @@ interface Tarea {
   titulo: string;
   descripcion: string | null;
   completada: boolean;
+  vistaCliente: boolean;
   comentarios: Comentario[];
 }
 
@@ -111,9 +112,14 @@ function TareaCard({ tarea, onEnviar }: { tarea: Tarea; onEnviar: (tareaId: numb
   return (
     <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: 16, marginBottom: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8 }}>
-        <div>
-          <p style={{ color: "white", fontWeight: "bold", fontSize: 14, margin: 0 }}>{tarea.titulo}</p>
-          {tarea.descripcion && <p style={{ color: "#94a3b8", fontSize: 13, margin: "4px 0 0" }}>{tarea.descripcion}</p>}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+          {!tarea.vistaCliente && (
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", flexShrink: 0, marginTop: 5 }} />
+          )}
+          <div>
+            <p style={{ color: "white", fontWeight: "bold", fontSize: 14, margin: 0 }}>{tarea.titulo}</p>
+            {tarea.descripcion && <p style={{ color: "#94a3b8", fontSize: 13, margin: "4px 0 0" }}>{tarea.descripcion}</p>}
+          </div>
         </div>
         <span style={{
           fontSize: 11, padding: "2px 10px", borderRadius: 99, fontWeight: "bold", whiteSpace: "nowrap",
@@ -189,19 +195,28 @@ function TareaCard({ tarea, onEnviar }: { tarea: Tarea; onEnviar: (tareaId: numb
 }
 
 function ItemTareasAccordion({ item, onEnviar }: { item: ItemPedido; onEnviar: (tareaId: number, texto: string, archivos: File[]) => Promise<void> }) {
-  const [abierto, setAbierto] = useState(false);
+  const tieneNovedades = item.tareas.some(t => !t.vistaCliente);
+  const [abierto, setAbierto] = useState(tieneNovedades);
   const completadas = item.tareas.filter(t => t.completada).length;
   const total = item.tareas.length;
 
   return (
-    <div style={{ background: "#1e293b", borderRadius: 14, overflow: "hidden" }}>
+    <div style={{ background: "#1e293b", borderRadius: 14, overflow: "hidden", border: tieneNovedades ? "1px solid #3b82f6" : "1px solid transparent" }}>
       <div
         onClick={() => setAbierto(v => !v)}
         style={{ padding: 16, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}
       >
-        <div>
-          <p style={{ color: "#60a5fa", fontWeight: "bold", fontSize: 15, margin: 0 }}>{getTipoLabel(item)}</p>
-          <p style={{ color: "#64748b", fontSize: 12, margin: "4px 0 0" }}>{completadas}/{total} tarea{total !== 1 ? "s" : ""} completada{total !== 1 ? "s" : ""}</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {tieneNovedades && (
+            <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
+          )}
+          <div>
+            <p style={{ color: "#60a5fa", fontWeight: "bold", fontSize: 15, margin: 0 }}>{getTipoLabel(item)}</p>
+            <p style={{ color: "#64748b", fontSize: 12, margin: "4px 0 0" }}>
+              {completadas}/{total} tarea{total !== 1 ? "s" : ""} completada{total !== 1 ? "s" : ""}
+              {tieneNovedades && <span style={{ color: "#ef4444", fontWeight: "bold" }}> · Novedades</span>}
+            </p>
+          </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 60, height: 5, background: "#334155", borderRadius: 99, overflow: "hidden" }}>
@@ -232,7 +247,11 @@ function ClienteContenido() {
     setLoading(false);
   };
 
-  useEffect(() => { cargar(); }, []);
+ useEffect(() => {
+    cargar();
+    const interval = setInterval(cargar, 8000);
+    return () => clearInterval(interval);
+  }, []);
 
   const enviarComentario = async (tareaId: number, texto: string, archivos: File[]) => {
     const formData = new FormData();
