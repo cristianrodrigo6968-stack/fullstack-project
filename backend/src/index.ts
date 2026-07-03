@@ -1410,11 +1410,16 @@ app.post("/cliente/mensajes", authCliente, upload.array("archivos", 5), async (r
 
 app.put("/cliente/password", authCliente, async (req: any, res) => {
   const { passwordActual, passwordNueva } = req.body;
-  if (!passwordActual || !passwordNueva) return res.status(400).json({ error: "Ambos campos son requeridos" });
-  const cliente = await prisma.client.findUnique({ where: { id: req.clienteId }, select: { clientPassword: true } });
+  if (!passwordNueva) return res.status(400).json({ error: "La nueva contraseña es requerida" });
+  const cliente = await prisma.client.findUnique({ where: { id: req.clienteId }, select: { clientPassword: true, debeCambiarPassword: true } });
   if (!cliente || !cliente.clientPassword) return res.status(400).json({ error: "No tienes contraseña configurada" });
-  const valida = await bcrypt.compare(passwordActual, cliente.clientPassword);
-  if (!valida) return res.status(401).json({ error: "Contraseña actual incorrecta" });
+
+  if (!cliente.debeCambiarPassword) {
+    if (!passwordActual) return res.status(400).json({ error: "La contraseña actual es requerida" });
+    const valida = await bcrypt.compare(passwordActual, cliente.clientPassword);
+    if (!valida) return res.status(401).json({ error: "Contraseña actual incorrecta" });
+  }
+
   const hashedPassword = await bcrypt.hash(passwordNueva, 10);
   await prisma.client.update({ where: { id: req.clienteId }, data: { clientPassword: hashedPassword, debeCambiarPassword: false } });
   res.json({ ok: true, mensaje: "Contraseña actualizada correctamente" });

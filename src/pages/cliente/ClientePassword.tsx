@@ -32,7 +32,7 @@ function CampoPassword({ label, value, onChange }: { label: string; value: strin
 }
 
 function ClientePassword() {
-  const { token, clearDebeCambiarPassword } = useAuth();
+  const { token, debeCambiarPassword, clearDebeCambiarPassword } = useAuth();
   const [actual, setActual] = useState("");
   const [nueva, setNueva] = useState("");
   const [confirmar, setConfirmar] = useState("");
@@ -44,8 +44,12 @@ function ClientePassword() {
     setError("");
     setOk(false);
 
-    if (!actual || !nueva || !confirmar) {
-      setError("Completa todos los campos.");
+    if (!debeCambiarPassword && !actual) {
+      setError("Ingresa tu contraseña actual.");
+      return;
+    }
+    if (!nueva || !confirmar) {
+      setError("Completa la nueva contraseña y su confirmación.");
       return;
     }
     if (nueva !== confirmar) {
@@ -64,7 +68,11 @@ function ClientePassword() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ passwordActual: actual, passwordNueva: nueva }),
+      body: JSON.stringify(
+        debeCambiarPassword
+          ? { passwordNueva: nueva }
+          : { passwordActual: actual, passwordNueva: nueva }
+      ),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -83,6 +91,11 @@ function ClientePassword() {
     <div>
       <h1 style={{ fontSize: 24, marginBottom: 24 }}>🔑 Cambiar Contraseña</h1>
       <div style={{ background: "#1e293b", padding: 28, borderRadius: 14, maxWidth: 460 }}>
+        {debeCambiarPassword && (
+          <div style={{ background: "#1e3a5f", color: "#93c5fd", padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
+            ℹ️ Es tu primer ingreso. Elegí una nueva contraseña fácil de recordar.
+          </div>
+        )}
         {ok && (
           <div style={{ background: "#14532d", color: "#22c55e", padding: 12, borderRadius: 8, marginBottom: 16 }}>
             ✅ Contraseña actualizada correctamente.
@@ -94,7 +107,9 @@ function ClientePassword() {
           </div>
         )}
 
-        <CampoPassword label="Contraseña actual" value={actual} onChange={setActual} />
+        {!debeCambiarPassword && (
+          <CampoPassword label="Contraseña actual" value={actual} onChange={setActual} />
+        )}
         <CampoPassword label="Nueva contraseña" value={nueva} onChange={setNueva} />
         <div style={{ marginBottom: 20 }}>
           <CampoPassword label="Confirmar nueva contraseña" value={confirmar} onChange={setConfirmar} />
