@@ -137,6 +137,7 @@ app.post("/login", async (req, res) => {
       username: client.clientUsername,
       role: "cliente",
       nombreCompleto: client.nombreCompleto,
+      debeCambiarPassword: client.debeCambiarPassword,
     });
   }
 
@@ -895,30 +896,26 @@ app.put("/clients/form/:token", async (req, res) => {
       status: "formulario llenado",
     },
   });
-  let credentials = undefined;
-  if (!updated.clientUsername) {
+  let baseUsername = (updated.ci || "").trim();
+  if (!baseUsername) {
     const nombresArray = (updated.nombres || "").split(" ");
-    const apellidoPaternoRaw = (updated.apellidoPaterno || "").toLowerCase();
-    let baseUsername = `${nombresArray[0] || ""}.${apellidoPaternoRaw}`
-      .replace(/\s+/g, "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-    let username = baseUsername;
-    let counter = 1;
-    while (await prisma.client.findFirst({ where: { clientUsername: username, NOT: { id: updated.id } } })) {
-      username = `${baseUsername}${counter}`;
-      counter++;
-    }
-    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let password = "";
-    for (let i = 0; i < 8; i++) password += chars.charAt(Math.floor(Math.random() * chars.length));
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await prisma.client.update({
-      where: { id: updated.id },
-      data: { clientUsername: username, clientPassword: hashedPassword, credencialesGeneradaAt: new Date() },
-    });
-    credentials = { username, password };
+    baseUsername = `${nombresArray[0] || "cliente"}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
+  let username = baseUsername;
+  let counter = 1;
+  while (await prisma.client.findFirst({ where: { clientUsername: username, NOT: { id: updated.id } } })) {
+    username = `${baseUsername}${counter}`;
+    counter++;
+  }
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let password = "";
+  for (let i = 0; i < 8; i++) password += chars.charAt(Math.floor(Math.random() * chars.length));
+  const hashedPassword = await bcrypt.hash(password, 10);
+  await prisma.client.update({
+    where: { id: updated.id },
+    data: { clientUsername: username, clientPassword: hashedPassword, credencialesGeneradaAt: new Date(), debeCambiarPassword: true },
+  });
+  const credentials = { username, password };
   await prisma.client.update({ where: { id: updated.id }, data: { expiresAt: new Date(0) } });
   let pdfBase64: string | null = null;
   const pedidoActivo = await prisma.pedido.findFirst({
@@ -1052,33 +1049,27 @@ app.post("/clients/:id/regenerar-credenciales", auth, async (req, res) => {
   const id = Number(req.params.id);
   const cliente = await prisma.client.findUnique({ where: { id } });
   if (!cliente) return res.status(404).json({ error: "Cliente no encontrado" });
-  const nombresArray = (cliente.nombres || "").split(" ");
-  const apellidoPaternoRaw = (cliente.apellidoPaterno || "").toLowerCase();
-  let username = `${nombresArray[0] || ""}.${apellidoPaternoRaw}`
-    .replace(/\s+/g, "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-  let counter = 1;
-  while (await prisma.client.findFirst({ where: { clientUsername: username, NOT: { id } } })) {
-    username = `${username.replace(/\d+$/, "")}${counter}`;
-    counter++;
+
+  let username = cliente.clientUsername;
+  if (!username) {
+    username = (cliente.ci || "").trim() || `cliente${id}`;
+    let counter = 1;
+    while (await prisma.client.findFirst({ where: { clientUsername: username!, NOT: { id } } })) {
+      username = `${cliente.ci || "cliente" + id}${counter}`;
+      counter++;
+    }
   }
+
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let password = "";
   for (let i = 0; i < 8; i++) password += chars.charAt(Math.floor(Math.random() * chars.length));
   const hashedPassword = await bcrypt.hash(password, 10);
-  await prisma.client.update({ where: { id }, data: { clientUsername: username, clientPassword: hashedPassword, credencialesGeneradaAt: new Date() } });
-  const LINK_PORTAL = process.env.CLIENT_PORTAL_URL || "https://tudominio.com/cliente";
-  const nombreCompleto = cliente.nombreCompleto || [cliente.nombres, cliente.apellidoPaterno, cliente.apellidoMaterno].filter(Boolean).join(" ") || "Cliente";
-  const emailCliente = cliente.email || "";
-  const celularCliente = cliente.celular || "";
-  setTimeout(() => {
-    enviarCorreo({ email: emailCliente, nombreCompleto, username, password, linkPortal: LINK_PORTAL }).catch(err => console.error("Error enviando correo:", err));
-    enviarWhatsAppCliente(celularCliente, nombreCompleto, username, password, LINK_PORTAL).catch(err => console.error("Error enviando WhatsApp:", err));
-  }, 5000);
+  await prisma.client.update({
+    where: { id },
+    data: { clientUsername: username, clientPassword: hashedPassword, credencialesGeneradaAt: new Date(), debeCambiarPassword: true },
+  });
   res.json({ clientUsername: username, clientPassword: password });
 });
-
 // ===================== PEDIDOS =====================
 app.get("/pedidos", auth, async (req, res) => {
   const pedidos = await prisma.pedido.findMany({
@@ -1425,7 +1416,7 @@ app.put("/cliente/password", authCliente, async (req: any, res) => {
   const valida = await bcrypt.compare(passwordActual, cliente.clientPassword);
   if (!valida) return res.status(401).json({ error: "Contraseña actual incorrecta" });
   const hashedPassword = await bcrypt.hash(passwordNueva, 10);
-  await prisma.client.update({ where: { id: req.clienteId }, data: { clientPassword: hashedPassword } });
+  await prisma.client.update({ where: { id: req.clienteId }, data: { clientPassword: hashedPassword, debeCambiarPassword: false } });
   res.json({ ok: true, mensaje: "Contraseña actualizada correctamente" });
 });
 

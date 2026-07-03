@@ -137,6 +137,7 @@ model Client {
   clientUsername         String?   @unique
   clientPassword         String?
   credencialesGeneradaAt DateTime?
+  debeCambiarPassword    Boolean   @default(false)
 
   entregas          Entrega[]
   magazines         Magazine[]
