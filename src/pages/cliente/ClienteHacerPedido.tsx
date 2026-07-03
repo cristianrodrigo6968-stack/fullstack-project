@@ -420,313 +420,390 @@ function ClienteHacerPedido() {
         {loading || loadingPerfil ? (
           <div style={{ textAlign: "center", padding: 80 }}><Spinner /></div>
         ) : paso === "catalogo" ? (
-          <>
-            <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-              {[
-                { key: "todos", label: "Todos" },
-                { key: "libro", label: "📖 Libros" },
-                { key: "revista", label: "📰 Revistas" },
-                { key: "otro", label: "📦 Otros" },
-              ].map(f => (
-                <button
-                  key={f.key}
-                  onClick={() => setFiltroCategoria(f.key as any)}
-                  style={{
-                    padding: "8px 18px",
-                    borderRadius: 99,
-                    border: filtroCategoria === f.key ? "2px solid #6366f1" : "1px solid #1e1b4b",
-                    background: filtroCategoria === f.key ? "rgba(99,102,241,.15)" : "#0d0d1a",
-                    color: filtroCategoria === f.key ? "#a5b4fc" : "#64748b",
-                    fontWeight: 600,
-                    fontSize: 13,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                    transition: "all .2s",
-                  }}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
-                gap: 28,
-              }}
-            >
-              {productos.filter(p => filtroCategoria === "todos" || getCategoriaFiltro(p) === filtroCategoria).map((p) => {
-                const precioFinal = getPrecioFinal(p.precio, p.descuento);
-                const enCarrito = carrito[p.id]?.cantidad || 0;
-                const bounce = bounceId === p.id;
-
-                return (
-                  <div key={p.id} className="card-catalogo">
-                    <div
-                      onClick={() => setProductoDetalle(p)}
-                      style={{
-                        position: "relative",
-                        width: "100%",
-                        paddingTop: "140%",
-                        overflow: "hidden",
-                        cursor: "pointer",
-                        background: "#0d0d1a",
-                      }}
-                    >
-                      {p.descuento > 0 && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 12,
-                            left: 12,
-                            zIndex: 2,
-                            background: "linear-gradient(135deg,#ef4444,#dc2626)",
-                            color: "white",
-                            padding: "4px 12px",
-                            borderRadius: 99,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            boxShadow: "0 2px 10px rgba(239,68,68,.4)",
-                          }}
-                        >
-                          -{p.descuento}%
-                        </div>
-                      )}
-                      {p.imagenUrl ? (
-                        <img
-                          src={p.imagenUrl}
-                          alt={p.nombre}
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                            transition: "transform .4s ease",
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.07)")}
-                          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            width: "100%",
-                            height: "100%",
-                            background: "linear-gradient(135deg,#1e1b4b,#0f0e1a)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 64,
-                          }}
-                        >
-                          📦
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ padding: 22, flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-                      <h3
-                        onClick={() => setProductoDetalle(p)}
-                        style={{
-                          color: "white",
-                          fontSize: 17,
-                          fontWeight: 700,
-                          margin: 0,
-                          lineHeight: 1.3,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {p.nombre}
-                      </h3>
-
-                      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
-                        {p.descuento > 0 && (
-                          <span style={{ color: "#475569", fontSize: 14, textDecoration: "line-through" }}>
-                            Bs {p.precio.toFixed(2)}
-                          </span>
-                        )}
-                        <span style={{ color: "#34d399", fontSize: 26, fontWeight: 800 }}>
-                          Bs {precioFinal.toFixed(2)}
-                        </span>
-                      </div>
-
-                      <div style={{ position: "relative", marginTop: 4 }}>
-                        {toasts
-                          .filter((t) => t.productoId === p.id)
-                          .map((toast) => (
-                            <div
-                              key={toast.id}
-                              style={{
-                                position: "absolute",
-                                bottom: "100%",
-                                left: "50%",
-                                marginBottom: 6,
-                                background: "#059669",
-                                color: "white",
-                                padding: "5px 16px",
-                                borderRadius: 99,
-                                fontSize: 13,
-                                fontWeight: "bold",
-                                whiteSpace: "nowrap",
-                                pointerEvents: "none",
-                                animation: "toastUp 1.8s ease forwards",
-                                zIndex: 10,
-                                boxShadow: "0 4px 14px rgba(5,150,105,.45)",
-                              }}
-                            >
-                              ✅ ¡Agregado!
-                            </div>
-                          ))}
-
-                        <button
-                          className="btn-comprar"
-                          onClick={() => agregarAlCarrito(p)}
-                          style={{
-                            background:
-                              enCarrito > 0
-                                ? "linear-gradient(135deg,#059669,#047857)"
-                                : "linear-gradient(135deg,#10b981,#059669)",
-                            animation: bounce ? "btnBounce .3s ease" : "none",
-                          }}
-                        >
-                          <span>🛒 Comprar</span>
-                          {enCarrito > 0 && (
-                            <span
-                              style={{
-                                background: "rgba(0,0,0,.2)",
-                                borderRadius: 99,
-                                fontSize: 12,
-                                fontWeight: 700,
-                                padding: "2px 8px",
-                                animation: "badgePop .3s ease",
-                              }}
-                            >
-                              ×{enCarrito}
-                            </span>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Modal de detalle — UNA SOLA VEZ, correctamente ubicado */}
-            {productoDetalle && (
-              <div
+          productoDetalle ? (
+            /* ─── VISTA DETALLE DE PRODUCTO (página completa) ─── */
+            <div>
+              <button
                 onClick={() => setProductoDetalle(null)}
-                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, padding: 20 }}
+                style={{ background: "none", border: "none", color: "#818cf8", fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 20, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}
               >
-                <div
-                  onClick={e => e.stopPropagation()}
-                  style={{ background: "#0d0d1a", border: "1px solid #1e1b4b", borderRadius: 18, maxWidth: 480, width: "100%", maxHeight: "85vh", overflowY: "auto", padding: 24 }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-                    <h3 style={{ color: "white", fontSize: 18, margin: 0 }}>{productoDetalle.nombre}</h3>
-                    <button onClick={() => setProductoDetalle(null)} style={{ background: "none", border: "none", color: "#64748b", fontSize: 18, cursor: "pointer" }}>✕</button>
-                  </div>
+                ← Volver al catálogo
+              </button>
 
-                  {productoDetalle.imagenUrl && (
-                    <img src={productoDetalle.imagenUrl} alt={productoDetalle.nombre} style={{ width: "100%", borderRadius: 12, marginBottom: 14 }} />
+              <h1 style={{ fontSize: isMobile ? 22 : 34, fontWeight: 700, color: "#f1f5f9", margin: "0 0 16px 0", lineHeight: 1.2 }}>
+                {productoDetalle.nombre}
+              </h1>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 28 }}>
+                {productoDetalle.descuento > 0 && (
+                  <span style={{ color: "#ef4444", fontSize: 18, textDecoration: "line-through" }}>
+                    Bs {productoDetalle.precio.toFixed(2)}
+                  </span>
+                )}
+                <span style={{ color: "#34d399", fontSize: 38, fontWeight: "bold" }}>
+                  Bs {getPrecioFinal(productoDetalle.precio, productoDetalle.descuento).toFixed(2)}
+                </span>
+                {productoDetalle.descuento > 0 && (
+                  <span style={{ background: "linear-gradient(135deg,#ef4444,#dc2626)", color: "white", padding: "4px 14px", borderRadius: 99, fontSize: 14, fontWeight: "bold" }}>
+                    -{productoDetalle.descuento}%
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 48, alignItems: "start" }}>
+                {/* Imagen */}
+                <div style={{ borderRadius: 20, overflow: "hidden", background: productoDetalle.imagenUrl ? "transparent" : "#0d0d1a", border: "1px solid #1e1b4b", boxShadow: "0 8px 32px rgba(0,0,0,.4)" }}>
+                  {productoDetalle.imagenUrl ? (
+                    <img src={productoDetalle.imagenUrl} alt={productoDetalle.nombre} style={{ width: "100%", height: "auto", display: "block" }} />
+                  ) : (
+                    <div style={{ minHeight: 300, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 80, opacity: 0.3 }}>📦</div>
                   )}
+                </div>
 
+                {/* Descripción y botones */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
                   {productoDetalle.descripcion && (
-                    <div style={{ marginBottom: 14 }}>
-                      <p style={{ color: "#8b929e", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 6px" }}>Descripción</p>
-                      <p style={{ color: "#94a3b8", fontSize: 14, lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>{productoDetalle.descripcion}</p>
+                    <div style={{ background: "#0d0d1a", border: "1px solid #1e1b4b", borderRadius: 14, padding: "20px 22px" }}>
+                      <p style={{ color: "#8b929e", fontSize: 11, textTransform: "uppercase", letterSpacing: 2, margin: "0 0 10px", fontWeight: 600 }}>Descripción</p>
+                      <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.85, whiteSpace: "pre-wrap", margin: 0 }}>{productoDetalle.descripcion}</p>
                     </div>
                   )}
 
                   {productoDetalle.componentes && productoDetalle.componentes.length > 0 && (
-                    <div style={{ background: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 14 }}>
-                      <p style={{ color: "white", fontSize: 14, fontWeight: "bold", marginBottom: 10 }}>🎁 Esta oferta incluye:</p>
-                      {productoDetalle.componentes.map((comp: any, idx: number) => (
-                        <p key={idx} style={{ color: "#cbd5e1", fontSize: 13, margin: "0 0 6px", display: "flex", alignItems: "center", gap: 6 }}>
-                          <span>✅</span> {getComponenteLabel(comp)}
-                        </p>
-                      ))}
+                    <div style={{ background: "#1e293b", borderRadius: 14, padding: 20 }}>
+                      <h3 style={{ color: "#f1f5f9", fontSize: 18, marginBottom: 12 }}>🎁 Esta oferta incluye:</h3>
+                      <ul style={{ color: "#cbd5e1", fontSize: 14, listStyle: "none", padding: 0, margin: 0 }}>
+                        {productoDetalle.componentes.map((comp: any, idx: number) => (
+                          <li key={idx} style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                            <span>✅</span> {getComponenteLabel(comp)}
+                          </li>
+                        ))}
+                      </ul>
+                      <p style={{ color: "#22c55e", fontWeight: "bold", marginTop: 12, marginBottom: 0 }}>
+                        Precio total del paquete: Bs {getPrecioFinal(productoDetalle.precio, productoDetalle.descuento).toFixed(2)}
+                      </p>
                     </div>
                   )}
 
                   <button
-                    onClick={() => { agregarAlCarrito(productoDetalle); setProductoDetalle(null); }}
-                    style={{ width: "100%", padding: 13, background: "linear-gradient(135deg,#10b981,#059669)", border: "none", borderRadius: 12, color: "white", fontWeight: "bold", fontSize: 14, cursor: "pointer" }}
+                    onClick={() => agregarAlCarrito(productoDetalle)}
+                    style={{
+                      width: "100%", padding: 16, border: "none", borderRadius: 14,
+                      color: "white", fontWeight: "bold", fontSize: 18, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                      background: "linear-gradient(135deg,#10b981,#059669)",
+                      boxShadow: "0 4px 20px rgba(16,185,129,.3)",
+                    }}
                   >
                     🛒 Comprar — Bs {getPrecioFinal(productoDetalle.precio, productoDetalle.descuento).toFixed(2)}
                   </button>
+
+                  <button
+                    onClick={() => setPaso("carrito")}
+                    style={{
+                      width: "100%", padding: 14, background: "transparent", border: "2px solid #4f46e5",
+                      borderRadius: 14, color: "#818cf8", fontWeight: "bold", fontSize: 16, cursor: "pointer",
+                    }}
+                  >
+                    Ir al carrito ({totalItems})
+                  </button>
                 </div>
               </div>
-            )}
 
-            {totalItems > 0 && (
-              <div
-                style={{
-                  position: "fixed",
-                  bottom: 20,
-                  right: 20,
-                  zIndex: 1000,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  background: "rgba(13,13,26,0.95)",
-                  backdropFilter: "blur(12px)",
-                  border: "1px solid #312e81",
-                  borderRadius: 20,
-                  padding: "12px 20px",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.3)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 22 }}>🛒</span>
-                  <div>
-                    <p style={{ color: "#94a3b8", fontSize: 11, margin: 0 }}>
-                      {totalItems} producto{totalItems !== 1 ? "s" : ""}
-                    </p>
-                    <p style={{ color: "#34d399", fontWeight: 800, fontSize: 18, margin: 0 }}>
-                      Bs {totalPrecio.toFixed(2)}
-                    </p>
+              {/* Más productos */}
+              {productos.filter(p => p.id !== productoDetalle.id).length > 0 && (
+                <div style={{ marginTop: 50, borderTop: "1px solid #1e1b4b", paddingTop: 44 }}>
+                  <h3 style={{ fontSize: 20, marginBottom: 26, color: "#cbd5e1", fontWeight: 700 }}>📦 Más productos</h3>
+                  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 20 }}>
+                    {productos.filter(p => p.id !== productoDetalle.id).map((p) => {
+                      const precio = getPrecioFinal(p.precio, p.descuento);
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => setProductoDetalle(p)}
+                          style={{ background: "#0d0d1a", borderRadius: 14, overflow: "hidden", cursor: "pointer", border: "1px solid #1e1b4b" }}
+                        >
+                          {p.imagenUrl ? (
+                            <img src={p.imagenUrl} alt={p.nombre} style={{ width: "100%", height: 160, objectFit: "cover" }} />
+                          ) : (
+                            <div style={{ width: "100%", height: 160, background: "#1e1b4b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44 }}>📦</div>
+                          )}
+                          <div style={{ padding: 14 }}>
+                            <h4 style={{ color: "white", fontSize: 13, marginBottom: 7, marginTop: 0, lineHeight: 1.3 }}>{p.nombre}</h4>
+                            {p.descuento > 0 && (
+                              <span style={{ color: "#64748b", fontSize: 12, textDecoration: "line-through", marginRight: 6 }}>Bs {p.precio.toFixed(2)}</span>
+                            )}
+                            <p style={{ color: "#34d399", fontWeight: "bold", fontSize: 15, margin: 0 }}>Bs {precio.toFixed(2)}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-                <button
-                  onClick={() => setPaso("carrito")}
-                  style={{
-                    padding: "10px 20px",
-                    background: "linear-gradient(135deg,#10b981,#059669)",
-                    border: "none",
-                    borderRadius: 12,
-                    color: "white",
-                    fontWeight: 700,
-                    fontSize: 15,
-                    cursor: "pointer",
-                    boxShadow: "0 4px 16px rgba(16,185,129,.3)",
-                  }}
-                >
-                  💳 Pagar
-                </button>
-                <button
-                  onClick={vaciarCarrito}
-                  style={{
-                    background: "transparent",
-                    border: "1px solid #1e1b4b",
-                    borderRadius: 8,
-                    color: "#64748b",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    padding: "6px 10px",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  🗑
-                </button>
+              )}
+            </div>
+          ) : (
+            /* ─── VISTA CATÁLOGO ─── */
+            <>
+              <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+                {[
+                  { key: "todos", label: "Todos" },
+                  { key: "libro", label: "📖 Libros" },
+                  { key: "revista", label: "📰 Revistas" },
+                  { key: "otro", label: "📦 Otros" },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setFiltroCategoria(f.key as any)}
+                    style={{
+                      padding: "8px 18px",
+                      borderRadius: 99,
+                      border: filtroCategoria === f.key ? "2px solid #6366f1" : "1px solid #1e1b4b",
+                      background: filtroCategoria === f.key ? "rgba(99,102,241,.15)" : "#0d0d1a",
+                      color: filtroCategoria === f.key ? "#a5b4fc" : "#64748b",
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "all .2s",
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                ))}
               </div>
-            )}
-          </>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+                  gap: 28,
+                }}
+              >
+                {productos.filter(p => filtroCategoria === "todos" || getCategoriaFiltro(p) === filtroCategoria).map((p) => {
+                  const precioFinal = getPrecioFinal(p.precio, p.descuento);
+                  const enCarrito = carrito[p.id]?.cantidad || 0;
+                  const bounce = bounceId === p.id;
+
+                  return (
+                    <div key={p.id} className="card-catalogo">
+                      <div
+                        onClick={() => setProductoDetalle(p)}
+                        style={{
+                          position: "relative",
+                          width: "100%",
+                          paddingTop: "140%",
+                          overflow: "hidden",
+                          cursor: "pointer",
+                          background: "#0d0d1a",
+                        }}
+                      >
+                        {p.descuento > 0 && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: 12,
+                              left: 12,
+                              zIndex: 2,
+                              background: "linear-gradient(135deg,#ef4444,#dc2626)",
+                              color: "white",
+                              padding: "4px 12px",
+                              borderRadius: 99,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              boxShadow: "0 2px 10px rgba(239,68,68,.4)",
+                            }}
+                          >
+                            -{p.descuento}%
+                          </div>
+                        )}
+                        {p.imagenUrl ? (
+                          <img
+                            src={p.imagenUrl}
+                            alt={p.nombre}
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                              transition: "transform .4s ease",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.07)")}
+                            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              width: "100%",
+                              height: "100%",
+                              background: "linear-gradient(135deg,#1e1b4b,#0f0e1a)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 64,
+                            }}
+                          >
+                            📦
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ padding: 22, flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+                        <h3
+                          onClick={() => setProductoDetalle(p)}
+                          style={{
+                            color: "white",
+                            fontSize: 17,
+                            fontWeight: 700,
+                            margin: 0,
+                            lineHeight: 1.3,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {p.nombre}
+                        </h3>
+
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
+                          {p.descuento > 0 && (
+                            <span style={{ color: "#475569", fontSize: 14, textDecoration: "line-through" }}>
+                              Bs {p.precio.toFixed(2)}
+                            </span>
+                          )}
+                          <span style={{ color: "#34d399", fontSize: 26, fontWeight: 800 }}>
+                            Bs {precioFinal.toFixed(2)}
+                          </span>
+                        </div>
+
+                        <div style={{ position: "relative", marginTop: 4 }}>
+                          {toasts
+                            .filter((t) => t.productoId === p.id)
+                            .map((toast) => (
+                              <div
+                                key={toast.id}
+                                style={{
+                                  position: "absolute",
+                                  bottom: "100%",
+                                  left: "50%",
+                                  marginBottom: 6,
+                                  background: "#059669",
+                                  color: "white",
+                                  padding: "5px 16px",
+                                  borderRadius: 99,
+                                  fontSize: 13,
+                                  fontWeight: "bold",
+                                  whiteSpace: "nowrap",
+                                  pointerEvents: "none",
+                                  animation: "toastUp 1.8s ease forwards",
+                                  zIndex: 10,
+                                  boxShadow: "0 4px 14px rgba(5,150,105,.45)",
+                                }}
+                              >
+                                ✅ ¡Agregado!
+                              </div>
+                            ))}
+
+                          <button
+                            className="btn-comprar"
+                            onClick={() => agregarAlCarrito(p)}
+                            style={{
+                              background:
+                                enCarrito > 0
+                                  ? "linear-gradient(135deg,#059669,#047857)"
+                                  : "linear-gradient(135deg,#10b981,#059669)",
+                              animation: bounce ? "btnBounce .3s ease" : "none",
+                            }}
+                          >
+                            <span>🛒 Comprar</span>
+                            {enCarrito > 0 && (
+                              <span
+                                style={{
+                                  background: "rgba(0,0,0,.2)",
+                                  borderRadius: 99,
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  padding: "2px 8px",
+                                  animation: "badgePop .3s ease",
+                                }}
+                              >
+                                ×{enCarrito}
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {totalItems > 0 && (
+                <div
+                  style={{
+                    position: "fixed",
+                    bottom: 20,
+                    right: 20,
+                    zIndex: 1000,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    background: "rgba(13,13,26,0.95)",
+                    backdropFilter: "blur(12px)",
+                    border: "1px solid #312e81",
+                    borderRadius: 20,
+                    padding: "12px 20px",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.3)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 22 }}>🛒</span>
+                    <div>
+                      <p style={{ color: "#94a3b8", fontSize: 11, margin: 0 }}>
+                        {totalItems} producto{totalItems !== 1 ? "s" : ""}
+                      </p>
+                      <p style={{ color: "#34d399", fontWeight: 800, fontSize: 18, margin: 0 }}>
+                        Bs {totalPrecio.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setPaso("carrito")}
+                    style={{
+                      padding: "10px 20px",
+                      background: "linear-gradient(135deg,#10b981,#059669)",
+                      border: "none",
+                      borderRadius: 12,
+                      color: "white",
+                      fontWeight: 700,
+                      fontSize: 15,
+                      cursor: "pointer",
+                      boxShadow: "0 4px 16px rgba(16,185,129,.3)",
+                    }}
+                  >
+                    💳 Pagar
+                  </button>
+                  <button
+                    onClick={vaciarCarrito}
+                    style={{
+                      background: "transparent",
+                      border: "1px solid #1e1b4b",
+                      borderRadius: 8,
+                      color: "#64748b",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      padding: "6px 10px",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    🗑
+                  </button>
+                </div>
+              )}
+            </>
+          )
         ) : paso === "carrito" ? (
           /* ─── REVISIÓN DE CARRITO ─── */
           <div style={{ maxWidth: 680, margin: "0 auto" }}>
