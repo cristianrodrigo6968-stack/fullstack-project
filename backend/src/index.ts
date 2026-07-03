@@ -1126,6 +1126,12 @@ app.delete("/items-pedido/:id", auth, async (req, res) => {
 
   try {
     await prisma.revisionItem.deleteMany({ where: { itemPedidoId: id } });
+    const tareas = await prisma.tareaItem.findMany({ where: { itemPedidoId: id }, select: { id: true } });
+    const tareaIds = tareas.map(t => t.id);
+    if (tareaIds.length > 0) {
+      await prisma.comentarioTarea.deleteMany({ where: { tareaId: { in: tareaIds } } });
+      await prisma.tareaItem.deleteMany({ where: { itemPedidoId: id } });
+    }
     await prisma.itemPedido.delete({ where: { id } });
     res.json({ ok: true });
   } catch (error) {
