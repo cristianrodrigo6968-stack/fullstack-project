@@ -1,10 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useWindowSize } from "../../hooks/useWindowSize";
 import { useMesActual } from "../../hooks/useMesActual";
 import NavegadorMes from "../../components/NavegadorMes";
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+interface Comentario {
+  id: number;
+  autorTipo: string;
+  texto: string | null;
+  archivos: string[];
+  creadoEn: string;
+}
+
+interface Tarea {
+  id: number;
+  titulo: string;
+  descripcion: string | null;
+  completada: boolean;
+  comentarios: Comentario[];
+}
 
 interface ItemPedido {
   id: number;
@@ -23,6 +39,7 @@ interface ItemPedido {
   cliente: { id: number; nombreCompleto: string | null };
   pedidoId: number;
   creadoEn: string;
+  tareas: Tarea[];
 }
 
 interface DesgloseTitulo {
@@ -146,6 +163,230 @@ function BarraProgreso({ items }: { items: ItemPedido[] }) {
         <span style={{ fontSize: 10, color: "#22c55e" }}>✅ {completados} completados</span>
         <span style={{ fontSize: 10, color: "#60a5fa" }}>📦 {entregados} entregados</span>
       </div>
+    </div>
+  );
+}
+
+function renderArchivos(archivos: string[]) {
+  if (!archivos?.length) return null;
+  return (
+    <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 6 }}>
+      {archivos.map((url, i) => {
+        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+        if (isImage) {
+          return (
+            <a key={i} href={url} target="_blank" rel="noreferrer">
+              <img src={url} alt="adjunto" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6, border: "1px solid #334155" }} />
+            </a>
+          );
+        }
+        const fileName = url.split("/").pop() || "Documento";
+        return (
+          <a key={i} href={url} target="_blank" rel="noreferrer" style={{ background: "#0f172a", padding: "4px 10px", borderRadius: 6, color: "#60a5fa", textDecoration: "none", fontSize: 11 }}>
+            📄 {fileName}
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
+function TareaAdminCard({ tarea, token, onRefresh }: { tarea: Tarea; token: string | null; onRefresh: () => void }) {
+  const [texto, setTexto] = useState("");
+  const [archivos, setArchivos] = useState<File[]>([]);
+  const [enviando, setEnviando] = useState(false);
+  const [actualizando, setActualizando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    setArchivos(prev => [...prev, ...Array.from(files)]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removerArchivo = (i: number) => setArchivos(prev => prev.filter((_, idx) => idx !== i));
+
+  const enviar = async () => {
+    if (!texto.trim() && archivos.length === 0) return;
+    setEnviando(true);
+    const formData = new FormData();
+    if (texto.trim()) formData.append("texto", texto);
+    archivos.forEach(f => formData.append("archivos", f));
+    await fetch(`${API_URL}/tareas/${tarea.id}/comentarios`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    setTexto("");
+    setArchivos([]);
+    setEnviando(false);
+    onRefresh();
+  };
+
+  const toggleCompletada = async () => {
+    setActualizando(true);
+    await fetch(`${API_URL}/tareas/${tarea.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ completada: !tarea.completada }),
+    });
+    setActualizando(false);
+    onRefresh();
+  };
+
+  const eliminarTarea = async () => {
+    if (!confirm(`¿Eliminar la tarea "${tarea.titulo}" y todos sus comentarios?`)) return;
+    setEliminando(true);
+    await fetch(`${API_URL}/tareas/${tarea.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    setEliminando(false);
+    onRefresh();
+  };
+
+  return (
+    <div style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 10, padding: 14, marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8 }}>
+        <div>
+          <p style={{ color: "white", fontWeight: "bold", fontSize: 13, margin: 0 }}>{tarea.titulo}</p>
+          {tarea.descripcion && <p style={{ color: "#94a3b8", fontSize: 12, margin: "4px 0 0" }}>{tarea.descripcion}</p>}
+        </div>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+          <button
+            onClick={toggleCompletada}
+            disabled={actualizando}
+            style={{
+              fontSize: 11, padding: "3px 10px", borderRadius: 99, fontWeight: "bold", border: "none", cursor: "pointer",
+              background: tarea.completada ? "rgba(34,197,94,0.15)" : "rgba(245,158,11,0.15)",
+              color: tarea.completada ? "#22c55e" : "#f59e0b",
+            }}
+          >
+            {tarea.completada ? "✅ Completada" : "⏳ Marcar completada"}
+          </button>
+          <button onClick={eliminarTarea} disabled={eliminando} style={{ background: "transparent", border: "1px solid #ef4444", color: "#ef4444", borderRadius: 8, fontSize: 11, padding: "3px 8px", cursor: "pointer" }}>
+            {eliminando ? "..." : "🗑"}
+          </button>
+        </div>
+      </div>
+
+      {tarea.comentarios.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10, marginBottom: 10 }}>
+          {tarea.comentarios.map(c => {
+            const esAdmin = c.autorTipo === "admin";
+            return (
+              <div key={c.id} style={{
+                alignSelf: esAdmin ? "flex-end" : "flex-start", maxWidth: "85%",
+                background: esAdmin ? "#3b82f6" : "#1e293b", color: "white",
+                padding: "8px 12px", borderRadius: 8, fontSize: 12,
+              }}>
+                <p style={{ margin: 0, fontSize: 10, opacity: 0.7 }}>{esAdmin ? "Tú (admin)" : "Cliente"}</p>
+                {c.texto && <p style={{ margin: "3px 0 0", whiteSpace: "pre-wrap" }}>{c.texto}</p>}
+                {renderArchivos(c.archivos)}
+                <p style={{ fontSize: 9, opacity: 0.6, marginTop: 4, marginBottom: 0, textAlign: "right" }}>
+                  {new Date(c.creadoEn).toLocaleString([], { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {archivos.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+          {archivos.map((file, i) => (
+            <div key={i} style={{ position: "relative" }}>
+              {file.type.startsWith("image/") ? (
+                <img src={URL.createObjectURL(file)} alt="preview" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6 }} />
+              ) : (
+                <div style={{ width: 40, height: 40, background: "#1e293b", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>📄</div>
+              )}
+              <button onClick={() => removerArchivo(i)} style={{ position: "absolute", top: -6, right: -6, background: "#ef4444", border: "none", borderRadius: "50%", width: 15, height: 15, color: "white", fontSize: 8, cursor: "pointer" }}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 6, alignItems: "flex-end" }}>
+        <input type="file" multiple ref={fileInputRef} onChange={handleFiles} style={{ display: "none" }} />
+        <button onClick={() => fileInputRef.current?.click()} style={{ background: "#1e293b", border: "none", borderRadius: 6, color: "white", cursor: "pointer", padding: "7px 9px", fontSize: 13 }}>📎</button>
+        <input
+          value={texto}
+          onChange={e => setTexto(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && !e.shiftKey && enviar()}
+          placeholder="Escribe un comentario..."
+          style={{ flex: 1, padding: 8, borderRadius: 6, border: "1px solid #334155", background: "#1e293b", color: "white", fontSize: 12 }}
+        />
+        <button
+          onClick={enviar}
+          disabled={enviando || (!texto.trim() && archivos.length === 0)}
+          style={{ background: "#3b82f6", border: "none", padding: "8px 14px", borderRadius: 6, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 12, opacity: enviando || (!texto.trim() && archivos.length === 0) ? 0.6 : 1 }}
+        >
+          {enviando ? "..." : "Enviar"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TareasPanel({ item, token, onRefresh }: { item: ItemPedido; token: string | null; onRefresh: () => void }) {
+  const [nuevoTitulo, setNuevoTitulo] = useState("");
+  const [nuevaDescripcion, setNuevaDescripcion] = useState("");
+  const [creando, setCreando] = useState(false);
+  const [mostrarForm, setMostrarForm] = useState(false);
+
+  const crearTarea = async () => {
+    if (!nuevoTitulo.trim()) return;
+    setCreando(true);
+    await fetch(`${API_URL}/items/${item.id}/tareas`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ titulo: nuevoTitulo, descripcion: nuevaDescripcion || undefined }),
+    });
+    setNuevoTitulo("");
+    setNuevaDescripcion("");
+    setCreando(false);
+    setMostrarForm(false);
+    onRefresh();
+  };
+
+  return (
+    <div style={{ marginTop: 12, borderTop: "1px solid #334155", paddingTop: 12 }}>
+      <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", marginBottom: 8, letterSpacing: 0.5 }}>📋 Tareas para el cliente</p>
+
+      {item.tareas.map(tarea => (
+        <TareaAdminCard key={tarea.id} tarea={tarea} token={token} onRefresh={onRefresh} />
+      ))}
+
+      {mostrarForm ? (
+        <div style={{ background: "#0f172a", border: "1px dashed #334155", borderRadius: 10, padding: 12 }}>
+          <input
+            placeholder="Título de la tarea (ej: Enviar foto y biografía)"
+            value={nuevoTitulo}
+            onChange={e => setNuevoTitulo(e.target.value)}
+            style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #334155", background: "#1e293b", color: "white", fontSize: 12, marginBottom: 8, boxSizing: "border-box" }}
+          />
+          <textarea
+            placeholder="Descripción (opcional)"
+            value={nuevaDescripcion}
+            onChange={e => setNuevaDescripcion(e.target.value)}
+            rows={2}
+            style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #334155", background: "#1e293b", color: "white", fontSize: 12, marginBottom: 8, boxSizing: "border-box", resize: "none" }}
+          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={crearTarea} disabled={creando || !nuevoTitulo.trim()} style={{ background: "#22c55e", border: "none", padding: "7px 14px", borderRadius: 6, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 12, opacity: !nuevoTitulo.trim() ? 0.5 : 1 }}>
+              {creando ? "Creando..." : "✅ Crear tarea"}
+            </button>
+            <button onClick={() => setMostrarForm(false)} style={{ background: "#334155", border: "none", padding: "7px 14px", borderRadius: 6, color: "white", cursor: "pointer", fontSize: 12 }}>Cancelar</button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setMostrarForm(true)}
+          style={{ background: "transparent", border: "1px dashed #334155", borderRadius: 8, color: "#64748b", padding: "8px 14px", cursor: "pointer", fontSize: 12, width: "100%" }}
+        >
+          ＋ Agregar tarea
+        </button>
+      )}
     </div>
   );
 }
@@ -419,6 +660,9 @@ function Entregas() {
                             {item.conIsbn && <span className="tag" style={{ background: "rgba(59,130,246,0.1)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.2)" }}>📘 ISBN</span>}
                           </div>
                         )}
+                              
+                        {/* 👇 PANEL DE TAREAS (AGREGADO AQUÍ) */}
+                        <TareasPanel item={item} token={token} onRefresh={loadItems} />
 
                         {/* Botones de estado + eliminar */}
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
