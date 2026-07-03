@@ -280,6 +280,7 @@ model ItemPedido {
   edicion                 Edicion?       @relation(fields: [edicionId], references: [id])
   pedido                  Pedido         @relation(fields: [pedidoId], references: [id])
   revisiones              RevisionItem[]
+  tareas                  TareaItem[]
 }
 
 model RevisionItem {
@@ -291,4 +292,24 @@ model RevisionItem {
   archivos     String[]
   creadoEn     DateTime   @default(now())
   item         ItemPedido @relation(fields: [itemPedidoId], references: [id])
+}
+model TareaItem {
+  id           Int               @id @default(autoincrement())
+  itemPedidoId Int
+  titulo       String
+  descripcion  String?
+  completada   Boolean           @default(false)
+  creadoEn     DateTime          @default(now())
+  item         ItemPedido        @relation(fields: [itemPedidoId], references: [id])
+  comentarios  ComentarioTarea[]
+}
+
+model ComentarioTarea {
+  id        Int       @id @default(autoincrement())
+  tareaId   Int
+  autorTipo String
+  texto     String?
+  archivos  String[]  @default([])
+  creadoEn  DateTime  @default(now())
+  tarea     TareaItem @relation(fields: [tareaId], references: [id])
 }

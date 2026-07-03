@@ -1532,10 +1532,17 @@ app.post("/cliente/pedidos", authCliente, async (req: any, res) => {
   res.json(pedido);
 });
 
-app.get("/cliente/pedidos", authCliente, async (req: any, res) => {
+app.get("/cliente/pedidos", authCliente, async (req, res) => {
   const pedidos = await prisma.pedido.findMany({
     where: { clienteId: req.clienteId },
-    include: { items: { include: { revisiones: true } } },
+    include: {
+      items: {
+        include: {
+          revisiones: true,
+          tareas: { include: { comentarios: { orderBy: { creadoEn: "asc" } } }, orderBy: { creadoEn: "asc" } },
+        },
+      },
+    },
     orderBy: { creadoEn: "desc" },
   });
   res.json(pedidos);
@@ -1549,6 +1556,7 @@ app.get("/cliente/pedidos/:id", authCliente, async (req: any, res) => {
         include: {
           edicion: { include: { magazine: true } },
           revisiones: { orderBy: { creadoEn: "asc" } },
+          tareas: { include: { comentarios: { orderBy: { creadoEn: "asc" } } }, orderBy: { creadoEn: "asc" } },
         },
       },
     },
@@ -1729,12 +1737,14 @@ app.get("/items-pedido", auth, async (req, res) => {
       pedido: {
         include: { cliente: { select: { id: true, nombreCompleto: true, nombres: true, apellidoPaterno: true } } },
       },
+      tareas: { include: { comentarios: { orderBy: { creadoEn: "asc" } } }, orderBy: { creadoEn: "asc" } },
     },
     orderBy: { id: "desc" },
   });
   const result = items.map((item) => ({ ...item, cliente: item.pedido.cliente, creadoEn: item.pedido.creadoEn }));
   res.json(result);
 });
+
 app.put("/items-pedido/:id", auth, async (req, res) => {
   const id = Number(req.params.id);
   const { estado, notas } = req.body;
@@ -1757,7 +1767,75 @@ app.post("/items-pedido/:id/archivo", auth, upload.single("archivo"), async (req
   const updated = await prisma.itemPedido.update({ where: { id }, data, include: { pedido: { include: { cliente: true } } } });
   res.json({ ...updated, cliente: updated.pedido.cliente, creadoEn: updated.pedido.creadoEn });
 });
+// ===================== TAREAS DE ITEM =====================
+app.post("/items/:id/tareas", auth, async (req, res) => {
+  const itemPedidoId = Number(req.params.id);
+  const { titulo, descripcion } = req.body;
+  if (!titulo?.trim()) return res.status(400).json({ error: "El título es requerido" });
+  const tarea = await prisma.tareaItem.create({
+    data: { itemPedidoId, titulo, descripcion: descripcion || null },
+  });
+  res.json(tarea);
+});
 
+app.put("/tareas/:id", auth, async (req, res) => {
+  const id = Number(req.params.id);
+  const { completada, titulo, descripcion } = req.body;
+  const data: any = {};
+  if (completada !== undefined) data.completada = completada;
+  if (titulo !== undefined) data.titulo = titulo;
+  if (descripcion !== undefined) data.descripcion = descripcion;
+  const tarea = await prisma.tareaItem.update({ where: { id }, data });
+  res.json(tarea);
+});
+
+app.delete("/tareas/:id", auth, async (req, res) => {
+  const id = Number(req.params.id);
+  await prisma.comentarioTarea.deleteMany({ where: { tareaId: id } });
+  await prisma.tareaItem.delete({ where: { id } });
+  res.json({ ok: true });
+});
+
+app.post("/tareas/:id/comentarios", auth, upload.array("archivos", 5), async (req: any, res) => {
+  const tareaId = Number(req.params.id);
+  const { texto } = req.body;
+  const archivos: string[] = [];
+  if (req.files) {
+    for (const file of req.files) {
+      const url = await subirImagen(file.buffer, "tareas", "auto");
+      if (url) archivos.push(url);
+    }
+  }
+  if (!texto?.trim() && archivos.length === 0) return res.status(400).json({ error: "Escribe un comentario o adjunta un archivo" });
+  const comentario = await prisma.comentarioTarea.create({
+    data: { tareaId, autorTipo: "admin", texto: texto || null, archivos },
+  });
+  res.json(comentario);
+});
+
+app.post("/cliente/tareas/:id/comentarios", authCliente, upload.array("archivos", 5), async (req: any, res) => {
+  const tareaId = Number(req.params.id);
+  const tarea = await prisma.tareaItem.findUnique({
+    where: { id: tareaId },
+    include: { item: { include: { pedido: true } } },
+  });
+  if (!tarea || tarea.item.pedido.clienteId !== req.clienteId) {
+    return res.status(403).json({ error: "No tienes acceso a esta tarea" });
+  }
+  const { texto } = req.body;
+  const archivos: string[] = [];
+  if (req.files) {
+    for (const file of req.files) {
+      const url = await subirImagen(file.buffer, "tareas", "auto");
+      if (url) archivos.push(url);
+    }
+  }
+  if (!texto?.trim() && archivos.length === 0) return res.status(400).json({ error: "Escribe un comentario o adjunta un archivo" });
+  const comentario = await prisma.comentarioTarea.create({
+    data: { tareaId, autorTipo: "cliente", texto: texto || null, archivos },
+  });
+  res.json(comentario);
+});
 // ===================== NOTIFICACIONES =====================
 
 // ===================== INICIO SERVIDOR =====================
