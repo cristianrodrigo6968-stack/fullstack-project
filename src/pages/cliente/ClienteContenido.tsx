@@ -80,6 +80,14 @@ function TareaCard({ tarea, onEnviar }: { tarea: Tarea; onEnviar: (tareaId: numb
   const [archivos, setArchivos] = useState<File[]>([]);
   const [enviando, setEnviando] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const ajustarAltura = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 160) + "px";
+  };
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -97,6 +105,7 @@ function TareaCard({ tarea, onEnviar }: { tarea: Tarea; onEnviar: (tareaId: numb
     setTexto("");
     setArchivos([]);
     setEnviando(false);
+    requestAnimationFrame(ajustarAltura);
   };
 
   return (
@@ -157,19 +166,20 @@ function TareaCard({ tarea, onEnviar }: { tarea: Tarea; onEnviar: (tareaId: numb
       {/* Input de nuevo comentario */}
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
         <input type="file" multiple ref={fileInputRef} onChange={handleFiles} style={{ display: "none" }} />
-        <button onClick={() => fileInputRef.current?.click()} style={{ background: "#1e293b", border: "none", borderRadius: 8, color: "white", cursor: "pointer", padding: "9px 11px", fontSize: 14 }} title="Adjuntar archivos">📎</button>
+        <button onClick={() => fileInputRef.current?.click()} style={{ background: "#1e293b", border: "none", borderRadius: 8, color: "white", cursor: "pointer", padding: "9px 11px", fontSize: 14, flexShrink: 0 }} title="Adjuntar archivos">📎</button>
         <textarea
+          ref={textareaRef}
           value={texto}
-          onChange={e => setTexto(e.target.value)}
+          onChange={e => { setTexto(e.target.value); ajustarAltura(); }}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviar(); } }}
           placeholder="Escribe un comentario o sube un archivo... (Shift+Enter para salto de línea)"
           rows={1}
-          style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #334155", background: "#1e293b", color: "white", fontSize: 13, resize: "vertical", fontFamily: "inherit", minHeight: 38 }}
+          style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #334155", background: "#1e293b", color: "white", fontSize: 13, resize: "none", fontFamily: "inherit", minHeight: 38, maxHeight: 160, overflowY: "auto", lineHeight: 1.4 }}
         />
         <button
           onClick={enviar}
           disabled={enviando || (!texto.trim() && archivos.length === 0)}
-          style={{ background: "#3b82f6", border: "none", padding: "9px 16px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13, opacity: enviando || (!texto.trim() && archivos.length === 0) ? 0.6 : 1 }}
+          style={{ background: "#3b82f6", border: "none", padding: "9px 16px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13, opacity: enviando || (!texto.trim() && archivos.length === 0) ? 0.6 : 1, flexShrink: 0 }}
         >
           {enviando ? "..." : "Enviar"}
         </button>
