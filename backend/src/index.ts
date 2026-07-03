@@ -785,7 +785,14 @@ app.put("/pagos/:id/verificar", auth, async (req, res) => {
       await enviarWhatsAppCliente(cliente.celular || "", cliente.nombreCompleto || pago.nombreDeclarado, "", "", "", pdfBuffer, `Recibo_Pedido_${nuevoPedido.id}.pdf`);
     }, 5000);
   }
-  res.json({ ...pago, clienteId: cliente.id, pedido: nuevoPedido });
+  res.json({
+    ...pago,
+    clienteId: cliente.id,
+    pedido: nuevoPedido,
+    clienteToken: cliente.token,
+    clienteCelular: cliente.celular,
+    esClienteNuevo,
+  });
 });
 
 app.put("/pagos/:id/rechazar", auth, async (req, res) => {

@@ -276,9 +276,9 @@ function ClienteContenido() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 24, marginBottom: 8 }}>📋 Mis Tareas</h1>
+      <h1 style={{ fontSize: 24, marginBottom: 8 }}>📋 Mis Archivos</h1>
       <p style={{ color: "#94a3b8", marginBottom: 24, fontSize: 14 }}>
-        Aquí verás las tareas que la asociación te asigne para avanzar tu libro o revista: sube tus archivos y deja comentarios.
+        Aquí subiras archivos que la asociación te asigne para avanzar tu libro o revista: sube tus archivos y deja comentarios.
       </p>
 
       {itemsConTareas.length === 0 ? (

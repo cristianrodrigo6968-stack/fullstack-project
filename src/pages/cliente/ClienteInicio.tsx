@@ -15,7 +15,7 @@ const ESTADO_ITEM_LABEL: Record<string, { label: string; color: string }> = {
 
 const ESTADO_CLIENTE_LABEL: Record<string, string> = {
   pendiente: "Formulario pendiente de completar",
-  "formulario llenado": "Formulario recibido — en revisión",
+  "formulario llenado": "Formulario recibido",
   "en proceso": "En proceso de producción",
   procesado: "Proceso completado",
 };
