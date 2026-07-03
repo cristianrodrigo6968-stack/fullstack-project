@@ -54,7 +54,7 @@ function ClientePanel() {
   const menuItems = [
     { key: "inicio", label: "🏠 Inicio" },
     
-  { key: "contenido", label: "📋 Mis Tareas" },  
+  { key: "contenido", label: "📋 Mis Archivos" },  
     { key: "mensajes", label: "💬 Mensajes", badge: unreadMessages },
     { key: "password", label: "🔑 Cambiar Contraseña" },
     { key: "hacer-pedido", label: "🛒 Hacer Pedido" },
