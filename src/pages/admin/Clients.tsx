@@ -330,6 +330,12 @@ function Clients() {
     } catch (err) { console.error("Error al regenerar credenciales", err); }
   };
 
+  const abrirWhatsapp = (celular: string, mensaje: string) => {
+    const numeroLimpio = celular.replace(/\D/g, "");
+    const numeroConCodigo = numeroLimpio.startsWith("591") ? numeroLimpio : `591${numeroLimpio}`;
+    window.open(`https://wa.me/${numeroConCodigo}?text=${encodeURIComponent(mensaje)}`, "_blank");
+  };
+
   useEffect(() => {
     if (selected) {
       cargarCredenciales(selected.id);
@@ -484,7 +490,23 @@ function Clients() {
                 <p style={{ color: "#64748b", fontSize: 13, marginBottom: 16 }}>Este cliente aún no tiene credenciales de acceso. Haz clic en el botón para generarlas.</p>
               )}
               <button onClick={() => regenerarCredenciales(selected.id)} style={{ marginTop: 16, background: "#7c3aed", border: "none", padding: "10px 20px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>🔄 Regenerar credenciales</button>
-              {credenciales?.clientPassword && <div style={{ background: "#1e3a5f", color: "#60a5fa", padding: 10, borderRadius: 8, marginTop: 12, fontSize: 13 }}>⚠️ Comparte esta contraseña con el cliente por un canal seguro. Al recargar la página no volverá a verse.</div>}
+             {credenciales?.clientPassword && (
+                <>
+                  <div style={{ background: "#1e3a5f", color: "#60a5fa", padding: 10, borderRadius: 8, marginTop: 12, fontSize: 13 }}>⚠️ Comparte esta contraseña con el cliente por un canal seguro. Al recargar la página no volverá a verse.</div>
+                  {selected.celular && (
+                    <button
+                      onClick={() => {
+                        const link = `${window.location.origin}/login`;
+                        const mensaje = `¡Hola ${getNombreDisplay(selected)}! Aquí están tus nuevos datos de acceso al portal de la Asociación:\n\nUsuario: ${credenciales.clientUsername}\nContraseña: ${credenciales.clientPassword}\n\nIngresa aquí: ${link}`;
+                        abrirWhatsapp(selected.celular!, mensaje);
+                      }}
+                      style={{ marginTop: 10, background: "#22c55e", border: "none", padding: "10px 20px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}
+                    >
+                      📱 Enviar por WhatsApp
+                    </button>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Datos personales */}

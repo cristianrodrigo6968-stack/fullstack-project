@@ -98,6 +98,7 @@ function AdminPagos() {
   const [editMonto, setEditMonto] = useState("");
 
   const [eliminandoId, setEliminandoId] = useState<number | null>(null);
+  const [linkWhatsapp, setLinkWhatsapp] = useState<{ celular: string; mensaje: string } | null>(null);
 
   const headers = {
     "Content-Type": "application/json",
@@ -127,7 +128,22 @@ function AdminPagos() {
 
   const verificar = async (id: number) => {
     const res = await fetch(`${API_URL}/pagos/${id}/verificar`, { method: "PUT", headers });
-    if (res.ok) { await load(); setSelected(null); }
+    if (res.ok) {
+      const data = await res.json();
+      if (data.esClienteNuevo && data.clienteCelular && data.clienteToken) {
+        const link = `${window.location.origin}/formulario/${data.clienteToken}`;
+        const mensaje = `¡Hola! Gracias por tu pago a la Asociación de Escritores Vanguardistas 3.0. Para completar tu registro, por favor llena tus datos aquí: ${link}`;
+        setLinkWhatsapp({ celular: data.clienteCelular, mensaje });
+      }
+      await load();
+      setSelected(null);
+    }
+  };
+
+  const abrirWhatsapp = (celular: string, mensaje: string) => {
+    const numeroLimpio = celular.replace(/\D/g, "");
+    const numeroConCodigo = numeroLimpio.startsWith("591") ? numeroLimpio : `591${numeroLimpio}`;
+    window.open(`https://wa.me/${numeroConCodigo}?text=${encodeURIComponent(mensaje)}`, "_blank");
   };
 
   const rechazar = async (id: number) => {
@@ -194,6 +210,32 @@ function AdminPagos() {
       50%       { box-shadow: 0 0 0 4px rgba(245,158,11,0.15); }
     }
   `;
+    
+  if (linkWhatsapp) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh", padding: 20 }}>
+        <div style={{ background: "#1e293b", borderRadius: 16, padding: 32, maxWidth: 420, width: "100%", textAlign: "center", border: "1px solid #334155" }}>
+          <div style={{ fontSize: 44, marginBottom: 12 }}>✅</div>
+          <h3 style={{ color: "white", margin: "0 0 8px" }}>Pago verificado</h3>
+          <p style={{ color: "#94a3b8", fontSize: 14, marginBottom: 24 }}>
+            Se creó el cliente. ¿Enviarle el link de registro por WhatsApp?
+          </p>
+          <button
+            onClick={() => { abrirWhatsapp(linkWhatsapp.celular, linkWhatsapp.mensaje); setLinkWhatsapp(null); }}
+            style={{ width: "100%", background: "#22c55e", border: "none", padding: "12px 20px", borderRadius: 10, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 14, marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          >
+            📱 Enviar por WhatsApp
+          </button>
+          <button
+            onClick={() => setLinkWhatsapp(null)}
+            style={{ width: "100%", background: "#334155", border: "none", padding: "10px 20px", borderRadius: 10, color: "#94a3b8", cursor: "pointer", fontSize: 13 }}
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // VISTA DETALLE
   if (selected) {
