@@ -1816,6 +1816,7 @@ app.post("/tareas/:id/comentarios", auth, upload.array("archivos", 5), async (re
   const comentario = await prisma.comentarioTarea.create({
     data: { tareaId, autorTipo: "admin", texto: texto || null, archivos },
   });
+  await prisma.tareaItem.update({ where: { id: tareaId }, data: { vistaCliente: false } });
   res.json(comentario);
 });
 app.get("/cliente/tareas/no-vistas-count", authCliente, async (req: any, res) => {
