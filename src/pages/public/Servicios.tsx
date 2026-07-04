@@ -45,10 +45,10 @@ function Servicios() {
   ];
 
   return (
-    <div style={{ background: "#000", color: "white", minHeight: "100vh", paddingTop: 80 }}>
+    <div style={{ background: "#000", color: "white", minHeight: "100vh", paddingTop: 80, overflowX: "hidden" }}>
       <style>{`
-        .serv-card:hover { transform: translateY(-8px) !important; border-color: #3b82f6 !important; }
-        .detalle-item::before { content: "✓ "; color: #3b82f6; font-weight: bold; }
+        .serv-card:hover { transform: translateY(-8px) !important; border-color: #6366f1 !important; box-shadow: 0 24px 48px rgba(99,102,241,.15) !important; }
+        .detalle-item::before { content: "✓ "; color: #34d399; font-weight: bold; }
       `}</style>
 
       {/* HEADER */}
@@ -57,19 +57,19 @@ function Servicios() {
         position: "relative", zIndex: 1,
       }}>
         <p style={{
-          color: "#3b82f6", letterSpacing: 4,
+          color: "#818cf8", letterSpacing: 4,
           fontSize: 12, textTransform: "uppercase", marginBottom: 12,
         }}>
           LO QUE HACEMOS
         </p>
-        <h1 style={{ fontSize: isMobile ? 28 : 44, fontWeight: 700, marginBottom: 16 }}>
+        <h1 style={{ fontSize: isMobile ? 26 : 44, fontWeight: 700, marginBottom: 16, wordBreak: "break-word" }}>
           Nuestros Servicios
         </h1>
         <div style={{
-          width: 60, height: 3, background: "#3b82f6",
+          width: 60, height: 3, background: "linear-gradient(90deg,#6366f1,#8b5cf6)",
           margin: "0 auto 20px", borderRadius: 99,
         }} />
-        <p style={{ color: "#888", fontSize: isMobile ? 14 : 17, maxWidth: 600, margin: "0 auto" }}>
+        <p style={{ color: "#94a3b8", fontSize: isMobile ? 13 : 17, maxWidth: 600, margin: "0 auto", wordBreak: "break-word" }}>
           Ofrecemos servicios editoriales completos para escritores, investigadores y profesionales de Bolivia.
         </p>
       </div>
@@ -84,25 +84,25 @@ function Servicios() {
       }}>
         {servicios.map((s) => (
           <div key={s.title} className="serv-card" style={{
-            background: "#111", padding: 28, borderRadius: 16,
-            border: "1px solid #222", transition: "all 0.4s ease",
+            background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", padding: isMobile ? 22 : 28, borderRadius: 16,
+            border: "1px solid #1e1b4b", transition: "all 0.4s ease",
           }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>{s.icon}</div>
+            <div style={{ fontSize: 44, marginBottom: 16 }}>{s.icon}</div>
             <h3 style={{
               marginBottom: 12, fontSize: isMobile ? 16 : 18,
-              color: "#3b82f6", fontWeight: 700,
+              color: "#a5b4fc", fontWeight: 700, wordBreak: "break-word",
             }}>
               {s.title}
             </h3>
-            <p style={{ color: "#888", lineHeight: 1.8, fontSize: 14, marginBottom: 20 }}>
+            <p style={{ color: "#94a3b8", lineHeight: 1.8, fontSize: isMobile ? 13 : 14, marginBottom: 20, wordBreak: "break-word" }}>
               {s.desc}
             </p>
             <div style={{
-              borderTop: "1px solid #222", paddingTop: 16,
+              borderTop: "1px solid #1e1b4b", paddingTop: 16,
               display: "flex", flexDirection: "column", gap: 8,
             }}>
               {s.detalle.map((d) => (
-                <p key={d} className="detalle-item" style={{ color: "#ccc", fontSize: 13 }}>{d}</p>
+                <p key={d} className="detalle-item" style={{ color: "#cbd5e1", fontSize: 13, wordBreak: "break-word" }}>{d}</p>
               ))}
             </div>
           </div>
@@ -113,7 +113,7 @@ function Servicios() {
       <div style={{
         textAlign: "center", padding: isMobile ? "20px 20px 60px" : "20px 40px 80px",
       }}>
-        <p style={{ color: "#888", marginBottom: 20, fontSize: 16 }}>
+        <p style={{ color: "#94a3b8", marginBottom: 20, fontSize: isMobile ? 14 : 16 }}>
           ¿Listo para publicar tu obra?
         </p>
        
@@ -122,9 +122,13 @@ function Servicios() {
       {/* FOOTER */}
       <footer style={{
         textAlign: "center", padding: "24px 20px",
-        color: "#555", borderTop: "1px solid #222", fontSize: 13,
+        color: "#334155", borderTop: "1px solid #1e1b4b", fontSize: 13,
       }}>
-        <p style={{ color: "#3b82f6", fontWeight: 700, marginBottom: 8 }}>
+        <p style={{
+          background: "linear-gradient(90deg,#818cf8,#c4b5fd)",
+          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+          fontWeight: 700, marginBottom: 8,
+        }}>
           ASOCIACIÓN DE ESCRITORES VANGUARDISTAS 3.0
         </p>
         <p>© {new Date().getFullYear()} — El Alto, Bolivia.</p>

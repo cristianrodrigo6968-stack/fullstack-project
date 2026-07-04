@@ -148,7 +148,7 @@ function ProductoDetalle() {
   };
 
   return (
-    <div style={{ background: "#000", color: "white", minHeight: "100vh", paddingTop: 80 }}>
+    <div style={{ background: "#000", color: "white", minHeight: "100vh", paddingTop: 80, overflowX: "hidden" }}>
       <style>{`
         @keyframes spin       { to { transform: rotate(360deg); } }
         @keyframes toastUp    { 0%{opacity:0;transform:translateY(0px) scale(.8)} 15%{opacity:1;transform:translateY(-10px) scale(1)} 70%{opacity:1;transform:translateY(-28px) scale(1)} 100%{opacity:0;transform:translateY(-44px) scale(.9)} }
@@ -184,7 +184,7 @@ function ProductoDetalle() {
         .btn-volver {
           background: none; border: none;
           color: #818cf8; cursor: pointer; font-size: 14px;
-          padding: 0; display: inline-flex; align-items: center; gap: 6px;
+          padding: 10px 0; min-height: 44px; display: inline-flex; align-items: center; gap: 6px;
           transition: color .2s;
         }
         .btn-volver:hover { color: #a5b4fc; }
@@ -216,7 +216,7 @@ function ProductoDetalle() {
               position: "fixed", top: 16, right: 16,
               background: "rgba(99,102,241,.2)", border: "1px solid rgba(99,102,241,.4)",
               color: "white", fontSize: 20, cursor: "pointer", borderRadius: "50%",
-              width: 42, height: 42, display: "flex", alignItems: "center", justifyContent: "center",
+              width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
               backdropFilter: "blur(8px)", zIndex: 1001,
             }}
           >✕</button>

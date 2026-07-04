@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useWindowSize } from "../../hooks/useWindowSize";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -49,6 +50,7 @@ function soloLetrasMayusculas(value: string): string {
 
 function ClientForm() {
   const { token } = useParams();
+  const { isMobile } = useWindowSize();
 
   const [screen, setScreen] = useState<Screen>("form");
   const [loading, setLoading] = useState(true);
@@ -329,35 +331,35 @@ function ClientForm() {
   );
 
   if (loading) return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#0f172a" }}><Spinner /></div>
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#000" }}><Spinner /></div>
   );
 
   if (linkError) return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#0f172a", color: "white", flexDirection: "column", gap: 16 }}>
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#000", color: "white", flexDirection: "column", gap: 16, padding: isMobile ? 20 : 40, textAlign: "center", overflowX: "hidden" }}>
       <div style={{ fontSize: 60 }}>⚠️</div>
-      <h2>{linkError}</h2>
-      <p style={{ color: "#94a3b8" }}>Contacta con la Asociación para obtener un nuevo link.</p>
+      <h2 style={{ fontSize: isMobile ? 18 : 22, wordBreak: "break-word" }}>{linkError}</h2>
+      <p style={{ color: "#94a3b8", fontSize: isMobile ? 13 : 14 }}>Contacta con la Asociación para obtener un nuevo link.</p>
     </div>
   );
 
   if (screen === "review") return (
-    <div lang="es" translate="no" style={{ background: "#0f172a", minHeight: "100vh", padding: "40px 20px", color: "white" }}>
+    <div lang="es" translate="no" style={{ background: "#000", minHeight: "100vh", padding: isMobile ? "24px 16px" : "40px 20px", color: "white", overflowX: "hidden" }}>
       <div style={{ maxWidth: 520, margin: "0 auto" }}>
-        <div style={{ background: "#1e293b", padding: 28, borderRadius: 16, marginBottom: 20, borderLeft: "4px solid #f59e0b" }}>
+        <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: isMobile ? 20 : 28, borderRadius: 16, marginBottom: 20, borderLeft: "4px solid #6366f1" }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>🔍</div>
-          <h2 style={{ marginBottom: 6, fontSize: 22 }}>Revisá tus datos</h2>
-          <p style={{ color: "#94a3b8", fontSize: 14, margin: 0 }}>Verificá que todo esté correcto antes de confirmar. Una vez guardado, el equipo procesará tu registro.</p>
+          <h2 style={{ marginBottom: 6, fontSize: isMobile ? 19 : 22 }}>Revisá tus datos</h2>
+          <p style={{ color: "#94a3b8", fontSize: isMobile ? 13 : 14, margin: 0, wordBreak: "break-word" }}>Verificá que todo esté correcto antes de confirmar. Una vez guardado, el equipo procesará tu registro.</p>
         </div>
-        {saveError && <div style={{ background: "#7f1d1d", padding: 16, borderRadius: 10, marginBottom: 20, color: "#fca5a5", fontWeight: "bold", fontSize: 14 }}>⚠️ {saveError}</div>}
-        <div style={{ background: "#1e293b", borderRadius: 14, padding: 20, marginBottom: 20 }}>
+        {saveError && <div style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.35)", padding: 16, borderRadius: 10, marginBottom: 20, color: "#ef4444", fontWeight: "bold", fontSize: 14, wordBreak: "break-word" }}>⚠️ {saveError}</div>}
+        <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", borderRadius: 14, padding: isMobile ? 16 : 20, marginBottom: 20 }}>
           <p style={{ color: "#64748b", fontSize: 12, marginBottom: 16, textTransform: "uppercase", letterSpacing: 1 }}>Resumen de tus datos</p>
           <ResumenDatos />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <button onClick={confirmarYGuardar} disabled={saving} style={{ width: "100%", padding: 16, background: saving ? "#334155" : "#22c55e", border: "none", borderRadius: 12, color: "white", fontSize: 16, fontWeight: "bold", cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          <button onClick={confirmarYGuardar} disabled={saving} style={{ width: "100%", minHeight: 44, padding: 16, background: saving ? "#334155" : "linear-gradient(135deg,#34d399,#10b981)", border: "none", borderRadius: 12, color: "white", fontSize: 16, fontWeight: "bold", cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, flexWrap: "wrap", textAlign: "center" }}>
             {saving ? (subiendoFotos ? "📤 Subiendo archivos..." : <><Spinner /> Guardando...</>) : "✅ Confirmar y guardar mis datos"}
           </button>
-          <button onClick={() => { setSaveError(""); setScreen("form"); setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50); }} disabled={saving} style={{ width: "100%", padding: 14, background: "transparent", border: "2px solid #334155", borderRadius: 12, color: "#94a3b8", fontSize: 15, fontWeight: "bold", cursor: saving ? "not-allowed" : "pointer" }}>✏️ Editar mis datos</button>
+          <button onClick={() => { setSaveError(""); setScreen("form"); setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50); }} disabled={saving} style={{ width: "100%", minHeight: 44, padding: 14, background: "transparent", border: "2px solid #1e1b4b", borderRadius: 12, color: "#94a3b8", fontSize: 15, fontWeight: "bold", cursor: saving ? "not-allowed" : "pointer" }}>✏️ Editar mis datos</button>
         </div>
         <p style={{ textAlign: "center", color: "#475569", fontSize: 12, marginTop: 16 }}>Podés volver al formulario y editar cuantas veces necesites.</p>
       </div>
@@ -365,30 +367,30 @@ function ClientForm() {
   );
 
   if (screen === "success") return (
-    <div lang="es" translate="no" style={{ background: "#0f172a", minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: "40px 20px", color: "white" }}>
+    <div lang="es" translate="no" style={{ background: "#000", minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", padding: isMobile ? "24px 16px" : "40px 20px", color: "white", overflowX: "hidden" }}>
       <div style={{ maxWidth: 520, width: "100%", textAlign: "center" }}>
         <style>{`@keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } } .success-icon { animation: popIn 0.5s ease forwards; display: inline-block; }`}</style>
-        <div className="success-icon" style={{ fontSize: 80, marginBottom: 20 }}>🎉</div>
-        <div style={{ background: "#1e293b", padding: 36, borderRadius: 20, borderTop: "4px solid #22c55e" }}>
-          <h2 style={{ marginBottom: 20, fontSize: 26, color: "#22c55e" }}>¡Datos guardados exitosamente!</h2>
+        <div className="success-icon" style={{ fontSize: isMobile ? 64 : 80, marginBottom: 20 }}>🎉</div>
+        <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: isMobile ? 24 : 36, borderRadius: 20, borderTop: "4px solid #34d399" }}>
+          <h2 style={{ marginBottom: 20, fontSize: isMobile ? 21 : 26, color: "#34d399", wordBreak: "break-word" }}>¡Datos guardados exitosamente!</h2>
           {credenciales && (
-            <div style={{ background: "#0f172a", borderRadius: 12, padding: "20px 24px", marginBottom: 24, textAlign: "left", border: "1px solid #1e3a5f" }}>
-              <p style={{ color: "#60a5fa", fontSize: 14, fontWeight: "bold", marginBottom: 12 }}>🔐 Tus credenciales de acceso</p>
-              <div style={{ background: "#1e293b", borderRadius: 8, padding: "10px 16px", marginBottom: 8 }}><p style={{ color: "#94a3b8", fontSize: 11, marginBottom: 2 }}>USUARIO</p><p style={{ color: "white", fontSize: 18, fontWeight: "bold", letterSpacing: 1 }}>{credenciales.username}</p></div>
-              <div style={{ background: "#1e293b", borderRadius: 8, padding: "10px 16px", marginBottom: 12 }}><p style={{ color: "#94a3b8", fontSize: 11, marginBottom: 2 }}>CONTRASEÑA</p><p style={{ color: "white", fontSize: 18, fontWeight: "bold", letterSpacing: 1 }}>{credenciales.password}</p></div>
+            <div style={{ background: "#0a0a14", borderRadius: 12, padding: isMobile ? "16px 18px" : "20px 24px", marginBottom: 24, textAlign: "left", border: "1px solid #1e1b4b" }}>
+              <p style={{ color: "#a5b4fc", fontSize: 14, fontWeight: "bold", marginBottom: 12 }}>🔐 Tus credenciales de acceso</p>
+              <div style={{ background: "#0d0d1a", borderRadius: 8, padding: "10px 16px", marginBottom: 8, wordBreak: "break-word" }}><p style={{ color: "#94a3b8", fontSize: 11, marginBottom: 2 }}>USUARIO</p><p style={{ color: "white", fontSize: 18, fontWeight: "bold", letterSpacing: 1, wordBreak: "break-word" }}>{credenciales.username}</p></div>
+              <div style={{ background: "#0d0d1a", borderRadius: 8, padding: "10px 16px", marginBottom: 12, wordBreak: "break-word" }}><p style={{ color: "#94a3b8", fontSize: 11, marginBottom: 2 }}>CONTRASEÑA</p><p style={{ color: "white", fontSize: 18, fontWeight: "bold", letterSpacing: 1, wordBreak: "break-word" }}>{credenciales.password}</p></div>
               <p style={{ color: "#64748b", fontSize: 12 }}>⚠️ Guardá esta información. No se volverá a mostrar.</p>
             </div>
           )}
           {!credenciales && (
-            <div style={{ background: "#0f172a", borderRadius: 12, padding: "20px 24px", marginBottom: 24, textAlign: "center", border: "1px solid #1e3a5f" }}>
-              <p style={{ color: "#60a5fa", fontSize: 14, fontWeight: "bold", marginBottom: 12 }}>✅ Ya tienes credenciales activas</p>
+            <div style={{ background: "#0a0a14", borderRadius: 12, padding: isMobile ? "16px 18px" : "20px 24px", marginBottom: 24, textAlign: "center", border: "1px solid #1e1b4b" }}>
+              <p style={{ color: "#a5b4fc", fontSize: 14, fontWeight: "bold", marginBottom: 12 }}>✅ Ya tienes credenciales activas</p>
               <p style={{ color: "#94a3b8", fontSize: 13 }}>Usa tu usuario y contraseña anteriores para acceder al portal.</p>
             </div>
           )}
           
-          <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.6, marginBottom: 24 }}>El equipo revisará tu información y se pondrá en contacto con vos a la brevedad.</p>
-          <div style={{ background: "#0f172a", borderRadius: 10, padding: "12px 16px", marginBottom: 24, display: "flex", gap: 10, alignItems: "center" }}><span style={{ fontSize: 20 }}>📬</span><p style={{ color: "#60a5fa", fontSize: 13, margin: 0, textAlign: "left" }}>Te contactaremos al número <strong>{celular}</strong> o al correo <strong>{email}</strong>.</p></div>
-          <button onClick={() => window.location.href = "/"} style={{ width: "100%", padding: 14, background: "#3b82f6", border: "none", borderRadius: 12, color: "white", fontSize: 15, fontWeight: "bold", cursor: "pointer" }}>🏠 Volver al inicio</button>
+          <p style={{ color: "#94a3b8", fontSize: isMobile ? 13 : 15, lineHeight: 1.6, marginBottom: 24, wordBreak: "break-word" }}>El equipo revisará tu información y se pondrá en contacto con vos a la brevedad.</p>
+          <div style={{ background: "#0a0a14", borderRadius: 10, padding: "12px 16px", marginBottom: 24, display: "flex", gap: 10, alignItems: "center" }}><span style={{ fontSize: 20 }}>📬</span><p style={{ color: "#a5b4fc", fontSize: 13, margin: 0, textAlign: "left", wordBreak: "break-word" }}>Te contactaremos al número <strong>{celular}</strong> o al correo <strong>{email}</strong>.</p></div>
+          <button onClick={() => window.location.href = "/"} style={{ width: "100%", minHeight: 44, padding: 14, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", borderRadius: 12, color: "white", fontSize: 15, fontWeight: "bold", cursor: "pointer" }}>🏠 Volver al inicio</button>
           <p style={{ color: "#475569", fontSize: 12, marginTop: 16 }}>Si necesitás corregir algo, podés reingresar con el mismo link antes de que expire.</p>
         </div>
       </div>
@@ -396,37 +398,37 @@ function ClientForm() {
   );
 
   return (
-    <div lang="es" translate="no" style={{ background: "#0f172a", minHeight: "100vh", padding: "40px 20px", color: "white" }}>
+    <div lang="es" translate="no" style={{ background: "#000", minHeight: "100vh", padding: isMobile ? "24px 16px" : "40px 20px", color: "white", overflowX: "hidden" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
-        <div style={{ background: "#1e293b", padding: 28, borderRadius: 16, marginBottom: 24, borderLeft: "4px solid #3b82f6" }}>
-          <h1 style={{ marginBottom: 8, fontSize: 24 }}>📋 Formulario de Registro</h1>
-          <p style={{ color: "#94a3b8", fontSize: 14 }}>Complete sus datos personales para continuar con el proceso editorial.</p>
-          <div style={{ marginTop: 12, display: "inline-block", background: daysLeft <= 1 ? "#7f1d1d" : "#1e3a5f", padding: "4px 14px", borderRadius: 99, fontSize: 13, color: daysLeft <= 1 ? "#fca5a5" : "#60a5fa" }}>⏳ Este link expira en {daysLeft} día(s)</div>
+        <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: isMobile ? 20 : 28, borderRadius: 16, marginBottom: 24, borderLeft: "4px solid #6366f1" }}>
+          <h1 style={{ marginBottom: 8, fontSize: isMobile ? 20 : 24, wordBreak: "break-word" }}>📋 Formulario de Registro</h1>
+          <p style={{ color: "#94a3b8", fontSize: isMobile ? 13 : 14, wordBreak: "break-word" }}>Complete sus datos personales para continuar con el proceso editorial.</p>
+          <div style={{ marginTop: 12, display: "inline-block", background: daysLeft <= 1 ? "rgba(239,68,68,0.15)" : "rgba(99,102,241,0.15)", padding: "4px 14px", borderRadius: 99, fontSize: 13, color: daysLeft <= 1 ? "#ef4444" : "#a5b4fc" }}>⏳ Este link expira en {daysLeft} día(s)</div>
         </div>
-        <div style={sectionStyle}>
+        <div style={{ ...sectionStyle, padding: isMobile ? 16 : 24 }}>
           <h3 style={sectionTitle}>👤 Datos Personales</h3>
           <div ref={refs.ci}><label style={labelStyle}>Cédula de Identidad <Req /></label><input placeholder="Ej: 1234567" value={ci} onChange={e => setCi(e.target.value.replace(/\D/g, ""))} style={errors.ci ? inputError : inputStyle} />{errors.ci && <p style={errorText}>{errors.ci}</p>}</div>
           <div ref={refs.nombres}><label style={labelStyle}>Nombres <Req /></label><input placeholder="Ej: JUAN CARLOS" value={nombres} onChange={e => setNombres(soloLetrasMayusculas(e.target.value))} style={errors.nombres ? inputError : inputStyle} />{errors.nombres && <p style={errorText}>{errors.nombres}</p>}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
             <div ref={refs.apellidoPaterno}><label style={labelStyle}>Apellido Paterno <Req /></label><input placeholder="Ej: FERNÁNDEZ" value={apellidoPaterno} onChange={e => setApellidoPaterno(soloLetrasMayusculas(e.target.value))} style={errors.apellidoPaterno ? inputError : inputStyle} />{errors.apellidoPaterno && <p style={errorText}>{errors.apellidoPaterno}</p>}</div>
             <div ref={refs.apellidoMaterno}><label style={labelStyle}>Apellido Materno</label><input placeholder="Ej: MAMANI" value={apellidoMaterno} onChange={e => setApellidoMaterno(soloLetrasMayusculas(e.target.value))} style={errors.apellidoMaterno ? inputError : inputStyle} />{errors.apellidoMaterno && <p style={errorText}>{errors.apellidoMaterno}</p>}</div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginTop: 12 }}>
             <div ref={refs.sexo}><label style={labelStyle}>Sexo <Req /></label><select value={sexo} onChange={e => setSexo(e.target.value as Sexo)} style={errors.sexo ? { ...inputError, cursor: "pointer" } : { ...inputStyle, cursor: "pointer" }}><option value="">-- Seleccionar --</option>{SEXOS.map(s => <option key={s} value={s}>{s}</option>)}</select>{errors.sexo && <p style={errorText}>{errors.sexo}</p>}</div>
             <div ref={refs.ciudad}><label style={labelStyle}>Ciudad <Req /></label><input placeholder="Ej: LA PAZ" value={ciudad} onChange={e => setCiudad(soloLetrasMayusculas(e.target.value))} style={errors.ciudad ? inputError : inputStyle} />{errors.ciudad && <p style={errorText}>{errors.ciudad}</p>}</div>
           </div>
           <div ref={refs.direccion} style={{ marginTop: 12 }}><label style={labelStyle}>Dirección <Req /></label><input placeholder="Ej: AVENIDA BOLIVIA NRO 7" value={direccion} onChange={e => setDireccion(e.target.value.toUpperCase())} style={errors.direccion ? inputError : inputStyle} />{errors.direccion && <p style={errorText}>{errors.direccion}</p>}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
             <div ref={refs.fechaNacimiento}><label style={labelStyle}>Fecha de Nacimiento <Req /></label><input type="date" value={fechaNacimiento} onChange={e => setFechaNacimiento(e.target.value)} style={errors.fechaNacimiento ? inputError : inputStyle} />{errors.fechaNacimiento && <p style={errorText}>{errors.fechaNacimiento}</p>}</div>
             <div ref={refs.extension}><label style={labelStyle}>Extensión (Depto. C.I.) <Req /></label><select translate="no" value={extension} onChange={e => setExtension(e.target.value as Extension)} style={errors.extension ? { ...inputError, cursor: "pointer" } : { ...inputStyle, cursor: "pointer" }}><option value="">-- Seleccionar --</option>{EXTENSIONES.map(ext => <option key={ext} value={ext} translate="no">{ext}</option>)}</select>{errors.extension && <p style={errorText}>{errors.extension}</p>}</div>
           </div>
           <div ref={refs.profesion} style={{ marginTop: 12 }}><label style={labelStyle}>Profesión <Req /></label><input placeholder="Ej: MAESTRO DE MATEMÁTICAS" value={profesion} onChange={e => setProfesion(soloLetrasMayusculas(e.target.value))} style={errors.profesion ? inputError : inputStyle} />{errors.profesion && <p style={errorText}>{errors.profesion}</p>}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
             <div ref={refs.celular}><label style={labelStyle}>Celular <Req /></label><input placeholder="Ej: 70012345" value={celular} onChange={e => setCelular(e.target.value.replace(/\D/g, ""))} style={errors.celular ? inputError : inputStyle} />{errors.celular && <p style={errorText}>{errors.celular}</p>}</div>
             <div ref={refs.email}><label style={labelStyle}>Email <Req /></label><input placeholder="Ej: juan@gmail.com" value={email} onChange={e => setEmail(e.target.value.toLowerCase())} style={errors.email ? inputError : inputStyle} />{errors.email && <p style={errorText}>{errors.email}</p>}</div>
           </div>
         </div>
-        <div style={sectionStyle}>
+        <div style={{ ...sectionStyle, padding: isMobile ? 16 : 24 }}>
           <h3 style={sectionTitle}>📸 Fotografías y Documentos</h3>
           <div ref={refs.fotografia}>
             <label style={labelStyle}>Foto Personal <Req /></label>
@@ -499,7 +501,7 @@ function ClientForm() {
           </div>
           <div style={{ background: "#1e3a5f", borderRadius: 8, padding: "10px 14px", marginTop: 12, display: "flex", gap: 8, alignItems: "flex-start" }}><span style={{ fontSize: 16, flexShrink: 0 }}>ℹ️</span><p style={{ color: "#93c5fd", fontSize: 12, margin: 0, lineHeight: 1.6 }}>Las fotografías e información serán utilizadas exclusivamente para el registro editorial y trámites ante SENAPI. Tus datos están protegidos.</p></div>
         </div>
-        <button onClick={irARevisar} style={{ width: "100%", padding: 16, background: "#3b82f6", border: "none", borderRadius: 12, color: "white", fontSize: 16, fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>Continuar</button>
+        <button onClick={irARevisar} style={{ width: "100%", minHeight: 44, padding: 16, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", borderRadius: 12, color: "white", fontSize: 16, fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>Continuar</button>
         <p style={{ textAlign: "center", color: "#64748b", fontSize: 13, marginTop: 16 }}>Podrás confirmar tus datos antes de enviarlos definitivamente.</p>
       </div>
     </div>
@@ -508,12 +510,12 @@ function ClientForm() {
 
 function Req() { return <span style={{ color: "#ef4444" }}>*</span>; }
 
-const sectionStyle: React.CSSProperties = { background: "#1e293b", padding: 24, borderRadius: 14, marginBottom: 20 };
-const sectionTitle: React.CSSProperties = { fontSize: 16, fontWeight: "bold", marginBottom: 20, paddingBottom: 12, borderBottom: "1px solid #334155" };
+const sectionStyle: React.CSSProperties = { background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: 24, borderRadius: 14, marginBottom: 20 };
+const sectionTitle: React.CSSProperties = { fontSize: 16, fontWeight: "bold", marginBottom: 20, paddingBottom: 12, borderBottom: "1px solid #1e1b4b" };
 const labelStyle: React.CSSProperties = { display: "block", color: "#94a3b8", fontSize: 12, marginBottom: 6, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 0.5 };
-const inputStyle: React.CSSProperties = { width: "100%", padding: 10, marginBottom: 4, borderRadius: 8, border: "none", background: "#334155", color: "white", fontSize: 14, boxSizing: "border-box" };
+const inputStyle: React.CSSProperties = { width: "100%", padding: 12, marginBottom: 4, minHeight: 44, borderRadius: 8, border: "1px solid #1e1b4b", background: "#0a0a14", color: "white", fontSize: 16, boxSizing: "border-box" };
 const inputError: React.CSSProperties = { ...inputStyle, border: "1px solid #ef4444" };
-const errorText: React.CSSProperties = { color: "#ef4444", fontSize: 12, marginBottom: 10, marginTop: 2 };
-const btnUpload: React.CSSProperties = { display: "inline-block", background: "#334155", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 13 };
+const errorText: React.CSSProperties = { color: "#ef4444", fontSize: 12, marginBottom: 10, marginTop: 2, wordBreak: "break-word" };
+const btnUpload: React.CSSProperties = { display: "inline-block", background: "#1e1b4b", border: "none", padding: "10px 14px", minHeight: 44, boxSizing: "border-box", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 13 };
 
 export default ClientForm;
