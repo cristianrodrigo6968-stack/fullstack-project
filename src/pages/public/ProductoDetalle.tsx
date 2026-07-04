@@ -122,16 +122,16 @@ function ProductoDetalle() {
       <div style={{ fontSize: 64 }}>📭</div>
       <p style={{ color: "#94a3b8", fontSize: 18 }}>Producto no encontrado.</p>
       <button
-        onClick={() => navigate("/")}
-        style={{
-          background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
-          border: "none", padding: "11px 24px", borderRadius: 10,
-          color: "white", fontWeight: "bold", cursor: "pointer",
-          fontSize: 14, boxShadow: "0 4px 16px rgba(99,102,241,.4)",
-        }}
-      >
-        ← Volver al catálogo
-      </button>
+          onClick={() => navigate("/")}
+          style={{
+            background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
+            border: "none", padding: "11px 24px", borderRadius: 10, minHeight: 44,
+            color: "white", fontWeight: "bold", cursor: "pointer",
+            fontSize: 14, boxShadow: "0 4px 16px rgba(99,102,241,.4)",
+          }}
+        >
+          ← Volver al catálogo
+        </button>
     </div>
   );
 
@@ -164,17 +164,18 @@ function ProductoDetalle() {
         .prod-card-mini:hover { border-color:#6366f1; transform:translateY(-4px); box-shadow:0 12px 28px rgba(99,102,241,.15); }
 
         .btn-comprar-detalle {
-          width: 100%; padding: 16px; border: none; border-radius: 14px;
+          width: 100%; min-height: 44px; padding: 16px; border: none; border-radius: 14px;
           color: white; font-weight: bold; font-size: 18px; cursor: pointer;
           display: flex; align-items: center; justify-content: center; gap: 10px;
+          flex-wrap: wrap; text-align: center;
           transition: filter .2s, transform .1s;
         }
         .btn-comprar-detalle:hover { filter: brightness(1.1); }
         .btn-comprar-detalle:active { transform: scale(0.98); }
 
         .btn-ir-carrito {
-          width: 100%; padding: 14px;
-          background: transparent; border: 2px solid #4f46e5; border-radius: 14px;
+          width: 100%; min-height: 44px; padding: 14px;
+          background: transparent; border: 2px solid #6366f1; border-radius: 14px;
           color: #818cf8; font-weight: bold; font-size: 16px; cursor: pointer;
           transition: background .2s, border-color .2s, color .2s;
         }
@@ -231,16 +232,16 @@ function ProductoDetalle() {
 
       {/* Título y precio */}
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: isMobile ? "0 20px 28px" : "0 40px 28px" }}>
-        <h1 style={{ fontSize: isMobile ? 22 : 34, fontWeight: 700, color: "#f1f5f9", margin: "0 0 16px 0", lineHeight: 1.2 }}>
+        <h1 style={{ fontSize: isMobile ? 20 : 34, fontWeight: 700, color: "white", margin: "0 0 16px 0", lineHeight: 1.2, wordBreak: "break-word" }}>
           {producto.nombre}
         </h1>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
           {producto.descuento > 0 && (
-            <span style={{ color: "#ef4444", fontSize: 18, textDecoration: "line-through" }}>
+            <span style={{ color: "#475569", fontSize: isMobile ? 15 : 18, textDecoration: "line-through" }}>
               Bs {producto.precio.toFixed(2)}
             </span>
           )}
-          <span style={{ color: "#34d399", fontSize: 38, fontWeight: "bold" }}>
+          <span style={{ color: "#34d399", fontSize: isMobile ? 28 : 38, fontWeight: "bold" }}>
             Bs {precioFinal.toFixed(2)}
           </span>
           {producto.descuento > 0 && (
@@ -271,6 +272,8 @@ function ProductoDetalle() {
           style={{
             borderRadius: 20, cursor: producto.imagenUrl ? "zoom-in" : "default",
             overflow: "hidden",
+            width: "100%",
+            maxWidth: "100%",
             background: producto.imagenUrl ? "transparent" : "#0d0d1a",
             border: "1px solid #1e1b4b",
             transition: "box-shadow .3s",
@@ -282,7 +285,7 @@ function ProductoDetalle() {
           {producto.imagenUrl ? (
             <img
               src={producto.imagenUrl} alt={producto.nombre}
-              style={{ width: "100%", height: "auto", display: "block" }}
+              style={{ maxWidth: "100%", width: "100%", height: "auto", display: "block" }}
             />
           ) : (
             <div style={{ minHeight: 300, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px", opacity: 0.3 }}>
@@ -296,28 +299,28 @@ function ProductoDetalle() {
 
           {/* Descripción en card */}
           <div style={{
-            background: "#0d0d1a", border: "1px solid #1e1b4b", borderRadius: 14, padding: "20px 22px",
+            background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", borderRadius: 14, padding: isMobile ? "16px 18px" : "20px 22px",
           }}>
-            <p style={{ color: "#8b929e", fontSize: 11, textTransform: "uppercase", letterSpacing: 2, margin: "0 0 10px", fontWeight: 600 }}>
+            <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: 2, margin: "0 0 10px", fontWeight: 600 }}>
               Descripción
             </p>
-            <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.85, whiteSpace: "pre-wrap", margin: 0 }}>
+            <p style={{ color: "#94a3b8", fontSize: isMobile ? 14 : 15, lineHeight: 1.85, whiteSpace: "pre-wrap", margin: 0, wordBreak: "break-word" }}>
               {descripcionLimpia(producto.descripcion)}
             </p>
           </div>
 
           {/* Mostrar componentes si es producto compuesto */}
           {producto.componentes && producto.componentes.length > 0 && (
-            <div style={{ background: "#1e293b", borderRadius: 14, padding: 20 }}>
-              <h3 style={{ color: "#f1f5f9", fontSize: 18, marginBottom: 12 }}>🎁 Esta oferta incluye:</h3>
-              <ul style={{ color: "#cbd5e1", fontSize: 14, listStyle: "none", padding: 0 }}>
+            <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", borderRadius: 14, padding: isMobile ? 16 : 20 }}>
+              <h3 style={{ color: "white", fontSize: isMobile ? 16 : 18, marginBottom: 12 }}>🎁 Esta oferta incluye:</h3>
+              <ul style={{ color: "#94a3b8", fontSize: isMobile ? 13 : 14, listStyle: "none", padding: 0 }}>
                 {producto.componentes.map((comp: any, idx: number) => (
-                  <li key={idx} style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                  <li key={idx} style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8, wordBreak: "break-word" }}>
                     <span>✅</span> {getComponenteLabel(comp)}
                   </li>
                 ))}
               </ul>
-              <p style={{ color: "#22c55e", fontWeight: "bold", marginTop: 12 }}>
+              <p style={{ color: "#34d399", fontWeight: "bold", marginTop: 12 }}>
                 Precio total del paquete: Bs {precioFinal.toFixed(2)}
               </p>
             </div>
@@ -378,7 +381,7 @@ function ProductoDetalle() {
       {todosLosProductos.length > 0 && (
         <div style={{ maxWidth: 1100, margin: "50px auto 0", padding: isMobile ? "0 20px 70px" : "0 40px 70px" }}>
           <div style={{ borderTop: "1px solid #1e1b4b", paddingTop: 44 }}>
-            <h3 style={{ fontSize: 20, marginBottom: 26, color: "#cbd5e1", fontWeight: 700 }}>
+            <h3 style={{ fontSize: isMobile ? 17 : 20, marginBottom: 26, color: "#94a3b8", fontWeight: 700 }}>
               📦 Más productos
             </h3>
             <div style={{
@@ -395,18 +398,18 @@ function ProductoDetalle() {
                     onClick={() => navigate(`/producto/${p.id}`)}
                   >
                     {p.imagenUrl ? (
-                      <img src={p.imagenUrl} alt={p.nombre} style={{ width: "100%", height: 160, objectFit: "cover" }} />
+                      <img src={p.imagenUrl} alt={p.nombre} style={{ width: "100%", height: isMobile ? 120 : 160, objectFit: "cover" }} />
                     ) : (
-                      <div style={{ width: "100%", height: 160, background: "#1e1b4b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44 }}>📦</div>
+                      <div style={{ width: "100%", height: isMobile ? 120 : 160, background: "#1e1b4b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44 }}>📦</div>
                     )}
-                    <div style={{ padding: 14 }}>
-                      <h4 style={{ color: "white", fontSize: 13, marginBottom: 7, marginTop: 0, lineHeight: 1.3 }}>{p.nombre}</h4>
+                    <div style={{ padding: isMobile ? 10 : 14 }}>
+                      <h4 style={{ color: "white", fontSize: isMobile ? 12 : 13, marginBottom: 7, marginTop: 0, lineHeight: 1.3, wordBreak: "break-word" }}>{p.nombre}</h4>
                       {p.descuento > 0 && (
                         <span style={{ color: "#64748b", fontSize: 12, textDecoration: "line-through", marginRight: 6 }}>
                           Bs {p.precio.toFixed(2)}
                         </span>
                       )}
-                      <p style={{ color: "#34d399", fontWeight: "bold", fontSize: 15, margin: 0 }}>Bs {precio.toFixed(2)}</p>
+                      <p style={{ color: "#34d399", fontWeight: "bold", fontSize: isMobile ? 13 : 15, margin: 0 }}>Bs {precio.toFixed(2)}</p>
                     </div>
                   </div>
                 );

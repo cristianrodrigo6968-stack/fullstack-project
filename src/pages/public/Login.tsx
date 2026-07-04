@@ -99,16 +99,16 @@ function Login() {
         }
         .login-input:focus {
           outline: none;
-          border-color: #3b82f6 !important;
-          background: #1e3a5f !important;
+          border-color: #6366f1 !important;
+          background: #0a0a14 !important;
         }
         .login-input::placeholder {
           color: #475569;
         }
         .login-btn:not(:disabled):hover {
-          background: #2563eb !important;
+          filter: brightness(1.08);
           transform: translateY(-1px);
-          box-shadow: 0 6px 20px rgba(59,130,246,0.4);
+          box-shadow: 0 6px 20px rgba(99,102,241,0.4);
         }
         .login-btn:not(:disabled):active {
           transform: translateY(0);
@@ -123,44 +123,47 @@ function Login() {
         justifyContent: "center",
         alignItems: "center",
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #0a0f1e 0%, #0f172a 60%, #0c1a35 100%)",
-        padding: "20px",
+        background: "#000",
+        overflowX: "hidden",
+        padding: isMobile ? "16px" : "20px",
       }}>
         <div className="login-card" style={{
-          background: "#111827",
-          padding: isMobile ? "28px 24px" : "44px 40px",
+          background: "linear-gradient(160deg, #0d0d1a, #0a0a14)",
+          padding: isMobile ? "24px 20px" : "44px 40px",
           borderRadius: 20,
           color: "white",
           width: "100%",
           maxWidth: 400,
-          boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(59,130,246,0.1)",
+          border: "1px solid #1e1b4b",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(99,102,241,0.1)",
         }}>
 
           {/* LOGO */}
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <div style={{
-              width: 60, height: 60,
-              background: "linear-gradient(135deg, #2563eb, #3b82f6)",
+              width: isMobile ? 52 : 60, height: isMobile ? 52 : 60,
+              background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
               borderRadius: 16,
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
               fontWeight: "900",
-              fontSize: 26,
+              fontSize: isMobile ? 22 : 26,
               fontStyle: "italic",
               margin: "0 auto 16px",
-              boxShadow: "0 8px 24px rgba(59,130,246,0.35)",
+              boxShadow: "0 8px 24px rgba(99,102,241,0.35)",
               letterSpacing: -1,
             }}>
               V
             </div>
             <h2 style={{
-              fontSize: isMobile ? 17 : 18,
+              fontSize: isMobile ? 15 : 18,
               fontWeight: 700,
               letterSpacing: 1.5,
               textTransform: "uppercase",
               marginBottom: 6,
-              color: "#f1f5f9",
+              color: "white",
+              wordBreak: "break-word",
             }}>
               Escritores Vanguardistas 3.0
             </h2>
@@ -172,16 +175,17 @@ function Login() {
           {/* ERROR */}
           {error && (
             <div style={{
-              background: "rgba(127,29,29,0.5)",
-              border: "1px solid rgba(239,68,68,0.3)",
+              background: "rgba(239,68,68,0.12)",
+              border: "1px solid rgba(239,68,68,0.35)",
               padding: "11px 14px",
               borderRadius: 10,
               marginBottom: 20,
               fontSize: 13,
-              color: "#fca5a5",
+              color: "#ef4444",
               display: "flex",
               alignItems: "center",
               gap: 8,
+              wordBreak: "break-word",
             }}>
               <span>⚠️</span> {error}
             </div>
@@ -196,7 +200,7 @@ function Login() {
             onChange={(e) => setUsername(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleLogin()}
             autoComplete="off"
-            style={inputStyle}
+            style={{ ...inputStyle, fontSize: 16 }}
           />
 
           {/* CONTRASEÑA */}
@@ -210,7 +214,7 @@ function Login() {
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleLogin()}
               autoComplete="current-password"
-              style={{ ...inputStyle, marginBottom: 0, paddingRight: 44 }}
+              style={{ ...inputStyle, marginBottom: 0, paddingRight: 44, fontSize: 16 }}
             />
             <button
               className="toggle-eye"
@@ -218,16 +222,19 @@ function Login() {
               tabIndex={-1}
               style={{
                 position: "absolute",
-                right: 12,
+                right: 4,
                 top: "50%",
                 transform: "translateY(-50%)",
                 background: "none",
                 border: "none",
                 cursor: "pointer",
                 color: "#64748b",
-                padding: 4,
+                padding: 10,
+                width: 44,
+                height: 44,
                 display: "flex",
                 alignItems: "center",
+                justifyContent: "center",
                 transition: "color 0.15s",
               }}
               aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
@@ -243,8 +250,9 @@ function Login() {
             disabled={loading}
             style={{
               width: "100%",
+              minHeight: 44,
               padding: "14px 0",
-              background: "#3b82f6",
+              background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
               border: "none",
               borderRadius: 10,
               color: "white",
@@ -292,11 +300,12 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "12px 14px",
   marginBottom: 16,
+  minHeight: 44,
   borderRadius: 10,
-  border: "1px solid #1e293b",
-  background: "#0f172a",
+  border: "1px solid #1e1b4b",
+  background: "#0a0a14",
   color: "white",
-  fontSize: 14,
+  fontSize: 16,
   boxSizing: "border-box",
   transition: "border-color 0.2s, background 0.2s",
 };

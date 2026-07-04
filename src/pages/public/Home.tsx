@@ -169,6 +169,8 @@ function Home() {
         ::-webkit-scrollbar { width:6px; }
         ::-webkit-scrollbar-track { background:#0a0a0f; }
         ::-webkit-scrollbar-thumb { background:#6366f1; border-radius:10px; }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { overflow-x: hidden; max-width: 100%; }
       `}</style>
 
       {/* Luz del mouse */}
@@ -259,6 +261,7 @@ function Home() {
             fontSize: isMobile ? 30 : 58, fontWeight: 800,
             marginBottom: 24, lineHeight: 1.12,
             minHeight: isMobile ? 80 : 140,
+            wordBreak: "break-word",
             color: "white",
           }}>
             {typedText}
@@ -273,6 +276,7 @@ function Home() {
           <p style={{
             color: "#94a3b8", fontSize: isMobile ? 14 : 17,
             maxWidth: 580, margin: "0 auto 48px", lineHeight: 1.9,
+            wordBreak: "break-word",
             opacity: showSub ? 1 : 0,
             transform: showSub ? "translateY(0)" : "translateY(20px)",
             transition: "all .8s ease",
@@ -290,14 +294,14 @@ function Home() {
             <button
               className="btn-hero-primary"
               onClick={() => document.getElementById("catalogo")?.scrollIntoView({ behavior: "smooth" })}
-              style={{ padding: isMobile ? "13px 30px" : "15px 38px", fontSize: isMobile ? 14 : 16 }}
+              style={{ padding: isMobile ? "13px 30px" : "15px 38px", fontSize: isMobile ? 14 : 16, minHeight: 44 }}
             >
               Ver servicios →
             </button>
             <button
               className="btn-hero-secondary"
               onClick={() => navigate("/contacto")}
-              style={{ padding: isMobile ? "13px 30px" : "15px 38px", fontSize: isMobile ? 14 : 16 }}
+              style={{ padding: isMobile ? "13px 30px" : "15px 38px", fontSize: isMobile ? 14 : 16, minHeight: 44 }}
             >
               Contactarnos
             </button>
@@ -321,7 +325,7 @@ function Home() {
         >
           {["left", "right"].map(side => (
             <div key={side} style={{
-              position: "absolute", [side]: 0, top: 0, bottom: 0, width: 120,
+              position: "absolute", [side]: 0, top: 0, bottom: 0, width: isMobile ? 40 : 120,
               background: `linear-gradient(to ${side === "left" ? "right" : "left"}, #000, transparent)`,
               zIndex: 2, pointerEvents: "none",
             }} />
@@ -416,8 +420,9 @@ function Home() {
 
       {/* ── REDES SOCIALES FLOTANTES (corregidas) ── */}
       <div style={{
-        position: "fixed", right: 20, bottom: 20,
-        display: "flex", flexDirection: "column", gap: 10, zIndex: 999,
+        position: "fixed", right: isMobile ? 12 : 20,
+        bottom: isMobile ? "calc(12px + env(safe-area-inset-bottom))" : 20,
+        display: "flex", flexDirection: "column", gap: isMobile ? 8 : 10, zIndex: 999,
       }}>
         {[
           { img: "https://cdn-icons-png.flaticon.com/512/733/733585.png", href: "https://wa.me/59167027053", label: "WhatsApp" },
@@ -453,7 +458,7 @@ function Home() {
                 background: "rgba(255,255,255,.06)", backdropFilter: "blur(12px)",
                 padding: 10, borderRadius: "50%",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                width: 46, height: 46, border: "1px solid #312e81", textDecoration: "none",
+                width: isMobile ? 44 : 46, height: isMobile ? 44 : 46, border: "1px solid #312e81", textDecoration: "none",
               }}
             >
               <img src={s.img} alt={s.label} style={{ width: 22, height: 22 }} />
@@ -575,13 +580,14 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
             key={f.key}
             onClick={() => setFiltroCategoria(f.key as any)}
             style={{
-              padding: "8px 18px",
+              padding: isMobile ? "10px 16px" : "8px 18px",
+              minHeight: isMobile ? 44 : "auto",
               borderRadius: 99,
               border: filtroCategoria === f.key ? "2px solid #6366f1" : "1px solid #1e1b4b",
               background: filtroCategoria === f.key ? "rgba(99,102,241,.15)" : "#0d0d1a",
               color: filtroCategoria === f.key ? "#a5b4fc" : "#64748b",
               fontWeight: 600,
-              fontSize: 13,
+              fontSize: isMobile ? 12 : 13,
               cursor: "pointer",
               fontFamily: "inherit",
               transition: "all .2s",
@@ -650,12 +656,12 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
             </div>
 
             {/* Info */}
-            <div style={{ padding: 22, flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ padding: isMobile ? 16 : 22, flex: 1, display: "flex", flexDirection: "column", gap: isMobile ? 8 : 10 }}>
               <h3
                 onClick={() => navigate(`/producto/${p.id}`)}
                 style={{
-                  color: "white", fontSize: 17, fontWeight: 700, margin: 0,
-                  cursor: "pointer", lineHeight: 1.3,
+                  color: "white", fontSize: isMobile ? 15 : 17, fontWeight: 700, margin: 0,
+                  cursor: "pointer", lineHeight: 1.3, wordBreak: "break-word",
                   transition: "color .2s",
                 }}
                 onMouseEnter={e => (e.currentTarget.style.color = "#a5b4fc")}
@@ -665,7 +671,8 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
               </h3>
 
               <p style={{
-                color: "#64748b", fontSize: 13, lineHeight: 1.7, flex: 1, margin: 0,
+                color: "#64748b", fontSize: isMobile ? 12 : 13, lineHeight: 1.7, flex: 1, margin: 0,
+                wordBreak: "break-word",
                 display: "-webkit-box",
                 WebkitLineClamp: 3,
                 WebkitBoxOrient: "vertical",
@@ -682,7 +689,7 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
                     Bs {p.precio.toFixed(2)}
                   </span>
                 )}
-                <span style={{ color: "#34d399", fontSize: 26, fontWeight: 800 }}>
+                <span style={{ color: "#34d399", fontSize: isMobile ? 22 : 26, fontWeight: 800 }}>
                   Bs {precioFinal.toFixed(2)}
                 </span>
               </div>
@@ -733,6 +740,7 @@ function CatalogoProductos({ isMobile }: { isMobile: boolean }) {
               <button
                 className="btn-detalle"
                 onClick={() => navigate(`/producto/${p.id}`)}
+                style={{ minHeight: 44, padding: isMobile ? "10px 0" : "6px 0", width: "100%" }}
               >
                 Ver detalles →
               </button>
