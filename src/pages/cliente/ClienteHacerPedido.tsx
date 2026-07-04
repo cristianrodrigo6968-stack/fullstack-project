@@ -308,7 +308,7 @@ function ClienteHacerPedido() {
       >
         <div style={{
           background: "#0d0d1a", border: "1px solid #14532d",
-          padding: "52px 40px", borderRadius: 24, textAlign: "center",
+          padding: isMobile ? "40px 22px" : "52px 40px", borderRadius: 24, textAlign: "center",
           maxWidth: 460, width: "100%", boxShadow: "0 0 60px rgba(5,150,105,.12)",
         }}>
           <div style={{ fontSize: 72, marginBottom: 20 }}>✅</div>
@@ -395,7 +395,7 @@ function ClienteHacerPedido() {
         .btn-comprar:hover { filter: brightness(1.12); }
         .btn-comprar:active { transform: scale(0.97); }
 
-        .cart-input { padding:13px 16px; border-radius:12px; border:1px solid #1e1b4b; background:#0a0a14; color:white; font-size:14px; width:100%; box-sizing:border-box; outline:none; transition:border-color .2s, box-shadow .2s; font-family:inherit; }
+        .cart-input { padding:13px 16px; border-radius:12px; border:1px solid #1e1b4b; background:#0a0a14; color:white; font-size:16px; width:100%; box-sizing:border-box; outline:none; transition:border-color .2s, box-shadow .2s; font-family:inherit; }
         .cart-input:focus { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.15); }
         .cart-input::placeholder { color:#334155; }
         .file-upload-label { display:flex; align-items:center; gap:10px; padding:13px 16px; background:#0a0a14; border:1px dashed #312e81; border-radius:12px; color:#475569; font-size:13px; cursor:pointer; transition:border-color .2s, color .2s, background .2s; }
@@ -407,7 +407,7 @@ function ClienteHacerPedido() {
         .modo-card:hover { border-color:#6366f1 !important; background:rgba(99,102,241,.07) !important; transform:translateY(-3px); box-shadow:0 12px 28px rgba(99,102,241,.12); }
       `}</style>
 
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "90px 20px 30px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: `90px 20px ${isMobile && totalItems > 0 ? 100 : 30}px` }}>
         <h1 style={{ fontSize: isMobile ? 22 : 30, fontWeight: 800, margin: "0 0 6px", color: "#f1f5f9" }}>
           🛒 Hacer Pedido
         </h1>
@@ -743,18 +743,22 @@ function ClienteHacerPedido() {
                 <div
                   style={{
                     position: "fixed",
-                    bottom: 20,
-                    right: 20,
+                    bottom: isMobile ? 0 : 20,
+                    left: isMobile ? 0 : "auto",
+                    right: isMobile ? 0 : 20,
                     zIndex: 1000,
                     display: "flex",
                     alignItems: "center",
-                    gap: 10,
-                    background: "rgba(13,13,26,0.95)",
+                    justifyContent: isMobile ? "space-between" : "flex-start",
+                    gap: isMobile ? 8 : 10,
+                    background: "rgba(13,13,26,0.97)",
                     backdropFilter: "blur(12px)",
                     border: "1px solid #312e81",
-                    borderRadius: 20,
-                    padding: "12px 20px",
+                    borderRadius: isMobile ? 0 : 20,
+                    padding: isMobile ? "12px 16px" : "12px 20px",
                     boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.3)",
+                    width: isMobile ? "100%" : "auto",
+                    boxSizing: "border-box",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -835,13 +839,13 @@ function ClienteHacerPedido() {
 
                     return Array.from({ length: cantidad }).map((_, copia) => (
                       <div key={`${producto.id}_${copia}`} style={{ background: "#0d0d1a", borderRadius: 14, border: "1px solid #1e1b4b" }}>
-                        <div style={{ padding: "14px 18px", borderBottom: "1px solid #1e1b4b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontWeight: "bold", color: "#f1f5f9" }}>
+                        <div style={{ padding: "14px 18px", borderBottom: "1px solid #1e1b4b", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                          <span style={{ fontWeight: "bold", color: "#f1f5f9", wordBreak: "break-word", minWidth: 0, flex: 1 }}>
                             {esPaquete ? "🎁 " : ""}{producto.nombre}
                           </span>
                           <button
                             onClick={() => disminuirCantidad(producto.id)}
-                            style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 13 }}
+                            style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 13, flexShrink: 0, whiteSpace: "nowrap" }}
                           >
                             ✕ {esPaquete ? "Eliminar paquete" : "Eliminar"}
                           </button>

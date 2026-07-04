@@ -15,6 +15,15 @@ function ClientePanel() {
   const { isMobile } = useWindowSize();
   const [section, setSection] = useState(debeCambiarPassword ? "password" : "inicio");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (isMobile && sidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isMobile, sidebarOpen]);
   
 const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadTasks, setUnreadTasks] = useState(0);
@@ -85,25 +94,26 @@ const [unreadMessages, setUnreadMessages] = useState(0);
   const handleSection = (key: string) => { setSection(key); setSidebarOpen(false); };
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#0f172a" }}>
+    <div style={{ display: "flex", minHeight: "100dvh", background: "#000" }}>
       {isMobile && sidebarOpen && (
-        <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200 }} />
+        <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, touchAction: "none" }} />
       )}
 
       <div style={{
-        width: 240, background: "#1e293b", padding: 24,
+        width: 240, background: "linear-gradient(160deg, #0d0d1a, #0a0a14)",
+        borderRight: "1px solid #1e1b4b", padding: 24,
         display: "flex", flexDirection: "column", gap: 8,
         position: isMobile ? "fixed" : "sticky", top: 0,
         left: isMobile ? (sidebarOpen ? 0 : -260) : 0,
-        height: "100vh", zIndex: isMobile ? 300 : 1,
+        height: isMobile ? "100dvh" : "100vh", zIndex: isMobile ? 300 : 1,
         transition: "left 0.3s ease", overflowY: "auto",
       }}>
         <div style={{ marginBottom: 24 }}>
           {isMobile && (
             <button onClick={() => setSidebarOpen(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 20, marginBottom: 16, display: "block", marginLeft: "auto" }}>✕</button>
           )}
-          <div style={{ fontSize: 13, color: "#64748b" }}>Portal del Cliente</div>
-          <div style={{ color: "white", fontWeight: "bold", fontSize: 16 }}>👤 {username}</div>
+          <div style={{ fontSize: 13, color: "#818cf8", letterSpacing: 1, textTransform: "uppercase" }}>Portal del Cliente</div>
+          <div style={{ color: "white", fontWeight: "bold", fontSize: 16, marginTop: 4 }}>👤 {username}</div>
         </div>
 
         {menuItems.map((item) => (
@@ -112,21 +122,24 @@ const [unreadMessages, setUnreadMessages] = useState(0);
             onClick={() => { if (!debeCambiarPassword || item.key === "password") handleSection(item.key); }}
             disabled={debeCambiarPassword && item.key !== "password"}
             style={{
-            padding: "10px 16px", border: "none", borderRadius: 8,
+            padding: "10px 16px", border: section === item.key ? "1px solid #6366f1" : "1px solid #1e1b4b", borderRadius: 10,
             cursor: (debeCambiarPassword && item.key !== "password") ? "not-allowed" : "pointer",
             textAlign: "left",
             fontWeight: section === item.key ? "bold" : "normal",
-            background: section === item.key ? "#3b82f6" : "#334155",
+            background: section === item.key ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "#0a0a14",
             color: "white", fontSize: 14,
             display: "flex", justifyContent: "space-between", alignItems: "center",
             opacity: (debeCambiarPassword && item.key !== "password") ? 0.4 : 1,
+            boxShadow: section === item.key ? "0 4px 14px rgba(99,102,241,.35)" : "none",
+            transition: "all .2s",
           }}>
             <span>{item.label}</span>
             {item.badge != null && item.badge > 0 && section !== "mensajes" && section !== "contenido" && (
               <span style={{
-                background: "#ef4444", color: "white", fontSize: 11,
+                background: "linear-gradient(135deg,#ef4444,#dc2626)", color: "white", fontSize: 11,
                 fontWeight: "bold", padding: "2px 8px", borderRadius: 99,
                 lineHeight: "1.2",
+                boxShadow: "0 2px 8px rgba(239,68,68,.4)",
               }}>
                 {item.badge}
               </span>
@@ -135,26 +148,27 @@ const [unreadMessages, setUnreadMessages] = useState(0);
         ))}
 
         <button onClick={handleLogout} style={{
-          marginTop: "auto", padding: "10px 16px", border: "none",
-          borderRadius: 8, cursor: "pointer", background: "#ef4444",
+          marginTop: "auto", padding: "10px 16px", border: "1px solid rgba(239,68,68,.3)",
+          borderRadius: 10, cursor: "pointer", background: "linear-gradient(135deg,#ef4444,#dc2626)",
           color: "white", fontWeight: "bold", fontSize: 14,
+          boxShadow: "0 4px 14px rgba(239,68,68,.3)",
         }}>
           🚪 Cerrar sesión
         </button>
       </div>
 
-      <div style={{ flex: 1, padding: isMobile ? 20 : 40, color: "white", overflowY: "auto", minWidth: 0 }}>
+      <div style={{ flex: 1, padding: isMobile ? 20 : 40, color: "white", overflowY: "auto", minWidth: 0, height: isMobile ? "100dvh" : "100vh", boxSizing: "border-box" }}>
         {debeCambiarPassword && (
-          <div style={{ background: "#422006", border: "1px solid #f59e0b", color: "#fbbf24", padding: "12px 16px", borderRadius: 10, marginBottom: 20, fontSize: 14 }}>
+          <div style={{ background: "rgba(245,158,11,.1)", border: "1px solid rgba(245,158,11,.35)", color: "#fbbf24", padding: "12px 16px", borderRadius: 10, marginBottom: 20, fontSize: 14 }}>
             🔒 Por seguridad, debes cambiar tu contraseña temporal antes de continuar.
           </div>
         )}
         {isMobile && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, background: "#1e293b", padding: "12px 16px", borderRadius: 10 }}>
-            <span style={{ fontWeight: "bold", fontSize: 15 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: "12px 16px", borderRadius: 12 }}>
+            <span style={{ fontWeight: "bold", fontSize: 15, color: "white" }}>
               {menuItems.find(m => m.key === section)?.label || "Inicio"}
             </span>
-            <button onClick={() => setSidebarOpen(true)} style={{ background: "#334155", border: "none", color: "white", cursor: "pointer", padding: "6px 12px", borderRadius: 8, fontSize: 18 }}>☰</button>
+            <button onClick={() => setSidebarOpen(true)} style={{ background: "rgba(99,102,241,.15)", border: "1px solid rgba(99,102,241,.3)", color: "#a5b4fc", cursor: "pointer", padding: "6px 12px", borderRadius: 8, fontSize: 18 }}>☰</button>
           </div>
         )}
 

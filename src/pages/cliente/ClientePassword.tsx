@@ -7,7 +7,7 @@ function CampoPassword({ label, value, onChange }: { label: string; value: strin
   const [visible, setVisible] = useState(false);
   return (
     <div style={{ marginBottom: 16 }}>
-      <label style={{ color: "#94a3b8", fontSize: 12, textTransform: "uppercase", display: "block", marginBottom: 6 }}>{label}</label>
+      <label style={{ color: "#64748b", fontSize: 11, fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", display: "block", marginBottom: 6 }}>{label}</label>
       <div style={{ position: "relative" }}>
         <input
           type={visible ? "text" : "password"}
@@ -19,8 +19,9 @@ function CampoPassword({ label, value, onChange }: { label: string; value: strin
           type="button"
           onClick={() => setVisible(v => !v)}
           style={{
-            position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
-            background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 16,
+            position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)",
+            background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 18,
+            padding: 10, display: "flex", alignItems: "center", justifyContent: "center",
           }}
           title={visible ? "Ocultar" : "Mostrar"}
         >
@@ -97,20 +98,20 @@ function ClientePassword({ onNavigate }: Props) {
 
   return (
     <div>
-      <h1 style={{ fontSize: 24, marginBottom: 24 }}>🔑 Cambiar Contraseña</h1>
-      <div style={{ background: "#1e293b", padding: 28, borderRadius: 14, maxWidth: 460 }}>
+      <h1 style={{ fontSize: 24, marginBottom: 24, color: "#f1f5f9" }}>🔑 Cambiar Contraseña</h1>
+      <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: "24px 20px", borderRadius: 14, maxWidth: 460, boxSizing: "border-box" }}>
         {debeCambiarPassword && (
-          <div style={{ background: "#1e3a5f", color: "#93c5fd", padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
+          <div style={{ background: "rgba(99,102,241,.1)", border: "1px solid rgba(99,102,241,.3)", color: "#a5b4fc", padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
             ℹ️ Es tu primer ingreso. Elegí una nueva contraseña fácil de recordar.
           </div>
         )}
         {ok && (
-          <div style={{ background: "#14532d", color: "#22c55e", padding: 12, borderRadius: 8, marginBottom: 16 }}>
+          <div style={{ background: "rgba(16,185,129,.1)", border: "1px solid rgba(16,185,129,.3)", color: "#34d399", padding: 12, borderRadius: 8, marginBottom: 16 }}>
             ✅ Contraseña actualizada correctamente.
           </div>
         )}
         {error && (
-          <div style={{ background: "#7f1d1d", color: "#fca5a5", padding: 12, borderRadius: 8, marginBottom: 16 }}>
+          <div style={{ background: "rgba(239,68,68,.1)", border: "1px solid rgba(239,68,68,.3)", color: "#fca5a5", padding: 12, borderRadius: 8, marginBottom: 16 }}>
             {error}
           </div>
         )}
@@ -127,10 +128,11 @@ function ClientePassword({ onNavigate }: Props) {
           onClick={cambiar}
           disabled={guardando}
           style={{
-            width: "100%", padding: 12, background: "#3b82f6",
-            border: "none", borderRadius: 8, color: "white",
-            fontWeight: "bold", cursor: "pointer", fontSize: 14,
+            width: "100%", padding: 13, background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
+            border: "none", borderRadius: 10, color: "white",
+            fontWeight: "bold", cursor: guardando ? "not-allowed" : "pointer", fontSize: 14,
             opacity: guardando ? 0.7 : 1,
+            boxShadow: guardando ? "none" : "0 4px 16px rgba(99,102,241,.35)",
           }}
         >
           {guardando ? "Guardando..." : "Actualizar contraseña"}
@@ -141,8 +143,9 @@ function ClientePassword({ onNavigate }: Props) {
 }
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", padding: 10, borderRadius: 8, border: "none",
-  background: "#334155", color: "white", fontSize: 14, boxSizing: "border-box",
+  width: "100%", padding: 13, borderRadius: 10, border: "1px solid #1e1b4b",
+  background: "#0a0a14", color: "white", fontSize: 16, boxSizing: "border-box",
+  outline: "none",
 };
 
 export default ClientePassword;

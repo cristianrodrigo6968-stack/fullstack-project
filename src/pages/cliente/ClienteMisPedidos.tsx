@@ -29,8 +29,8 @@ interface Pedido {
 
 const ESTADO_ITEM_CONFIG: Record<string, { bg: string; color: string; label: string }> = {
   pendiente: { bg: "rgba(148,163,184,0.1)", color: "#94a3b8", label: "⏳ Pendiente" },
-  completado: { bg: "rgba(34,197,94,0.1)", color: "#22c55e", label: "✅ Completado" },
-  entregado: { bg: "rgba(59,130,246,0.1)", color: "#60a5fa", label: "📦 Entregado" },
+  completado: { bg: "rgba(16,185,129,0.1)", color: "#34d399", label: "✅ Completado" },
+  entregado: { bg: "rgba(99,102,241,0.1)", color: "#a5b4fc", label: "📦 Entregado" },
 };
 
 function EstadoItemBadge({ estado }: { estado: string }) {
@@ -78,18 +78,18 @@ function ClienteMisPedidos() {
   };
 
   const getEstadoPedidoColor = (estado: string) => {
-    if (estado === "completado") return { bg: "#14532d", color: "#22c55e" };
-    if (estado === "rechazado") return { bg: "#7f1d1d", color: "#ef4444" };
-    return { bg: "#422006", color: "#f59e0b" };
+    if (estado === "completado") return { bg: "rgba(16,185,129,.12)", color: "#34d399" };
+    if (estado === "rechazado") return { bg: "rgba(239,68,68,.12)", color: "#ef4444" };
+    return { bg: "rgba(245,158,11,.12)", color: "#f59e0b" };
   };
 const getEstadoPedidoDisplay = (p: Pedido) => {
-    if (p.estado === "rechazado") return { bg: "#7f1d1d", color: "#ef4444", label: "rechazado" };
-    if (p.items.length === 0) return { bg: "#422006", color: "#f59e0b", label: "en proceso" };
+    if (p.estado === "rechazado") return { bg: "rgba(239,68,68,.12)", color: "#ef4444", label: "rechazado" };
+    if (p.items.length === 0) return { bg: "rgba(245,158,11,.12)", color: "#f59e0b", label: "en proceso" };
     const todosEntregados = p.items.every(i => i.estado === "entregado");
     const todosListos = p.items.every(i => i.estado === "completado" || i.estado === "entregado");
-    if (todosEntregados) return { bg: "#1e3a5f", color: "#60a5fa", label: "entregado" };
-    if (todosListos) return { bg: "#14532d", color: "#22c55e", label: "completado" };
-    return { bg: "#422006", color: "#f59e0b", label: "en proceso" };
+    if (todosEntregados) return { bg: "rgba(99,102,241,.12)", color: "#a5b4fc", label: "entregado" };
+    if (todosListos) return { bg: "rgba(16,185,129,.12)", color: "#34d399", label: "completado" };
+    return { bg: "rgba(245,158,11,.12)", color: "#f59e0b", label: "en proceso" };
   };
   const getTipoLabel = (item: ItemPedido) => {
     const t = (item.titulo || "").toLowerCase();
@@ -130,7 +130,7 @@ const getEstadoPedidoDisplay = (p: Pedido) => {
       <div>
         <button onClick={() => setSelected(null)} style={btnGray}>← Volver a mis pedidos</button>
         <div style={{ background: "#1e293b", padding: isMobile ? 20 : 28, borderRadius: 14, marginTop: 20 }}>
-          <h2 style={{ marginBottom: 6, fontSize: isMobile ? 18 : 24 }}>
+          <h2 style={{ marginBottom: 6, fontSize: isMobile ? 18 : 24, wordBreak: "break-word" }}>
             Pedido #{numeroDePedido(selected.id)}
           </h2>
           <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
@@ -225,32 +225,32 @@ const getEstadoPedidoDisplay = (p: Pedido) => {
             {[
               { label: "Total ítems", value: totalItems, color: "#f1f5f9" },
               { label: "Pendientes", value: pendientes, color: "#94a3b8" },
-              { label: "Completados", value: completadosOEntregados - entregados, color: "#22c55e" },
-              { label: "Entregados", value: entregados, color: "#60a5fa" },
+              { label: "Completados", value: completadosOEntregados - entregados, color: "#34d399" },
+              { label: "Entregados", value: entregados, color: "#a5b4fc" },
             ].map(stat => (
               <div key={stat.label} style={{
-                background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12,
-                padding: "14px 16px", textAlign: "center",
+                background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", borderRadius: 12,
+                padding: isMobile ? "12px 10px" : "14px 16px", textAlign: "center", minWidth: 0,
               }}>
-                <div style={{ fontSize: 26, fontWeight: 700, color: stat.color }}>{stat.value}</div>
-                <div style={{ color: "#475569", fontSize: 12 }}>{stat.label}</div>
+                <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 700, color: stat.color }}>{stat.value}</div>
+                <div style={{ color: "#475569", fontSize: isMobile ? 11 : 12, wordBreak: "break-word" }}>{stat.label}</div>
               </div>
             ))}
           </div>
 
           {/* Barra de progreso general */}
           <div style={{
-            background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12,
+            background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", borderRadius: 12,
             padding: "16px 20px", marginBottom: 28,
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
               <span style={{ color: "#64748b", fontSize: 13 }}>Progreso general</span>
               <span style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 13 }}>{progresoGeneral}%</span>
             </div>
-            <div style={{ height: 6, background: "#1e293b", borderRadius: 99, overflow: "hidden" }}>
+            <div style={{ height: 6, background: "#1e1b4b", borderRadius: 99, overflow: "hidden" }}>
               <div style={{
                 width: `${progresoGeneral}%`, height: "100%",
-                background: progresoGeneral === 100 ? "#22c55e" : "linear-gradient(90deg, #3b82f6, #6366f1)",
+                background: progresoGeneral === 100 ? "linear-gradient(135deg,#10b981,#059669)" : "linear-gradient(90deg,#6366f1,#8b5cf6)",
                 borderRadius: 99, transition: "width 0.4s ease",
               }} />
             </div>
@@ -278,7 +278,7 @@ const getEstadoPedidoDisplay = (p: Pedido) => {
                 cursor: "pointer",
               }} onClick={() => verDetalle(p.id)}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-                  <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ flex: 1, minWidth: isMobile ? "100%" : 200 }}>
                     <p style={{ color: "white", fontWeight: "bold", fontSize: 15 }}>
                       Pedido #{numeroDePedido(p.id)}
                     </p>
@@ -318,7 +318,6 @@ const getEstadoPedidoDisplay = (p: Pedido) => {
   );
 }
 
-const btnGray: React.CSSProperties = { background: "#334155", border: "none", padding: "8px 14px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
-const badgeStyle: React.CSSProperties = { background: "#1e3a5f", color: "#60a5fa", padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: "bold" };
-
+const btnGray: React.CSSProperties = { background: "#0a0a14", border: "1px solid #1e1b4b", padding: "8px 14px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13 };
+const badgeStyle: React.CSSProperties = { background: "rgba(99,102,241,.12)", color: "#a5b4fc", padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: "bold", whiteSpace: "nowrap" };
 export default ClienteMisPedidos;
