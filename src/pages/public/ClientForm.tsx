@@ -385,12 +385,7 @@ function ClientForm() {
               <p style={{ color: "#94a3b8", fontSize: 13 }}>Usa tu usuario y contraseña anteriores para acceder al portal.</p>
             </div>
           )}
-          {pdfBase64 && (
-            <div style={{ marginBottom: 24 }}>
-              <button onClick={() => { try { const blob = base64ToBlob(pdfBase64, "application/pdf"); const url = URL.createObjectURL(blob); window.open(url, "_blank"); setTimeout(() => URL.revokeObjectURL(url), 1000); } catch { const newTab = window.open(); if (newTab) newTab.document.write(`<iframe src="data:application/pdf;base64,${pdfBase64}" width="100%" height="100%" style="border:none;"></iframe>`); } }} style={{ width: "100%", background: "#10b981", border: "none", padding: "14px 20px", borderRadius: 10, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>📄 Ver recibo del pedido</button>
-              <p style={{ color: "#475569", fontSize: 12, marginTop: 8 }}>En iPhone, toca el botón y luego el ícono de compartir para guardar el PDF.</p>
-            </div>
-          )}
+          
           <p style={{ color: "#94a3b8", fontSize: 15, lineHeight: 1.6, marginBottom: 24 }}>El equipo revisará tu información y se pondrá en contacto con vos a la brevedad.</p>
           <div style={{ background: "#0f172a", borderRadius: 10, padding: "12px 16px", marginBottom: 24, display: "flex", gap: 10, alignItems: "center" }}><span style={{ fontSize: 20 }}>📬</span><p style={{ color: "#60a5fa", fontSize: 13, margin: 0, textAlign: "left" }}>Te contactaremos al número <strong>{celular}</strong> o al correo <strong>{email}</strong>.</p></div>
           <button onClick={() => window.location.href = "/"} style={{ width: "100%", padding: 14, background: "#3b82f6", border: "none", borderRadius: 12, color: "white", fontSize: 15, fontWeight: "bold", cursor: "pointer" }}>🏠 Volver al inicio</button>

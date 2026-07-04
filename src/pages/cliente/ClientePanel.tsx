@@ -161,7 +161,7 @@ const [unreadMessages, setUnreadMessages] = useState(0);
         {section === "inicio" && <ClienteInicio onNavigate={handleSection} />}
         {section === "contenido" && <ClienteContenido />}
         {section === "mensajes" && <ClienteMensajes />}
-        {section === "password" && <ClientePassword />}
+       {section === "password" && <ClientePassword onNavigate={handleSection} />}
         {section === "hacer-pedido" && <ClienteHacerPedido />}
         {section === "mis-pedidos" && <ClienteMisPedidos />}
       </div>

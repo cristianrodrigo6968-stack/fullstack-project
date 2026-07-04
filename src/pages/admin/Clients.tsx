@@ -184,7 +184,9 @@ function Clients() {
   const [confirmAction, setConfirmAction] = useState<{ fn: () => void }>({ fn: () => {} });
   const [confirmLabel, setConfirmLabel] = useState("Sí, confirmar");
   const [confirmIcon, setConfirmIcon] = useState("🗑️");
-
+const [editando, setEditando] = useState(false);
+const [editData, setEditData] = useState<Partial<Client>>({});
+const [guardandoEdicion, setGuardandoEdicion] = useState(false);
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
@@ -251,7 +253,28 @@ function Clients() {
       await load();
     } finally { setRegeneratingId(null); }
   };
+const iniciarEdicion = () => {
+  if (!selected) return;
+  setEditData({
+    ci: selected.ci, nombres: selected.nombres, apellidoPaterno: selected.apellidoPaterno,
+    apellidoMaterno: selected.apellidoMaterno, sexo: selected.sexo, ciudad: selected.ciudad,
+    extension: selected.extension, direccion: selected.direccion, fechaNacimiento: selected.fechaNacimiento,
+    profesion: selected.profesion, celular: selected.celular, email: selected.email,
+  });
+  setEditando(true);
+};
 
+const guardarEdicion = async () => {
+  if (!selected) return;
+  setGuardandoEdicion(true);
+  try {
+    const res = await fetch(`${API_URL}/clients/${selected.id}`, { method: "PUT", headers, body: JSON.stringify(editData) });
+    const data = await res.json();
+    setSelected(data);
+    setClients(prev => prev.map(c => c.id === data.id ? data : c));
+    setEditando(false);
+  } finally { setGuardandoEdicion(false); }
+};
   const updateStatus = async (id: number, status: string) => {
     setUpdatingId(id);
     try {
@@ -364,7 +387,7 @@ function Clients() {
 
       {selected ? (
         <div>
-          <button onClick={() => setSelected(null)} style={btnGray}>← Volver</button>
+          <button onClick={() => { setSelected(null); setEditando(false); }} style={btnGray}>← Volver</button>
           <div style={{ background: "#1e293b", padding: isMobile ? 20 : 28, borderRadius: 14, marginTop: 20 }}>
             {/* Cabecera */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
@@ -510,28 +533,85 @@ function Clients() {
             </div>
 
             {/* Datos personales */}
-            <h3 style={{ marginBottom: 16, color: "#94a3b8", fontSize: 13, textTransform: "uppercase", letterSpacing: 1 }}>Datos Personales</h3>
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 12, marginBottom: 24 }}>
-              {[
-                { label: "C.I.", value: selected.ci },
-                { label: "Nombres", value: selected.nombres },
-                { label: "Apellido Paterno", value: selected.apellidoPaterno },
-                { label: "Apellido Materno", value: selected.apellidoMaterno },
-                { label: "Sexo", value: selected.sexo },
-                { label: "Ciudad", value: selected.ciudad },
-                { label: "Extensión", value: selected.extension },
-                { label: "Dirección", value: selected.direccion },
-                { label: "Fecha Nacimiento", value: selected.fechaNacimiento },
-                { label: "Profesión", value: selected.profesion },
-                { label: "Celular", value: selected.celular },
-                { label: "Email", value: selected.email },
-              ].map(item => (
-                <div key={item.label} style={{ background: "#0f172a", padding: 14, borderRadius: 8 }}>
-                  <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>{item.label}</p>
-                  <p style={{ color: item.value ? "white" : "#334155", fontSize: 14 }}>{item.value || "No proporcionado"}</p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: 16, flexDirection: isMobile ? "column" : "row", gap: 12 }}>
+              <h3 style={{ color: "#94a3b8", fontSize: 13, textTransform: "uppercase", letterSpacing: 1, margin: 0 }}>Datos Personales</h3>
+              {!editando ? (
+                <button onClick={iniciarEdicion} style={{ ...btnPurple, fontSize: 12, width: isMobile ? "100%" : "auto" }}>✏️ Editar datos</button>
+              ) : (
+                <div style={{ display: "flex", gap: 8, width: isMobile ? "100%" : "auto" }}>
+                  <button onClick={() => setEditando(false)} disabled={guardandoEdicion} style={{ ...btnGray, fontSize: 12, flex: isMobile ? 1 : "none" }}>Cancelar</button>
+                  <button onClick={guardarEdicion} disabled={guardandoEdicion} style={{ ...btnGreen, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: isMobile ? 1 : "none" }}>
+                    {guardandoEdicion ? <Spinner /> : "💾 Guardar"}
+                  </button>
                 </div>
-              ))}
+              )}
             </div>
+
+            {!editando ? (
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 12, marginBottom: 24 }}>
+                {[
+                  { label: "C.I.", value: selected.ci },
+                  { label: "Nombres", value: selected.nombres },
+                  { label: "Apellido Paterno", value: selected.apellidoPaterno },
+                  { label: "Apellido Materno", value: selected.apellidoMaterno },
+                  { label: "Sexo", value: selected.sexo },
+                  { label: "Ciudad", value: selected.ciudad },
+                  { label: "Extensión", value: selected.extension },
+                  { label: "Dirección", value: selected.direccion },
+                  { label: "Fecha Nacimiento", value: selected.fechaNacimiento },
+                  { label: "Profesión", value: selected.profesion },
+                  { label: "Celular", value: selected.celular },
+                  { label: "Email", value: selected.email },
+                ].map(item => (
+                  <div key={item.label} style={{ background: "#0f172a", padding: 14, borderRadius: 8 }}>
+                    <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>{item.label}</p>
+                    <p style={{ color: item.value ? "white" : "#334155", fontSize: 14 }}>{item.value || "No proporcionado"}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 12, marginBottom: 24 }}>
+                {[
+                  { label: "C.I.", key: "ci" },
+                  { label: "Nombres", key: "nombres" },
+                  { label: "Apellido Paterno", key: "apellidoPaterno" },
+                  { label: "Apellido Materno", key: "apellidoMaterno" },
+                  { label: "Ciudad", key: "ciudad" },
+                  { label: "Dirección", key: "direccion" },
+                  { label: "Profesión", key: "profesion" },
+                  { label: "Celular", key: "celular" },
+                  { label: "Email", key: "email" },
+                ].map(item => (
+                  <div key={item.key} style={{ background: "#0f172a", padding: 14, borderRadius: 8 }}>
+                    <p style={{ color: "#64748b", fontSize: 11, marginBottom: 6, textTransform: "uppercase" }}>{item.label}</p>
+                    <input
+                      value={(editData as any)[item.key] || ""}
+                      onChange={e => setEditData(prev => ({ ...prev, [item.key]: e.target.value }))}
+                      style={{ width: "100%", padding: 10, borderRadius: 6, border: "none", background: "#1e293b", color: "white", fontSize: 16, boxSizing: "border-box" }}
+                    />
+                  </div>
+                ))}
+                <div style={{ background: "#0f172a", padding: 14, borderRadius: 8 }}>
+                  <p style={{ color: "#64748b", fontSize: 11, marginBottom: 6, textTransform: "uppercase" }}>Sexo</p>
+                  <select value={editData.sexo || ""} onChange={e => setEditData(prev => ({ ...prev, sexo: e.target.value as Sexo }))} style={{ width: "100%", padding: 10, borderRadius: 6, border: "none", background: "#1e293b", color: "white", fontSize: 16 }}>
+                    <option value="">-- Seleccionar --</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Femenino">Femenino</option>
+                  </select>
+                </div>
+                <div style={{ background: "#0f172a", padding: 14, borderRadius: 8 }}>
+                  <p style={{ color: "#64748b", fontSize: 11, marginBottom: 6, textTransform: "uppercase" }}>Extensión</p>
+                  <select value={editData.extension || ""} onChange={e => setEditData(prev => ({ ...prev, extension: e.target.value as Extension }))} style={{ width: "100%", padding: 10, borderRadius: 6, border: "none", background: "#1e293b", color: "white", fontSize: 16 }}>
+                    <option value="">-- Seleccionar --</option>
+                    {["LP","CB","SC","OR","PT","CH","TJ","BN","PD","QR"].map(ext => <option key={ext} value={ext}>{ext}</option>)}
+                  </select>
+                </div>
+                <div style={{ background: "#0f172a", padding: 14, borderRadius: 8 }}>
+                  <p style={{ color: "#64748b", fontSize: 11, marginBottom: 6, textTransform: "uppercase" }}>Fecha Nacimiento</p>
+                  <input type="date" value={editData.fechaNacimiento || ""} onChange={e => setEditData(prev => ({ ...prev, fechaNacimiento: e.target.value }))} style={{ width: "100%", padding: 10, borderRadius: 6, border: "none", background: "#1e293b", color: "white", fontSize: 16, boxSizing: "border-box" }} />
+                </div>
+              </div>
+            )}
 
             {/* Servicios */}
             <h3 style={{ marginBottom: 12, color: "#94a3b8", fontSize: 13, textTransform: "uppercase", letterSpacing: 1 }}>Servicios</h3>

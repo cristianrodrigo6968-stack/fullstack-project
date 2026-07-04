@@ -1006,7 +1006,26 @@ app.put("/clients/form/:token", async (req, res) => {
 
 // ===================== CLIENTES: CRUD =====================
 app.put("/clients/:id", auth, async (req, res) => {
-  res.json(await prisma.client.update({ where: { id: Number(req.params.id) }, data: { status: req.body.status } }));
+  const {
+    status, ci, nombres, apellidoPaterno, apellidoMaterno, sexo, ciudad,
+    direccion, fechaNacimiento, extension, profesion, celular, email, nombreCompleto,
+  } = req.body;
+  const data: any = {};
+  if (status !== undefined) data.status = status;
+  if (ci !== undefined) data.ci = ci;
+  if (nombres !== undefined) data.nombres = nombres;
+  if (apellidoPaterno !== undefined) data.apellidoPaterno = apellidoPaterno;
+  if (apellidoMaterno !== undefined) data.apellidoMaterno = apellidoMaterno;
+  if (sexo !== undefined) data.sexo = sexo;
+  if (ciudad !== undefined) data.ciudad = ciudad;
+  if (direccion !== undefined) data.direccion = direccion;
+  if (fechaNacimiento !== undefined) data.fechaNacimiento = fechaNacimiento;
+  if (extension !== undefined) data.extension = extension;
+  if (profesion !== undefined) data.profesion = profesion;
+  if (celular !== undefined) data.celular = celular;
+  if (email !== undefined) data.email = email;
+  if (nombreCompleto !== undefined) data.nombreCompleto = nombreCompleto;
+  res.json(await prisma.client.update({ where: { id: Number(req.params.id) }, data }));
 });
 app.put("/clients/:id/progreso", auth, async (req, res) => {
   const { librosHechos, articulosHechos, edicionesHechas } = req.body;
