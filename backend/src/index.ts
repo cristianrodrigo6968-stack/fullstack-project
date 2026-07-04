@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import multer from "multer";
 import cloudinary from "./cloudinary";
 import bcrypt from "bcrypt";
+import rateLimit from "express-rate-limit";
 import { enviarCorreo } from "./mailer";
 import { enviarWhatsAppCliente } from "./whatsapp";
 import { generarReciboPDF } from "./pdfGenerator";
@@ -13,7 +14,13 @@ import { generarReciboPDF } from "./pdfGenerator";
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
-const SECRET = process.env.JWT_SECRET || "secret123";
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 6, // máximo 6 intentos por IP en esa ventana
+  message: { error: "Demasiados intentos de inicio de sesión. Intenta de nuevo en 15 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const allowedOrigins = [
   "https://fullstack-project-blond.vercel.app",
@@ -111,15 +118,20 @@ const authCliente = (req: express.Request, res: express.Response, next: express.
 };
 
 // ===================== LOGIN =====================
-app.post("/login", async (req, res) => {
+app.post("/login", loginLimiter, async (req, res) => {
   const { username, password } = req.body;
 
   const user = await prisma.user.findUnique({ where: { username } });
-  if (user && user.password === password) {
-    const token = jwt.sign({ id: user.id, username: user.username, role: "admin" }, SECRET, {
-      expiresIn: "8h",
-    });
-    return res.json({ token, username: user.username, role: "admin" });
+  if (user) {
+    const passwordValidaAdmin = user.password.startsWith("$2")
+      ? await bcrypt.compare(password, user.password)
+      : user.password === password;
+    if (passwordValidaAdmin) {
+      const token = jwt.sign({ id: user.id, username: user.username, role: "admin" }, SECRET, {
+        expiresIn: "8h",
+      });
+      return res.json({ token, username: user.username, role: "admin" });
+    }
   }
 
   const client = await prisma.client.findFirst({ where: { clientUsername: username } });
