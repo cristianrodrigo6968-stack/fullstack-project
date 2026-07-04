@@ -136,7 +136,11 @@ function ClientForm() {
   useEffect(() => { load(); }, []);
 
   const esImagen = (file: File) => file.type.startsWith("image/");
-  const esPDF = (file: File) => file.type === "application/pdf";
+  const esPDF = (file: File) =>
+  file.type === "application/pdf" ||
+  file.type === "application/msword" ||
+  file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+  /\.(pdf|docx?|DOC|DOCX)$/.test(file.name);
 
   const validarTamano = (file: File): boolean => {
     if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -436,22 +440,44 @@ function ClientForm() {
               <div style={{ flex: 1 }}>
                 <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>Foto clara de tu rostro</p>
                 <p style={{ color: "#475569", fontSize: 11, marginBottom: 8 }}>Máximo {MAX_FILE_SIZE_MB} MB · JPG, PNG</p>
-                <label style={btnUpload}>{fotoPreview ? "🔄 Cambiar foto" : "📤 Subir foto"}<input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (file && validarTamano(file)) { setFotografia(file); setFotoPreview(URL.createObjectURL(file)); } }} /></label>
-              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+  <label style={btnUpload}>
+    📷 Tomar foto
+    <input type="file" accept="image/*" capture="user" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (file && validarTamano(file)) { setFotografia(file); setFotoPreview(URL.createObjectURL(file)); } }} />
+  </label>
+  <label style={{ ...btnUpload, background: "#1e293b" }}>
+    🖼️ Elegir de galería
+    <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (file && validarTamano(file)) { setFotografia(file); setFotoPreview(URL.createObjectURL(file)); } }} />
+  </label>
+</div>
+</div>
             </div>
             {errors.fotografia && <p style={errorText}>{errors.fotografia}</p>}
           </div>
           <div ref={refs.fotoCarnet} style={{ marginTop: 8 }}>
             <label style={labelStyle}>Carnet de Identidad <Req /></label>
-            <p style={{ color: "#64748b", fontSize: 12, marginBottom: 12 }}>Podés subir una <strong>imagen (JPG, PNG)</strong> del frente o un <strong>documento PDF</strong> que contenga ambas caras.</p>
+            <p style={{ color: "#64748b", fontSize: 12, marginBottom: 12 }}>Podés tomar/subir una <strong>imagen (JPG, PNG)</strong> del frente o subir un <strong>documento PDF o Word</strong> que contenga ambas caras.</p>
             <div style={{ background: errors.fotoCarnet ? "#450a0a" : "#0f172a", borderRadius: 12, padding: 20, border: errors.fotoCarnet ? "1px solid #ef4444" : "1px solid #334155" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
                 {carnetPreview && carnetEsImagen ? <img src={carnetPreview} alt="carnet" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #64748b", flexShrink: 0 }} /> : carnetPreview && !carnetEsImagen ? <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0 }}><span style={{ fontSize: 32 }}>📄</span><span style={{ color: "#60a5fa", fontSize: 9, textAlign: "center", padding: "0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 82 }}>{carnetPreview}</span></div> : <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>🪪</div>}
                 <div style={{ flex: 1 }}>
                   <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>{carnetEsImagen ? "Frente del carnet" : "Documento subido"}</p>
                   <p style={{ color: "#475569", fontSize: 11, marginBottom: 8 }}>Máximo {MAX_FILE_SIZE_MB} MB · JPG, PNG, PDF</p>
-                  <label style={btnUpload}>{carnetPreview ? "🔄 Cambiar" : "📤 Subir frente o PDF"}<input type="file" accept="image/*,application/pdf" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet1(file); }} /></label>
-                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+  <label style={btnUpload}>
+    📷 Tomar foto
+    <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet1(file); }} />
+  </label>
+  <label style={{ ...btnUpload, background: "#1e293b" }}>
+    🖼️ Elegir imagen
+    <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet1(file); }} />
+  </label>
+  <label style={{ ...btnUpload, background: "#1e293b" }}>
+    📄 PDF o Word
+    <input type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet1(file); }} />
+  </label>
+</div>
+</div>
               </div>
               {(carnetEsImagen || !fotoCarnet) && (
                 <>
@@ -460,8 +486,16 @@ function ClientForm() {
                     {carnetPreview2 ? <img src={carnetPreview2} alt="carnet2" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "2px solid #64748b", flexShrink: 0 }} /> : <div style={{ width: 90, height: 90, background: "#1e293b", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0, opacity: 0.5 }}>🔄</div>}
                     <div style={{ flex: 1 }}>
                       <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>Reverso del carnet <span style={{ color: "#475569", fontSize: 11 }}>(opcional, solo si subiste imagen)</span></p>
-                      <label style={{ ...btnUpload, background: "#1e293b" }}>{carnetPreview2 ? "🔄 Cambiar reverso" : "📤 Subir reverso"}<input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet2(file); }} /></label>
-                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+  <label style={{ ...btnUpload, background: "#1e293b" }}>
+    📷 Tomar foto
+    <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet2(file); }} />
+  </label>
+  <label style={{ ...btnUpload, background: "#334155" }}>
+    🖼️ Elegir imagen
+    <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (file) handleCarnet2(file); }} />
+  </label>
+</div></div>
                   </div>
                 </>
               )}
