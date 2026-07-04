@@ -17,10 +17,10 @@ function Acerca() {
   ];
 
   return (
-    <div style={{ background: "#000", color: "white", minHeight: "100vh", paddingTop: 80 }}>
+    <div style={{ background: "#000", color: "white", minHeight: "100vh", paddingTop: 80, overflowX: "hidden" }}>
       <style>{`
-        .valor-card:hover { transform: translateY(-8px) !important; border-color: #3b82f6 !important; }
-        .equipo-card:hover { transform: translateY(-6px) !important; }
+        .valor-card:hover { transform: translateY(-8px) !important; border-color: #6366f1 !important; box-shadow: 0 24px 48px rgba(99,102,241,.15) !important; }
+        .equipo-card:hover { transform: translateY(-6px) !important; border-color: #6366f1 !important; }
       `}</style>
 
       {/* HEADER */}
@@ -29,16 +29,16 @@ function Acerca() {
         padding: isMobile ? "40px 20px 20px" : "60px 40px 20px",
       }}>
         <p style={{
-          color: "#3b82f6", letterSpacing: 4,
+          color: "#818cf8", letterSpacing: 4,
           fontSize: 12, textTransform: "uppercase", marginBottom: 12,
         }}>
           QUIÉNES SOMOS
         </p>
-        <h1 style={{ fontSize: isMobile ? 28 : 44, fontWeight: 700, marginBottom: 16 }}>
+        <h1 style={{ fontSize: isMobile ? 26 : 44, fontWeight: 700, marginBottom: 16, wordBreak: "break-word" }}>
           Acerca de Nosotros
         </h1>
         <div style={{
-          width: 60, height: 3, background: "#3b82f6",
+          width: 60, height: 3, background: "linear-gradient(90deg,#6366f1,#8b5cf6)",
           margin: "0 auto 20px", borderRadius: 99,
         }} />
       </div>
@@ -50,28 +50,28 @@ function Acerca() {
         textAlign: "center",
       }}>
         <div style={{
-          background: "#111", padding: isMobile ? 24 : 40,
-          borderRadius: 20, border: "1px solid #222",
-          borderLeft: "4px solid #3b82f6",
+          background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", padding: isMobile ? 20 : 40,
+          borderRadius: 20, border: "1px solid #1e1b4b",
+          borderLeft: "4px solid #6366f1",
         }}>
           <p style={{ fontSize: 48, marginBottom: 16 }}>📖</p>
-          <h2 style={{ color: "#3b82f6", marginBottom: 16, fontSize: isMobile ? 20 : 24 }}>
+          <h2 style={{ color: "#a5b4fc", marginBottom: 16, fontSize: isMobile ? 19 : 24 }}>
             Nuestra Historia
           </h2>
           <p style={{
-            color: "#aaa", fontSize: isMobile ? 15 : 17,
-            lineHeight: 2, marginBottom: 16,
+            color: "#94a3b8", fontSize: isMobile ? 14 : 17,
+            lineHeight: 2, marginBottom: 16, wordBreak: "break-word",
           }}>
-            Fundada en <span style={{ color: "#3b82f6", fontWeight: 700 }}>abril de 2023</span>,
+            Fundada en <span style={{ color: "#a5b4fc", fontWeight: 700 }}>abril de 2023</span>,
             la <span style={{ color: "white", fontWeight: 700 }}>Asociación de Escritores Vanguardistas 3.0</span> nació
             con el objetivo de apoyar a escritores y profesionales de El Alto y Bolivia en la
             publicación de sus obras literarias y académicas.
           </p>
           <p style={{
-            color: "#aaa", fontSize: isMobile ? 15 : 17,
-            lineHeight: 2,
+            color: "#94a3b8", fontSize: isMobile ? 14 : 17,
+            lineHeight: 2, wordBreak: "break-word",
           }}>
-            En estos <span style={{ color: "#3b82f6", fontWeight: 700 }}>3 años</span> hemos
+            En estos <span style={{ color: "#a5b4fc", fontWeight: 700 }}>3 años</span> hemos
             publicado más de 50 libros, editado más de 30 revistas y apoyado a más de 100 autores
             a hacer realidad su sueño de publicar. Somos una organización comprometida con la
             cultura y el conocimiento boliviano.
@@ -89,32 +89,32 @@ function Acerca() {
       }}>
         {valores.map((v) => (
           <div key={v.title} className="valor-card" style={{
-            background: "#111", padding: 28, borderRadius: 16,
-            border: "1px solid #222", transition: "all 0.4s ease",
+            background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", padding: isMobile ? 22 : 28, borderRadius: 16,
+            border: "1px solid #1e1b4b", transition: "all 0.4s ease",
             textAlign: "center",
           }}>
             <div style={{ fontSize: 40, marginBottom: 16 }}>{v.icon}</div>
-            <h3 style={{ color: "#3b82f6", marginBottom: 12, fontSize: 20 }}>{v.title}</h3>
-            <p style={{ color: "#888", lineHeight: 1.8, fontSize: 14 }}>{v.desc}</p>
+            <h3 style={{ color: "#a5b4fc", marginBottom: 12, fontSize: 20 }}>{v.title}</h3>
+            <p style={{ color: "#94a3b8", lineHeight: 1.8, fontSize: 14, wordBreak: "break-word" }}>{v.desc}</p>
           </div>
         ))}
       </div>
 
       {/* EQUIPO */}
       <div style={{
-        background: "#0a0a0a",
-        padding: isMobile ? "40px 20px" : "60px 40px",
+        background: "#050508",
+        padding: isMobile ? "32px 20px" : "60px 40px",
       }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <p style={{
-            color: "#3b82f6", textAlign: "center", letterSpacing: 4,
+            color: "#818cf8", textAlign: "center", letterSpacing: 4,
             fontSize: 12, textTransform: "uppercase", marginBottom: 12,
           }}>
             NUESTRO EQUIPO
           </p>
           <h2 style={{
-            fontSize: isMobile ? 24 : 36, textAlign: "center",
-            marginBottom: 40, fontWeight: 700,
+            fontSize: isMobile ? 22 : 36, textAlign: "center",
+            marginBottom: 40, fontWeight: 700, wordBreak: "break-word",
           }}>
             Quiénes nos conforman
           </h2>
@@ -125,13 +125,13 @@ function Acerca() {
           }}>
             {equipo.map((e) => (
               <div key={e.nombre} className="equipo-card" style={{
-                background: "#111", padding: 24, borderRadius: 16,
-                border: "1px solid #222", textAlign: "center",
+                background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", padding: isMobile ? 16 : 24, borderRadius: 16,
+                border: "1px solid #1e1b4b", textAlign: "center",
                 transition: "all 0.4s ease",
               }}>
-                <div style={{ fontSize: 40, marginBottom: 12 }}>{e.icon}</div>
-                <h4 style={{ color: "white", marginBottom: 6, fontSize: 14 }}>{e.nombre}</h4>
-                <p style={{ color: "#3b82f6", fontSize: 12 }}>{e.rol}</p>
+                <div style={{ fontSize: isMobile ? 32 : 40, marginBottom: 12 }}>{e.icon}</div>
+                <h4 style={{ color: "white", marginBottom: 6, fontSize: isMobile ? 13 : 14, wordBreak: "break-word" }}>{e.nombre}</h4>
+                <p style={{ color: "#818cf8", fontSize: 12, wordBreak: "break-word" }}>{e.rol}</p>
               </div>
             ))}
           </div>
@@ -141,9 +141,13 @@ function Acerca() {
       {/* FOOTER */}
       <footer style={{
         textAlign: "center", padding: "24px 20px",
-        color: "#555", borderTop: "1px solid #222", fontSize: 13,
+        color: "#334155", borderTop: "1px solid #1e1b4b", fontSize: 13,
       }}>
-        <p style={{ color: "#3b82f6", fontWeight: 700, marginBottom: 8 }}>
+        <p style={{
+          background: "linear-gradient(90deg,#818cf8,#c4b5fd)",
+          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+          fontWeight: 700, marginBottom: 8,
+        }}>
           ASOCIACIÓN DE ESCRITORES VANGUARDISTAS 3.0
         </p>
         <p>© {new Date().getFullYear()} — El Alto, Bolivia.</p>

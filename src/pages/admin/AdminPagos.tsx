@@ -46,12 +46,13 @@ const TIPO_LABEL: Record<string, string> = {
 function StatCard({ label, value, color, sub }: { label: string; value: string; color: string; sub?: string }) {
   return (
     <div style={{
-      background: "#1e293b",
+      background: "linear-gradient(160deg, #0d0d1a, #0a0a14)",
+      border: "1px solid #1e1b4b",
       borderRadius: 12,
       padding: "14px 18px",
       borderTop: `3px solid ${color}`,
       flex: 1,
-      minWidth: 120,
+      minWidth: 130,
     }}>
       <p style={{ color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{label}</p>
       <p style={{ color, fontSize: 22, fontWeight: "bold", margin: 0 }}>{value}</p>

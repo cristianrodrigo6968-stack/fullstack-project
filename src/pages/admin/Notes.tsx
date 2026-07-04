@@ -177,7 +177,7 @@ function Notes() {
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 20, marginBottom: 24 }}>
 
         {/* NOTAS GENERALES */}
-        <div style={{ background: "#1e293b", padding: 20, borderRadius: 14 }}>
+        <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: 20, borderRadius: 14 }}>
           <h3 style={{ marginBottom: 16, fontSize: 15, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>
             📌 Notas generales
           </h3>
@@ -195,10 +195,10 @@ function Notes() {
                   : n.text;
                 return (
                   <div key={n.id} style={{
-                    background: "#0f172a",
+                    background: "#0a0a14",
                     padding: "12px 14px",
                     borderRadius: 10,
-                    borderLeft: "3px solid #3b82f6",
+                    borderLeft: "3px solid #6366f1",
                   }}>
                     {/* Texto + botón eliminar en fila */}
                     <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -231,7 +231,7 @@ function Notes() {
                         onClick={() => toggleExpand(n.id)}
                         style={{
                           background: "none", border: "none",
-                          color: "#60a5fa", cursor: "pointer",
+                          color: "#a5b4fc", cursor: "pointer",
                           fontSize: 12, padding: "4px 0 0", fontWeight: "bold",
                         }}
                       >
@@ -252,7 +252,7 @@ function Notes() {
         </div>
 
         {/* CALENDARIO */}
-        <div style={{ background: "#1e293b", padding: 20, borderRadius: 14 }}>
+        <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: 20, borderRadius: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <h3 style={{ fontSize: 15, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, margin: 0 }}>
               📅 {MESES[calMes]} {calAnio}
@@ -292,14 +292,14 @@ function Notes() {
                   title={hasNote ? "Tiene notas" : undefined}
                   style={{
                     padding: "6px 2px", borderRadius: 7, cursor: "pointer",
-                    background: isSelected ? "#3b82f6" : isHoy ? "#1e3a5f" : "transparent",
-                    border: isHoy && !isSelected ? "1px solid #3b82f6" : "1px solid transparent",
+                    background: isSelected ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : isHoy ? "rgba(99,102,241,.15)" : "transparent",
+                    border: isHoy && !isSelected ? "1px solid #6366f1" : "1px solid transparent",
                     transition: "background 0.15s",
                   }}
                 >
                   <span style={{
                     fontSize: 12,
-                    color: isSelected ? "white" : isHoy ? "#60a5fa" : "#e2e8f0",
+                    color: isSelected ? "white" : isHoy ? "#a5b4fc" : "#e2e8f0",
                     fontWeight: isHoy || isSelected ? "bold" : "normal",
                     display: "block",
                   }}>
@@ -308,7 +308,7 @@ function Notes() {
                   {/* Punto indicador de nota */}
                   <div style={{
                     width: 4, height: 4, borderRadius: "50%",
-                    background: hasNote ? (isSelected ? "white" : "#22c55e") : "transparent",
+                    background: hasNote ? (isSelected ? "white" : "#34d399") : "transparent",
                     margin: "2px auto 0",
                   }} />
                 </div>
@@ -344,8 +344,8 @@ function Notes() {
               rows={2}
               style={{
                 flex: 1, padding: 10, borderRadius: 8,
-                border: "none", background: "#334155",
-                color: "white", fontSize: 14, resize: "vertical",
+                border: "1px solid #1e1b4b", background: "#0a0a14",
+                color: "white", fontSize: 16, resize: "vertical",
                 minHeight: 60, boxSizing: "border-box",
               }}
             />
@@ -370,8 +370,8 @@ function Notes() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {notasDelSeleccionado.map(n => (
                 <div key={n.id} style={{
-                  background: "#0f172a", padding: "12px 14px",
-                  borderRadius: 10, borderLeft: "3px solid #22c55e",
+                  background: "#0a0a14", padding: "12px 14px",
+                  borderRadius: 10, borderLeft: "3px solid #34d399",
                   display: "flex", gap: 10, alignItems: "flex-start",
                 }}>
                   <p style={{
@@ -410,7 +410,7 @@ function Notes() {
           zIndex: 9999, padding: "20px",
         }}>
           <div style={{
-            background: "#1e293b", padding: 28, borderRadius: 16,
+            background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: 28, borderRadius: 16,
             width: "100%", maxWidth: 480, color: "white",
             // scroll por si la pantalla es muy chica
             maxHeight: "90vh", overflowY: "auto",
@@ -428,8 +428,8 @@ function Notes() {
               autoFocus
               style={{
                 width: "100%", padding: 12, borderRadius: 8,
-                border: "none", background: "#334155",
-                color: "white", fontSize: 14,
+                border: "1px solid #1e1b4b", background: "#0a0a14",
+                color: "white", fontSize: 16,
                 resize: "vertical", minHeight: 120,
                 boxSizing: "border-box",
               }}
@@ -462,9 +462,9 @@ function Notes() {
   );
 }
 
-const btnBlue: React.CSSProperties    = { background: "#3b82f6", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnGreen: React.CSSProperties   = { background: "#22c55e", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnGray: React.CSSProperties    = { background: "#334155", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnSmallGray: React.CSSProperties = { background: "#334155", border: "none", padding: "4px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 13 };
+const btnBlue: React.CSSProperties    = { background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 14px rgba(99,102,241,.3)" };
+const btnGreen: React.CSSProperties   = { background: "linear-gradient(135deg,#10b981,#059669)", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 14px rgba(16,185,129,.3)" };
+const btnGray: React.CSSProperties    = { background: "#0a0a14", border: "1px solid #1e1b4b", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
+const btnSmallGray: React.CSSProperties = { background: "#0a0a14", border: "1px solid #1e1b4b", padding: "4px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 13 };
 
 export default Notes;

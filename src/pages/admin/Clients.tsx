@@ -81,10 +81,10 @@ function Spinner() {
 }
 
 function getStatusColor(status: string) {
-  if (status === "procesado") return { bg: "#14532d", color: "#22c55e" };
-  if (status === "en proceso") return { bg: "#1e3a5f", color: "#60a5fa" };
-  if (status === "formulario llenado") return { bg: "#312e81", color: "#a78bfa" };
-  return { bg: "#422006", color: "#f59e0b" };
+  if (status === "procesado") return { bg: "rgba(16,185,129,.12)", color: "#34d399" };
+  if (status === "en proceso") return { bg: "rgba(99,102,241,.12)", color: "#a5b4fc" };
+  if (status === "formulario llenado") return { bg: "rgba(139,92,246,.12)", color: "#c4b5fd" };
+  return { bg: "rgba(245,158,11,.12)", color: "#f59e0b" };
 }
 
 function getServicios(c: Client): string {
@@ -108,7 +108,7 @@ function ConfirmModal({ message, onConfirm, onCancel, confirmLabel = "Sí, confi
 }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "0 20px" }}>
-      <div style={{ background: "#1e293b", padding: 32, borderRadius: 16, width: "100%", maxWidth: 360, color: "white", textAlign: "center", border: "1px solid #334155" }}>
+      <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", padding: 32, borderRadius: 16, width: "100%", maxWidth: 360, color: "white", textAlign: "center", border: "1px solid #1e1b4b" }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>{icon}</div>
         <h3 style={{ marginBottom: 10 }}>¿Confirmar?</h3>
         <p style={{ color: "#94a3b8", marginBottom: 28, fontSize: 14 }}>{message}</p>
@@ -129,7 +129,7 @@ function BarraProgreso({ actual, total, color }: { actual: number; total: number
         <span style={{ color: "#94a3b8", fontSize: 12 }}>{actual}/{total}</span>
         <span style={{ color, fontSize: 12, fontWeight: "bold" }}>{pct}%</span>
       </div>
-      <div style={{ background: "#334155", borderRadius: 99, height: 8, overflow: "hidden" }}>
+      <div style={{ background: "#1e1b4b", borderRadius: 99, height: 8, overflow: "hidden" }}>
         <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 99, transition: "width 0.4s ease" }} />
       </div>
     </div>
@@ -180,13 +180,13 @@ function Clients() {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
-  // ✅ FIX: usar objeto para evitar que React ejecute la función al hacer setState
   const [confirmAction, setConfirmAction] = useState<{ fn: () => void }>({ fn: () => {} });
   const [confirmLabel, setConfirmLabel] = useState("Sí, confirmar");
   const [confirmIcon, setConfirmIcon] = useState("🗑️");
-const [editando, setEditando] = useState(false);
-const [editData, setEditData] = useState<Partial<Client>>({});
-const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+  const [editando, setEditando] = useState(false);
+  const [editData, setEditData] = useState<Partial<Client>>({});
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
@@ -203,7 +203,6 @@ const [guardandoEdicion, setGuardandoEdicion] = useState(false);
 
   const clientesMes = filtrarPorMes(clients);
 
-  // ✅ FIX: setConfirmAction recibe objeto { fn: action } en vez de () => action
   const showConfirm = (message: string, action: () => void, label = "Sí, confirmar", icon = "🗑️") => {
     setConfirmMessage(message);
     setConfirmAction({ fn: action });
@@ -253,28 +252,30 @@ const [guardandoEdicion, setGuardandoEdicion] = useState(false);
       await load();
     } finally { setRegeneratingId(null); }
   };
-const iniciarEdicion = () => {
-  if (!selected) return;
-  setEditData({
-    ci: selected.ci, nombres: selected.nombres, apellidoPaterno: selected.apellidoPaterno,
-    apellidoMaterno: selected.apellidoMaterno, sexo: selected.sexo, ciudad: selected.ciudad,
-    extension: selected.extension, direccion: selected.direccion, fechaNacimiento: selected.fechaNacimiento,
-    profesion: selected.profesion, celular: selected.celular, email: selected.email,
-  });
-  setEditando(true);
-};
 
-const guardarEdicion = async () => {
-  if (!selected) return;
-  setGuardandoEdicion(true);
-  try {
-    const res = await fetch(`${API_URL}/clients/${selected.id}`, { method: "PUT", headers, body: JSON.stringify(editData) });
-    const data = await res.json();
-    setSelected(data);
-    setClients(prev => prev.map(c => c.id === data.id ? data : c));
-    setEditando(false);
-  } finally { setGuardandoEdicion(false); }
-};
+  const iniciarEdicion = () => {
+    if (!selected) return;
+    setEditData({
+      ci: selected.ci, nombres: selected.nombres, apellidoPaterno: selected.apellidoPaterno,
+      apellidoMaterno: selected.apellidoMaterno, sexo: selected.sexo, ciudad: selected.ciudad,
+      extension: selected.extension, direccion: selected.direccion, fechaNacimiento: selected.fechaNacimiento,
+      profesion: selected.profesion, celular: selected.celular, email: selected.email,
+    });
+    setEditando(true);
+  };
+
+  const guardarEdicion = async () => {
+    if (!selected) return;
+    setGuardandoEdicion(true);
+    try {
+      const res = await fetch(`${API_URL}/clients/${selected.id}`, { method: "PUT", headers, body: JSON.stringify(editData) });
+      const data = await res.json();
+      setSelected(data);
+      setClients(prev => prev.map(c => c.id === data.id ? data : c));
+      setEditando(false);
+    } finally { setGuardandoEdicion(false); }
+  };
+
   const updateStatus = async (id: number, status: string) => {
     setUpdatingId(id);
     try {
@@ -369,7 +370,6 @@ const guardarEdicion = async () => {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div>
-      {/* ✅ FIX: onConfirm llama confirmAction.fn en vez de confirmAction directamente */}
       {confirmOpen && (
         <ConfirmModal
           message={confirmMessage}
@@ -388,7 +388,7 @@ const guardarEdicion = async () => {
       {selected ? (
         <div>
           <button onClick={() => { setSelected(null); setEditando(false); }} style={btnGray}>← Volver</button>
-          <div style={{ background: "#1e293b", padding: isMobile ? 20 : 28, borderRadius: 14, marginTop: 20 }}>
+          <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: isMobile ? 20 : 28, borderRadius: 14, marginTop: 20 }}>
             {/* Cabecera */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
               <div>
@@ -405,8 +405,8 @@ const guardarEdicion = async () => {
 
             {/* Progreso */}
             {(selected.pideArticulos || selected.pideLibros || selected.pideDirector) && (
-              <div style={{ background: "#0f172a", padding: 20, borderRadius: 12, marginBottom: 24 }}>
-                <h3 style={{ marginBottom: 16, fontSize: 13, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>📊 Progreso de Producción</h3>
+              <div style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: 20, borderRadius: 12, marginBottom: 24 }}>
+                <h3 style={{ marginBottom: 16, fontSize: 13, color: "#818cf8", textTransform: "uppercase", letterSpacing: 1.5, fontWeight: 700 }}>📊 Progreso de Producción</h3>
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                   {selected.pideArticulos && (
                     <div>
@@ -417,7 +417,7 @@ const guardarEdicion = async () => {
                           onMenos={() => bajarProgreso("articulosHechos", selected.articulosHechos)}
                         />
                       </div>
-                      <BarraProgreso actual={selected.articulosHechos} total={selected.cantArticulos} color="#60a5fa" />
+                      <BarraProgreso actual={selected.articulosHechos} total={selected.cantArticulos} color="#a5b4fc" />
                     </div>
                   )}
                   {selected.pideLibros && (
@@ -429,7 +429,7 @@ const guardarEdicion = async () => {
                           onMenos={() => bajarProgreso("librosHechos", selected.librosHechos)}
                         />
                       </div>
-                      <BarraProgreso actual={selected.librosHechos} total={selected.cantLibros} color="#22c55e" />
+                      <BarraProgreso actual={selected.librosHechos} total={selected.cantLibros} color="#34d399" />
                     </div>
                   )}
                   {selected.pideDirector && (
@@ -450,9 +450,9 @@ const guardarEdicion = async () => {
             )}
 
             {/* Link formulario */}
-            <div style={{ background: "#0f172a", padding: 16, borderRadius: 10, marginBottom: 24 }}>
+            <div style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: 16, borderRadius: 10, marginBottom: 24 }}>
               <p style={{ color: "#64748b", fontSize: 12, marginBottom: 8 }}>LINK DEL FORMULARIO</p>
-              <code style={{ color: "#60a5fa", fontSize: isMobile ? 11 : 13, wordBreak: "break-all" }}>{window.location.origin}/formulario/{selected.token}</code>
+              <code style={{ color: "#a5b4fc", fontSize: isMobile ? 11 : 13, wordBreak: "break-all" }}>{window.location.origin}/formulario/{selected.token}</code>
               <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                 <button onClick={() => copyLink(selected)} style={{ ...btnBlue, fontSize: 12 }}>{copiedId === selected.id ? "✅ Copiado" : "📋 Copiar"}</button>
                 <button onClick={() => regenerar(selected.id)} disabled={regeneratingId === selected.id} style={{ ...btnGray, fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
@@ -467,20 +467,20 @@ const guardarEdicion = async () => {
             {/* Fotos */}
             <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
               {selected.fotografia && (
-                <div style={{ background: "#0f172a", padding: 14, borderRadius: 8, textAlign: "center" }}>
+                <div style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: 14, borderRadius: 8, textAlign: "center" }}>
                   <p style={{ color: "#64748b", fontSize: 11, marginBottom: 8, textTransform: "uppercase" }}>Foto Personal</p>
-                  <img src={selected.fotografia} alt="foto" style={{ width: 100, height: 100, objectFit: "cover", borderRadius: "50%", border: "3px solid #3b82f6", cursor: "pointer" }} onClick={() => window.open(selected.fotografia!, "_blank")} />
+                  <img src={selected.fotografia} alt="foto" style={{ width: 100, height: 100, objectFit: "cover", borderRadius: "50%", border: "3px solid #6366f1", boxShadow: "0 0 20px rgba(99,102,241,.3)", cursor: "pointer" }} onClick={() => window.open(selected.fotografia!, "_blank")} />
                 </div>
               )}
               {selected.fotoCarnet && (
-                <div style={{ background: "#0f172a", padding: 14, borderRadius: 8, textAlign: "center" }}>
+                <div style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: 14, borderRadius: 8, textAlign: "center" }}>
                   <p style={{ color: "#64748b", fontSize: 11, marginBottom: 8, textTransform: "uppercase" }}>Carnet (Frente)</p>
                   <img src={selected.fotoCarnet} alt="carnet" style={{ width: 140, height: 100, objectFit: "cover", borderRadius: 8, border: "3px solid #64748b", cursor: "pointer" }} onClick={() => window.open(selected.fotoCarnet!, "_blank")} />
                   <p style={{ color: "#64748b", fontSize: 10, marginTop: 4 }}>Click para ver completo</p>
                 </div>
               )}
               {(selected as any).fotoCarnet2 && (
-                <div style={{ background: "#0f172a", padding: 14, borderRadius: 8, textAlign: "center" }}>
+                <div style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: 14, borderRadius: 8, textAlign: "center" }}>
                   <p style={{ color: "#64748b", fontSize: 11, marginBottom: 8, textTransform: "uppercase" }}>Carnet (Reverso)</p>
                   <img src={(selected as any).fotoCarnet2} alt="carnet2" style={{ width: 140, height: 100, objectFit: "cover", borderRadius: 8, border: "3px solid #64748b", cursor: "pointer" }} onClick={() => window.open((selected as any).fotoCarnet2!, "_blank")} />
                   <p style={{ color: "#64748b", fontSize: 10, marginTop: 4 }}>Click para ver completo</p>
@@ -489,20 +489,20 @@ const guardarEdicion = async () => {
             </div>
 
             {/* Credenciales */}
-            <div style={{ background: "#0f172a", padding: 20, borderRadius: 12, marginBottom: 24 }}>
-              <h3 style={{ marginBottom: 16, color: "#94a3b8", fontSize: 13, textTransform: "uppercase", letterSpacing: 1 }}>🔐 Credenciales del Cliente</h3>
+            <div style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: 20, borderRadius: 12, marginBottom: 24 }}>
+              <h3 style={{ marginBottom: 16, color: "#818cf8", fontSize: 13, textTransform: "uppercase", letterSpacing: 1.5, fontWeight: 700 }}>🔐 Credenciales del Cliente</h3>
               {credenciales ? (
                 <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 16 }}>
-                  <div style={{ background: "#1e293b", padding: 14, borderRadius: 8 }}>
+                  <div style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: 14, borderRadius: 8 }}>
                     <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>👤 Usuario</p>
                     <p style={{ color: "white", fontSize: 14, fontWeight: "bold" }}>{credenciales.clientUsername || "—"}</p>
                   </div>
-                  <div style={{ background: "#1e293b", padding: 14, borderRadius: 8 }}>
+                  <div style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: 14, borderRadius: 8 }}>
                     <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>🔑 Contraseña</p>
                     {credenciales.clientPassword ? (
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <p style={{ color: "white", fontSize: 14, fontWeight: "bold", margin: 0 }}>{mostrarPassword ? credenciales.clientPassword : "••••••••"}</p>
-                        <button onClick={() => setMostrarPassword(!mostrarPassword)} style={{ background: "none", border: "none", color: "#60a5fa", cursor: "pointer", fontSize: 14 }}>{mostrarPassword ? "🙈" : "👁️"}</button>
+                        <button onClick={() => setMostrarPassword(!mostrarPassword)} style={{ background: "none", border: "none", color: "#a5b4fc", cursor: "pointer", fontSize: 14 }}>{mostrarPassword ? "🙈" : "👁️"}</button>
                       </div>
                     ) : (
                       <p style={{ color: "#64748b", fontSize: 13 }}>Usa el botón "Regenerar credenciales" para obtener una nueva.</p>
@@ -512,10 +512,10 @@ const guardarEdicion = async () => {
               ) : (
                 <p style={{ color: "#64748b", fontSize: 13, marginBottom: 16 }}>Este cliente aún no tiene credenciales de acceso. Haz clic en el botón para generarlas.</p>
               )}
-              <button onClick={() => regenerarCredenciales(selected.id)} style={{ marginTop: 16, background: "#7c3aed", border: "none", padding: "10px 20px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>🔄 Regenerar credenciales</button>
+              <button onClick={() => regenerarCredenciales(selected.id)} style={{ marginTop: 16, background: "linear-gradient(135deg,#8b5cf6,#7c3aed)", border: "none", padding: "10px 20px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 8, boxShadow: "0 4px 14px rgba(139,92,246,.3)" }}>🔄 Regenerar credenciales</button>
              {credenciales?.clientPassword && (
                 <>
-                  <div style={{ background: "#1e3a5f", color: "#60a5fa", padding: 10, borderRadius: 8, marginTop: 12, fontSize: 13 }}>⚠️ Comparte esta contraseña con el cliente por un canal seguro. Al recargar la página no volverá a verse.</div>
+                  <div style={{ background: "rgba(99,102,241,.1)", border: "1px solid rgba(99,102,241,.3)", color: "#a5b4fc", padding: 10, borderRadius: 8, marginTop: 12, fontSize: 13 }}>⚠️ Comparte esta contraseña con el cliente por un canal seguro. Al recargar la página no volverá a verse.</div>
                   {selected.celular && (
                     <button
                       onClick={() => {
@@ -523,7 +523,7 @@ const guardarEdicion = async () => {
                         const mensaje = `¡Hola ${getNombreDisplay(selected)}! Aquí están tus nuevos datos de acceso al portal de la Asociación:\n\nUsuario: ${credenciales.clientUsername}\nContraseña: ${credenciales.clientPassword}\n\nIngresa aquí: ${link}`;
                         abrirWhatsapp(selected.celular!, mensaje);
                       }}
-                      style={{ marginTop: 10, background: "#22c55e", border: "none", padding: "10px 20px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}
+                      style={{ marginTop: 10, background: "linear-gradient(135deg,#10b981,#059669)", border: "none", padding: "10px 20px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 8, boxShadow: "0 4px 14px rgba(16,185,129,.3)" }}
                     >
                       📱 Enviar por WhatsApp
                     </button>
@@ -563,7 +563,7 @@ const guardarEdicion = async () => {
                   { label: "Celular", value: selected.celular },
                   { label: "Email", value: selected.email },
                 ].map(item => (
-                  <div key={item.label} style={{ background: "#0f172a", padding: 14, borderRadius: 8 }}>
+                  <div key={item.label} style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: 14, borderRadius: 8 }}>
                     <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>{item.label}</p>
                     <p style={{ color: item.value ? "white" : "#334155", fontSize: 14 }}>{item.value || "No proporcionado"}</p>
                   </div>
@@ -582,33 +582,33 @@ const guardarEdicion = async () => {
                   { label: "Celular", key: "celular" },
                   { label: "Email", key: "email" },
                 ].map(item => (
-                  <div key={item.key} style={{ background: "#0f172a", padding: 14, borderRadius: 8 }}>
+                  <div key={item.key} style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: 14, borderRadius: 8 }}>
                     <p style={{ color: "#64748b", fontSize: 11, marginBottom: 6, textTransform: "uppercase" }}>{item.label}</p>
                     <input
                       value={(editData as any)[item.key] || ""}
                       onChange={e => setEditData(prev => ({ ...prev, [item.key]: e.target.value }))}
-                      style={{ width: "100%", padding: 10, borderRadius: 6, border: "none", background: "#1e293b", color: "white", fontSize: 16, boxSizing: "border-box" }}
+                      style={{ width: "100%", padding: 10, borderRadius: 6, border: "1px solid #1e1b4b", background: "#0a0a14", color: "white", fontSize: 16, boxSizing: "border-box" }}
                     />
                   </div>
                 ))}
-                <div style={{ background: "#0f172a", padding: 14, borderRadius: 8 }}>
+                <div style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: 14, borderRadius: 8 }}>
                   <p style={{ color: "#64748b", fontSize: 11, marginBottom: 6, textTransform: "uppercase" }}>Sexo</p>
-                  <select value={editData.sexo || ""} onChange={e => setEditData(prev => ({ ...prev, sexo: e.target.value as Sexo }))} style={{ width: "100%", padding: 10, borderRadius: 6, border: "none", background: "#1e293b", color: "white", fontSize: 16 }}>
+                  <select value={editData.sexo || ""} onChange={e => setEditData(prev => ({ ...prev, sexo: e.target.value as Sexo }))} style={{ width: "100%", padding: 10, borderRadius: 6, border: "1px solid #1e1b4b", background: "#0a0a14", color: "white", fontSize: 16 }}>
                     <option value="">-- Seleccionar --</option>
                     <option value="Masculino">Masculino</option>
                     <option value="Femenino">Femenino</option>
                   </select>
                 </div>
-                <div style={{ background: "#0f172a", padding: 14, borderRadius: 8 }}>
+                <div style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: 14, borderRadius: 8 }}>
                   <p style={{ color: "#64748b", fontSize: 11, marginBottom: 6, textTransform: "uppercase" }}>Extensión</p>
-                  <select value={editData.extension || ""} onChange={e => setEditData(prev => ({ ...prev, extension: e.target.value as Extension }))} style={{ width: "100%", padding: 10, borderRadius: 6, border: "none", background: "#1e293b", color: "white", fontSize: 16 }}>
+                  <select value={editData.extension || ""} onChange={e => setEditData(prev => ({ ...prev, extension: e.target.value as Extension }))} style={{ width: "100%", padding: 10, borderRadius: 6, border: "1px solid #1e1b4b", background: "#0a0a14", color: "white", fontSize: 16 }}>
                     <option value="">-- Seleccionar --</option>
                     {["LP","CB","SC","OR","PT","CH","TJ","BN","PD","QR"].map(ext => <option key={ext} value={ext}>{ext}</option>)}
                   </select>
                 </div>
-                <div style={{ background: "#0f172a", padding: 14, borderRadius: 8 }}>
+                <div style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: 14, borderRadius: 8 }}>
                   <p style={{ color: "#64748b", fontSize: 11, marginBottom: 6, textTransform: "uppercase" }}>Fecha Nacimiento</p>
-                  <input type="date" value={editData.fechaNacimiento || ""} onChange={e => setEditData(prev => ({ ...prev, fechaNacimiento: e.target.value }))} style={{ width: "100%", padding: 10, borderRadius: 6, border: "none", background: "#1e293b", color: "white", fontSize: 16, boxSizing: "border-box" }} />
+                  <input type="date" value={editData.fechaNacimiento || ""} onChange={e => setEditData(prev => ({ ...prev, fechaNacimiento: e.target.value }))} style={{ width: "100%", padding: 10, borderRadius: 6, border: "1px solid #1e1b4b", background: "#0a0a14", color: "white", fontSize: 16, boxSizing: "border-box" }} />
                 </div>
               </div>
             )}
@@ -624,7 +624,7 @@ const guardarEdicion = async () => {
             </div>
 
             {selected.notasServicio && (
-              <div style={{ background: "#0f172a", padding: 14, borderRadius: 8, marginBottom: 16 }}>
+              <div style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: 14, borderRadius: 8, marginBottom: 16 }}>
                 <p style={{ color: "#64748b", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>Notas</p>
                 <p style={{ color: "white", fontSize: 14 }}>{selected.notasServicio}</p>
               </div>
@@ -640,8 +640,8 @@ const guardarEdicion = async () => {
       ) : (
         <>
           {/* Crear cliente */}
-          <div style={{ background: "#1e293b", padding: 20, borderRadius: 12, marginBottom: 24, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10, alignItems: isMobile ? "stretch" : "center" }}>
-            <input placeholder="Nombre del cliente (opcional)" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === "Enter" && create()} style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "#334155", color: "white", fontSize: 14 }} />
+          <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: 20, borderRadius: 12, marginBottom: 24, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10, alignItems: isMobile ? "stretch" : "center" }}>
+            <input placeholder="Nombre del cliente (opcional)" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === "Enter" && create()} style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #1e1b4b", background: "#0a0a14", color: "white", fontSize: 16 }} />
             <button onClick={create} disabled={creating} style={{ ...btnBlue, display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>{creating ? <Spinner /> : "➕ Nuevo cliente"}</button>
           </div>
 
@@ -662,7 +662,7 @@ const guardarEdicion = async () => {
                 const expired = isExpired(c.expiresAt);
                 const statusColors = getStatusColor(c.status);
                 return (
-                  <div key={c.id} style={{ background: "#1e293b", padding: isMobile ? "14px 16px" : "16px 20px", borderRadius: 10, display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", borderLeft: `4px solid ${expired ? "#ef4444" : "#3b82f6"}`, gap: 12 }}>
+                  <div key={c.id} style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: isMobile ? "14px 16px" : "16px 20px", borderRadius: 10, display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", borderLeft: `4px solid ${expired ? "#ef4444" : "#6366f1"}`, gap: 12 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ color: "white", fontWeight: "bold", marginBottom: 4, fontSize: isMobile ? 14 : 15 }}>{getNombreDisplay(c)}</p>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
@@ -671,9 +671,9 @@ const guardarEdicion = async () => {
                       </div>
                       {(c.pideArticulos || c.pideLibros || c.pideDirector) && (
                         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                          {c.pideArticulos && <span style={{ fontSize: 12, color: "#60a5fa" }}>📝 {c.articulosHechos}/{c.cantArticulos}</span>}
-                          {c.pideLibros && <span style={{ fontSize: 12, color: "#22c55e" }}>📚 {c.librosHechos}/{c.cantLibros}</span>}
-                          {c.pideDirector && <span style={{ fontSize: 12, color: "#a78bfa" }}>📘 Ed.{c.edicionesHechas}</span>}
+                          {c.pideArticulos && <span style={{ fontSize: 12, color: "#a5b4fc" }}>📝 {c.articulosHechos}/{c.cantArticulos}</span>}
+                          {c.pideLibros && <span style={{ fontSize: 12, color: "#34d399" }}>📚 {c.librosHechos}/{c.cantLibros}</span>}
+                          {c.pideDirector && <span style={{ fontSize: 12, color: "#818cf8" }}>📘 Ed.{c.edicionesHechas}</span>}
                         </div>
                       )}
                     </div>
@@ -694,7 +694,7 @@ const guardarEdicion = async () => {
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
-                    <tr style={{ background: "#1e293b" }}>
+                    <tr style={{ background: "#0a0a14" }}>
                       {["Nombre", "C.I.", "Ext.", "Email", "Celular", "Profesión", "Servicios", "Progreso", "Estado", "SENAPI"].map(h => (
                         <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "#64748b", fontWeight: "bold", fontSize: 11, textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
@@ -704,26 +704,26 @@ const guardarEdicion = async () => {
                     {clientesMes.map((c, i) => {
                       const statusColors = getStatusColor(c.status);
                       return (
-                        <tr key={c.id} onClick={() => setSelected(c)} style={{ background: i % 2 === 0 ? "#0f172a" : "#1e293b", cursor: "pointer" }} onMouseEnter={e => (e.currentTarget.style.background = "#334155")} onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? "#0f172a" : "#1e293b")}>
+                        <tr key={c.id} onClick={() => setSelected(c)} style={{ background: i % 2 === 0 ? "#050508" : "#0a0a14", cursor: "pointer" }} onMouseEnter={e => (e.currentTarget.style.background = "rgba(99,102,241,.1)")} onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? "#050508" : "#0a0a14")}>
                           <td style={tdStyle}><strong>{getNombreDisplay(c)}</strong></td>
                           <td style={tdStyle}>{c.ci || "—"}</td>
                           <td style={tdStyle}>{c.extension || "—"}</td>
                           <td style={tdStyle}>{c.email || "—"}</td>
                           <td style={tdStyle}>{c.celular || "—"}</td>
                           <td style={tdStyle}>{c.profesion || "—"}</td>
-                          <td style={tdStyle}><span style={{ color: "#60a5fa" }}>{getServicios(c)}</span></td>
+                          <td style={tdStyle}><span style={{ color: "#a5b4fc" }}>{getServicios(c)}</span></td>
                           <td style={tdStyle}>
                             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                              {c.pideArticulos && <span style={{ fontSize: 11, color: "#60a5fa" }}>📝 {c.articulosHechos}/{c.cantArticulos}</span>}
-                              {c.pideLibros && <span style={{ fontSize: 11, color: "#22c55e" }}>📚 {c.librosHechos}/{c.cantLibros}</span>}
-                              {c.pideDirector && <span style={{ fontSize: 11, color: "#a78bfa" }}>📘 Ed.{c.edicionesHechas}</span>}
+                              {c.pideArticulos && <span style={{ fontSize: 11, color: "#a5b4fc" }}>📝 {c.articulosHechos}/{c.cantArticulos}</span>}
+                              {c.pideLibros && <span style={{ fontSize: 11, color: "#34d399" }}>📚 {c.librosHechos}/{c.cantLibros}</span>}
+                              {c.pideDirector && <span style={{ fontSize: 11, color: "#818cf8" }}>📘 Ed.{c.edicionesHechas}</span>}
                             </div>
                           </td>
                           <td style={tdStyle}>
                             <span style={{ fontSize: 11, padding: "2px 10px", borderRadius: 99, background: statusColors.bg, color: statusColors.color, fontWeight: "bold", whiteSpace: "nowrap" }}>{c.status}</span>
                           </td>
                           <td style={tdStyle}>
-                            <button onClick={e => { e.stopPropagation(); copiarSenapi(c); }} style={{ padding: "6px 10px", background: "#16a34a", color: "white", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: "bold" }}>Copiar</button>
+                            <button onClick={e => { e.stopPropagation(); copiarSenapi(c); }} style={{ padding: "6px 10px", background: "linear-gradient(135deg,#10b981,#059669)", color: "white", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: "bold" }}>Copiar</button>
                           </td>
                         </tr>
                       );
@@ -743,20 +743,20 @@ const guardarEdicion = async () => {
 function ProgresoControles({ actual, total, onMas, onMenos, label }: { actual: number; total: number; onMas: () => void; onMenos: () => void; label?: string; }) {
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <button onClick={onMenos} disabled={actual <= 0} style={{ background: "#334155", border: "none", borderRadius: 6, color: "white", cursor: actual <= 0 ? "not-allowed" : "pointer", width: 28, height: 28, fontSize: 16, opacity: actual <= 0 ? 0.4 : 1 }}>−</button>
+      <button onClick={onMenos} disabled={actual <= 0} style={{ background: "#0a0a14", border: "1px solid #1e1b4b", borderRadius: 6, color: "white", cursor: actual <= 0 ? "not-allowed" : "pointer", width: 28, height: 28, fontSize: 16, opacity: actual <= 0 ? 0.4 : 1 }}>−</button>
       <span style={{ color: "white", fontWeight: "bold", minWidth: 52, textAlign: "center" }}>{label ?? `${actual}/${total}`}</span>
-      <button onClick={onMas} disabled={actual >= total} style={{ background: "#22c55e", border: "none", borderRadius: 6, color: "white", cursor: actual >= total ? "not-allowed" : "pointer", width: 28, height: 28, fontSize: 16, opacity: actual >= total ? 0.4 : 1 }}>+</button>
+      <button onClick={onMas} disabled={actual >= total} style={{ background: "linear-gradient(135deg,#10b981,#059669)", border: "none", borderRadius: 6, color: "white", cursor: actual >= total ? "not-allowed" : "pointer", width: 28, height: 28, fontSize: 16, opacity: actual >= total ? 0.4 : 1 }}>+</button>
     </div>
   );
 }
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
-const tdStyle: React.CSSProperties = { padding: "12px 14px", color: "white", borderBottom: "1px solid #1e293b", whiteSpace: "nowrap" };
-const tagStyle: React.CSSProperties = { background: "#1e3a5f", color: "#60a5fa", padding: "4px 14px", borderRadius: 99, fontSize: 13, fontWeight: "bold" };
-const btnBlue: React.CSSProperties = { background: "#3b82f6", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnGreen: React.CSSProperties = { background: "#22c55e", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnRed: React.CSSProperties = { background: "#ef4444", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnGray: React.CSSProperties = { background: "#334155", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnPurple: React.CSSProperties = { background: "#7c3aed", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
+const tdStyle: React.CSSProperties = { padding: "12px 14px", color: "white", borderBottom: "1px solid #1e1b4b", whiteSpace: "nowrap" };
+const tagStyle: React.CSSProperties = { background: "rgba(99,102,241,.12)", color: "#a5b4fc", padding: "4px 14px", borderRadius: 99, fontSize: 13, fontWeight: "bold" };
+const btnBlue: React.CSSProperties = { background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 14px rgba(99,102,241,.3)" };
+const btnGreen: React.CSSProperties = { background: "linear-gradient(135deg,#10b981,#059669)", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 14px rgba(16,185,129,.3)" };
+const btnRed: React.CSSProperties = { background: "linear-gradient(135deg,#ef4444,#dc2626)", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 14px rgba(239,68,68,.3)" };
+const btnGray: React.CSSProperties = { background: "#0a0a14", border: "1px solid #1e1b4b", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
+const btnPurple: React.CSSProperties = { background: "linear-gradient(135deg,#8b5cf6,#7c3aed)", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 14px rgba(139,92,246,.3)" };
 
 export default Clients;
