@@ -120,33 +120,38 @@ function Admin() {
   }, [section]);
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#0f172a" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "#000", overflowX: "hidden" }}>
       {isMobile && sidebarOpen && (
         <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200 }} />
       )}
 
       <div style={{
-        width: 240, background: "#1e293b", padding: 24,
+        width: isMobile ? "80vw" : 240,
+        maxWidth: isMobile ? 280 : 240,
+        background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", padding: isMobile ? 18 : 24,
+        borderRight: "1px solid #1e1b4b",
         display: "flex", flexDirection: "column", gap: 8,
         position: isMobile ? "fixed" : "sticky", top: 0,
-        left: isMobile ? (sidebarOpen ? 0 : -260) : 0,
+        left: isMobile ? (sidebarOpen ? 0 : "-100%") : 0,
+        boxShadow: isMobile && sidebarOpen ? "0 0 40px rgba(0,0,0,.6)" : "none",
         height: "100vh", zIndex: isMobile ? 300 : 1,
         transition: "left 0.3s ease", overflowY: "auto",
+        boxSizing: "border-box",
       }}>
         <div style={{ marginBottom: 24 }}>
           {isMobile && (
-            <button onClick={() => setSidebarOpen(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 20, marginBottom: 16, display: "block", marginLeft: "auto" }}>✕</button>
+            <button onClick={() => setSidebarOpen(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 20, marginBottom: 16, display: "block", marginLeft: "auto", width: 44, height: 44 }}>✕</button>
           )}
           <div style={{ fontSize: 13, color: "#64748b" }}>Bienvenido</div>
-          <div style={{ color: "white", fontWeight: "bold", fontSize: 16 }}>👤 {username}</div>
+          <div style={{ color: "white", fontWeight: "bold", fontSize: 16, wordBreak: "break-word" }}>👤 {username}</div>
         </div>
 
         {menuItems.map((item) => (
           <button key={item.key} onClick={() => handleSection(item.key)} style={{
-            padding: "10px 16px", border: "none", borderRadius: 8,
+            padding: "12px 16px", minHeight: 44, border: section === item.key ? "1px solid #6366f1" : "1px solid transparent", borderRadius: 8,
             cursor: "pointer", textAlign: "left",
             fontWeight: section === item.key ? "bold" : "normal",
-            background: section === item.key ? "#3b82f6" : "#334155",
+            background: section === item.key ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "#0d0d1a",
             color: "white", fontSize: 14,
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
@@ -164,27 +169,27 @@ function Admin() {
         ))}
 
         <button onClick={handleLogout} style={{
-          marginTop: "auto", padding: "10px 16px", border: "none",
-          borderRadius: 8, cursor: "pointer", background: "#ef4444",
-          color: "white", fontWeight: "bold", fontSize: 14,
+          marginTop: "auto", padding: "12px 16px", minHeight: 44, border: "1px solid rgba(239,68,68,.4)",
+          borderRadius: 8, cursor: "pointer", background: "rgba(239,68,68,.12)",
+          color: "#ef4444", fontWeight: "bold", fontSize: 14,
         }}>
           🚪 Cerrar sesión
         </button>
       </div>
 
-      <div style={{ flex: 1, padding: isMobile ? 20 : 40, color: "white", overflowY: "auto", minWidth: 0 }}>
+      <div style={{ flex: 1, padding: isMobile ? 16 : 40, color: "white", overflowY: "auto", overflowX: "hidden", minWidth: 0 }}>
         {isMobile && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, background: "#1e293b", padding: "12px 16px", borderRadius: 10 }}>
-            <span style={{ fontWeight: "bold", fontSize: 15 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: "12px 16px", borderRadius: 10 }}>
+            <span style={{ fontWeight: "bold", fontSize: 15, wordBreak: "break-word" }}>
               {menuItems.find(m => m.key === section)?.label || "Panel"}
             </span>
-            <button onClick={() => setSidebarOpen(true)} style={{ background: "#334155", border: "none", color: "white", cursor: "pointer", padding: "6px 12px", borderRadius: 8, fontSize: 18 }}>☰</button>
+            <button onClick={() => setSidebarOpen(true)} style={{ background: "#1e1b4b", border: "none", color: "white", cursor: "pointer", padding: "8px 12px", minWidth: 44, minHeight: 44, borderRadius: 8, fontSize: 18 }}>☰</button>
           </div>
         )}
 
         {section === "panel" && (
           <div>
-            <h1 style={{ marginBottom: 4, fontSize: isMobile ? 22 : 28 }}>🏠 Panel Editorial</h1>
+            <h1 style={{ marginBottom: 4, fontSize: isMobile ? 20 : 28, wordBreak: "break-word" }}>🏠 Panel Editorial</h1>
             <p style={{ color: "#94a3b8", marginBottom: 32, fontSize: isMobile ? 13 : 15 }}>
               Resumen general del sistema.
             </p>
@@ -198,21 +203,21 @@ function Admin() {
                     <h3 style={{ color: "#f59e0b", marginBottom: 12, fontSize: isMobile ? 14 : 16 }}>⚠️ Requieren atención</h3>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {stats.clientes.formularioLlenado > 0 && (
-                        <div onClick={() => handleSection("clients")} style={{ background: "#1e293b", padding: "14px 18px", borderRadius: 10, borderLeft: "4px solid #a78bfa", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: isMobile ? 13 : 15 }}>📝 {stats.clientes.formularioLlenado} cliente(s) con formulario llenado</span>
-                          <span style={{ color: "#a78bfa", fontSize: 18 }}>→</span>
+                        <div onClick={() => handleSection("clients")} style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: "14px 18px", borderRadius: 10, borderLeft: "4px solid #8b5cf6", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, minHeight: 44 }}>
+                          <span style={{ fontSize: isMobile ? 13 : 15, wordBreak: "break-word" }}>📝 {stats.clientes.formularioLlenado} cliente(s) con formulario llenado</span>
+                          <span style={{ color: "#a78bfa", fontSize: 18, flexShrink: 0 }}>→</span>
                         </div>
                       )}
                       {stats.tareas.clientes.pendientes > 0 && (
-                        <div onClick={() => handleSection("tasks")} style={{ background: "#1e293b", padding: "14px 18px", borderRadius: 10, borderLeft: "4px solid #60a5fa", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: isMobile ? 13 : 15 }}>✅ {stats.tareas.clientes.pendientes} tarea(s) de clientes pendientes</span>
-                          <span style={{ color: "#60a5fa", fontSize: 18 }}>→</span>
+                        <div onClick={() => handleSection("tasks")} style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: "14px 18px", borderRadius: 10, borderLeft: "4px solid #6366f1", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, minHeight: 44 }}>
+                          <span style={{ fontSize: isMobile ? 13 : 15, wordBreak: "break-word" }}>✅ {stats.tareas.clientes.pendientes} tarea(s) de clientes pendientes</span>
+                          <span style={{ color: "#60a5fa", fontSize: 18, flexShrink: 0 }}>→</span>
                         </div>
                       )}
                       {stats.entregas.pendientes > 0 && (
-                        <div onClick={() => handleSection("entregas")} style={{ background: "#1e293b", padding: "14px 18px", borderRadius: 10, borderLeft: "4px solid #f59e0b", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: isMobile ? 13 : 15 }}>📦 {stats.entregas.pendientes} entrega(s) pendiente(s) de realizar</span>
-                          <span style={{ color: "#f59e0b", fontSize: 18 }}>→</span>
+                        <div onClick={() => handleSection("entregas")} style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: "14px 18px", borderRadius: 10, borderLeft: "4px solid #f59e0b", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, minHeight: 44 }}>
+                          <span style={{ fontSize: isMobile ? 13 : 15, wordBreak: "break-word" }}>📦 {stats.entregas.pendientes} entrega(s) pendiente(s) de realizar</span>
+                          <span style={{ color: "#f59e0b", fontSize: 18, flexShrink: 0 }}>→</span>
                         </div>
                       )}
                     </div>
@@ -228,15 +233,15 @@ function Admin() {
                     { label: "En proceso", value: stats.clientes.enProceso, color: "#60a5fa" },
                     { label: "Procesados", value: stats.clientes.procesados, color: "#22c55e" },
                   ].map((s) => (
-                    <div key={s.label} onClick={() => handleSection("clients")} style={{ background: "#1e293b", padding: isMobile ? 14 : 18, borderRadius: 12, textAlign: "center", borderTop: `3px solid ${s.color}`, cursor: "pointer" }}>
-                      <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: "bold", color: s.color }}>{s.value}</div>
+                    <div key={s.label} onClick={() => handleSection("clients")} style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: isMobile ? 12 : 18, borderRadius: 12, textAlign: "center", borderTop: `3px solid ${s.color}`, cursor: "pointer" }}>
+                      <div style={{ fontSize: isMobile ? 20 : 28, fontWeight: "bold", color: s.color }}>{s.value}</div>
                       <div style={{ color: "#94a3b8", fontSize: 11, marginTop: 4 }}>{s.label}</div>
                     </div>
                   ))}
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
-                  <div onClick={() => handleSection("tasks")} style={{ background: "#1e293b", padding: isMobile ? 16 : 20, borderRadius: 12, cursor: "pointer" }}>
+                  <div onClick={() => handleSection("tasks")} style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: isMobile ? 16 : 20, borderRadius: 12, cursor: "pointer" }}>
                     <h4 style={{ marginBottom: 16, fontSize: isMobile ? 14 : 16 }}>✅ Trabajo de clientes</h4>
                     <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                       <div style={{ flex: 1, textAlign: "center" }}>
@@ -255,7 +260,7 @@ function Admin() {
                     )}
                   </div>
 
-                  <div onClick={() => handleSection("tasks")} style={{ background: "#1e293b", padding: isMobile ? 16 : 20, borderRadius: 12, cursor: "pointer" }}>
+                  <div onClick={() => handleSection("tasks")} style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: isMobile ? 16 : 20, borderRadius: 12, cursor: "pointer" }}>
                     <h4 style={{ marginBottom: 16, fontSize: isMobile ? 14 : 16 }}>📋 Tareas del equipo</h4>
                     <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                       <div style={{ flex: 1, textAlign: "center" }}>
@@ -274,7 +279,7 @@ function Admin() {
                     )}
                   </div>
 
-                  <div onClick={() => handleSection("entregas")} style={{ background: "#1e293b", padding: isMobile ? 16 : 20, borderRadius: 12, cursor: "pointer" }}>
+                  <div onClick={() => handleSection("entregas")} style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: isMobile ? 16 : 20, borderRadius: 12, cursor: "pointer" }}>
                     <h4 style={{ marginBottom: 16, fontSize: isMobile ? 14 : 16 }}>📦 Entregas</h4>
                     <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                       <div style={{ flex: 1, textAlign: "center" }}>
@@ -296,12 +301,12 @@ function Admin() {
 
                 <h3 style={{ color: "#94a3b8", marginBottom: 12, fontSize: 13, textTransform: "uppercase", letterSpacing: 1 }}>📚 Contenido</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-                  <div onClick={() => handleSection("magazines")} style={{ background: "#1e293b", padding: isMobile ? 16 : 20, borderRadius: 12, textAlign: "center", cursor: "pointer", borderTop: "3px solid #3b82f6" }}>
-                    <div style={{ fontSize: isMobile ? 24 : 32, fontWeight: "bold", color: "#3b82f6" }}>{stats.revistas}</div>
+                  <div onClick={() => handleSection("magazines")} style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: isMobile ? 16 : 20, borderRadius: 12, textAlign: "center", cursor: "pointer", borderTop: "3px solid #6366f1" }}>
+                    <div style={{ fontSize: isMobile ? 24 : 32, fontWeight: "bold", color: "#818cf8" }}>{stats.revistas}</div>
                     <div style={{ color: "#94a3b8", fontSize: 12, marginTop: 4 }}>Revistas</div>
                   </div>
-                  <div onClick={() => handleSection("books")} style={{ background: "#1e293b", padding: isMobile ? 16 : 20, borderRadius: 12, textAlign: "center", cursor: "pointer", borderTop: "3px solid #22c55e" }}>
-                    <div style={{ fontSize: isMobile ? 24 : 32, fontWeight: "bold", color: "#22c55e" }}>{stats.libros}</div>
+                  <div onClick={() => handleSection("books")} style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: isMobile ? 16 : 20, borderRadius: 12, textAlign: "center", cursor: "pointer", borderTop: "3px solid #34d399" }}>
+                    <div style={{ fontSize: isMobile ? 24 : 32, fontWeight: "bold", color: "#34d399" }}>{stats.libros}</div>
                     <div style={{ color: "#94a3b8", fontSize: 12, marginTop: 4 }}>Libros</div>
                   </div>
                 </div>

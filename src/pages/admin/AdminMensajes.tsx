@@ -222,19 +222,35 @@ function AdminMensajes() {
   );
 
   return (
-    <div translate="no">
-      <h1 style={{ marginBottom: 8, fontSize: isMobile ? 22 : 28 }}>💬 Mensajes</h1>
-      <p style={{ color: "#94a3b8", marginBottom: 24, fontSize: isMobile ? 13 : 15 }}>Comunicación directa con los clientes.</p>
+    <div translate="no" style={{ overflowX: "hidden" }}>
+      <h1 style={{ marginBottom: 8, fontSize: isMobile ? 20 : 28, wordBreak: "break-word" }}>💬 Mensajes</h1>
+      <p style={{ color: "#94a3b8", marginBottom: isMobile ? 16 : 24, fontSize: isMobile ? 13 : 15 }}>Comunicación directa con los clientes.</p>
 
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "320px 1fr", gap: 16, height: isMobile ? "auto" : "calc(100vh - 220px)" }}>
+      <div style={{
+        display: isMobile ? "block" : "grid",
+        gridTemplateColumns: isMobile ? undefined : "320px 1fr",
+        gap: 16,
+        height: isMobile ? "calc(100dvh - 210px)" : "calc(100vh - 220px)",
+        minHeight: isMobile ? 420 : undefined,
+        position: "relative",
+        overflow: "hidden",
+      }}>
         {/* Lista de clientes */}
-        <div translate="no" style={{ background: "#1e293b", borderRadius: 14, overflow: "auto", display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: 16, borderBottom: "1px solid #334155" }}>
+        <div translate="no" style={{
+          background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", borderRadius: 14, overflow: "auto", display: "flex", flexDirection: "column",
+          height: isMobile ? "100%" : "auto",
+          position: isMobile ? "absolute" : "static",
+          inset: isMobile ? 0 : undefined,
+          transform: isMobile ? (selectedId ? "translateX(-100%)" : "translateX(0)") : "none",
+          transition: isMobile ? "transform .25s ease" : "none",
+          zIndex: isMobile ? 2 : "auto",
+        }}>
+          <div style={{ padding: 16, borderBottom: "1px solid #1e1b4b" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <span style={{ fontWeight: "bold", fontSize: 14, color: "#94a3b8" }}>Clientes ({clientes.length})</span>
               <button
                 onClick={() => setMostrarNuevo(true)}
-                style={{ background: "#3b82f6", border: "none", borderRadius: 8, color: "white", cursor: "pointer", padding: "6px 12px", fontSize: 12, fontWeight: "bold" }}
+                style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", borderRadius: 8, color: "white", cursor: "pointer", padding: "8px 14px", minHeight: 36, fontSize: 12, fontWeight: "bold" }}
               >
                 + Nuevo
               </button>
@@ -243,7 +259,7 @@ function AdminMensajes() {
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
               placeholder="Buscar cliente..."
-              style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #334155", background: "#0f172a", color: "white", fontSize: 13, boxSizing: "border-box" }}
+              style={{ width: "100%", padding: "10px 12px", minHeight: 44, borderRadius: 8, border: "1px solid #1e1b4b", background: "#0a0a14", color: "white", fontSize: 16, boxSizing: "border-box" }}
             />
           </div>
           {loading ? (
@@ -254,8 +270,8 @@ function AdminMensajes() {
             </p>
           ) : (
             clientesFiltrados.map(c => (
-              <div key={c.id} onClick={() => setSelectedId(c.id)} style={{ padding: 14, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background: selectedId === c.id ? "#0f172a" : "transparent", borderBottom: "1px solid #334155", borderLeft: selectedId === c.id ? "4px solid #3b82f6" : "4px solid transparent" }}>
-                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#334155", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, overflow: "hidden" }}>
+              <div key={c.id} onClick={() => setSelectedId(c.id)} style={{ padding: 14, minHeight: 44, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background: selectedId === c.id ? "#0a0a14" : "transparent", borderBottom: "1px solid #1e1b4b", borderLeft: selectedId === c.id ? "4px solid #6366f1" : "4px solid transparent" }}>
+                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#1e1b4b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, overflow: "hidden" }}>
                   {c.fotografia ? <img src={c.fotografia} alt="foto" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👤"}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -272,18 +288,28 @@ function AdminMensajes() {
 
         {/* Chat */}
         {selectedId && clienteSeleccionado ? (
-          <div key={selectedId} translate="no" style={{ background: "#1e293b", borderRadius: 14, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ padding: 14, borderBottom: "1px solid #334155", display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#334155", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, overflow: "hidden" }}>
+          <div key={selectedId} translate="no" style={{
+            background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", borderRadius: 14, display: "flex", flexDirection: "column", overflow: "hidden",
+            height: isMobile ? "100%" : "auto",
+            position: isMobile ? "absolute" : "static",
+            inset: isMobile ? 0 : undefined,
+            transform: isMobile ? "translateX(0)" : "none",
+            zIndex: isMobile ? 3 : "auto",
+          }}>
+            <div style={{ padding: 14, borderBottom: "1px solid #1e1b4b", display: "flex", alignItems: "center", gap: 12, background: "#050508" }}>
+              {isMobile && (
+                <button onClick={() => setSelectedId(null)} style={{ background: "none", border: "none", color: "#818cf8", cursor: "pointer", fontSize: 20, minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
+              )}
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1e1b4b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, overflow: "hidden", flexShrink: 0 }}>
                 {clienteSeleccionado.fotografia ? <img src={clienteSeleccionado.fotografia} alt="foto" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👤"}
               </div>
-              <div><p style={{ color: "white", fontWeight: "bold", fontSize: 14, margin: 0 }}>{clienteSeleccionado.nombre}</p></div>
-              <button onClick={() => setSelectedId(null)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 18 }}>✕</button>
+              <div style={{ minWidth: 0 }}><p style={{ color: "white", fontWeight: "bold", fontSize: 14, margin: 0, wordBreak: "break-word" }}>{clienteSeleccionado.nombre}</p></div>
+              {!isMobile && <button onClick={() => setSelectedId(null)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 18, minWidth: 44, minHeight: 44 }}>✕</button>}
             </div>
 
-            <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: isMobile ? 12 : 16, display: "flex", flexDirection: "column", gap: 12, background: "#050508" }}>
               {mensajes.map(m => (
-                <div key={m.id} style={{ alignSelf: m.emisor === "admin" ? "flex-end" : "flex-start", maxWidth: "70%", background: m.emisor === "admin" ? "#3b82f6" : "#334155", color: "white", padding: "10px 16px", borderRadius: 12, fontSize: 14 }}>
+                <div key={m.id} style={{ alignSelf: m.emisor === "admin" ? "flex-end" : "flex-start", maxWidth: isMobile ? "88%" : "70%", background: m.emisor === "admin" ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "#1e1b4b", color: "white", padding: "10px 16px", borderRadius: 12, fontSize: 14, wordBreak: "break-word" }}>
                   {renderContenido(m)}
                   <p style={{ fontSize: 10, opacity: 0.7, marginTop: 4 }}>{new Date(m.createdAt).toLocaleTimeString()}{m.emisor === "cliente" && !m.leido && " · No leído"}</p>
                 </div>
@@ -306,38 +332,38 @@ function AdminMensajes() {
               </div>
             )}
 
-            <div style={{ borderTop: "1px solid #334155", padding: 12, display: "flex", gap: 8, alignItems: "flex-end" }}>
+            <div style={{ borderTop: "1px solid #1e1b4b", padding: isMobile ? 10 : 12, display: "flex", gap: 8, alignItems: "flex-end", background: "#050508" }}>
               <input type="file" multiple accept="image/*,.pdf,.doc,.docx" ref={fileInputRef} onChange={handleArchivosChange} style={{ display: "none" }} />
-              <button onClick={() => fileInputRef.current?.click()} style={{ background: "#334155", border: "none", borderRadius: 8, color: "white", cursor: "pointer", padding: "10px 12px", fontSize: 14 }} title="Adjuntar archivos">📎</button>
-              <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.shiftKey && enviar()} placeholder="Escribe un mensaje..." style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "#0f172a", color: "white", fontSize: 14 }} />
-              <button onClick={enviar} disabled={enviando || (!texto.trim() && archivos.length === 0)} style={{ background: "#3b82f6", border: "none", padding: "10px 18px", borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", opacity: enviando || (!texto.trim() && archivos.length === 0) ? 0.7 : 1 }}>{enviando ? "..." : "Enviar"}</button>
+              <button onClick={() => fileInputRef.current?.click()} style={{ background: "#1e1b4b", border: "none", borderRadius: 8, color: "white", cursor: "pointer", padding: "10px 12px", minWidth: 44, minHeight: 44, fontSize: 14, flexShrink: 0 }} title="Adjuntar archivos">📎</button>
+              <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.shiftKey && enviar()} placeholder="Escribe un mensaje..." style={{ flex: 1, minWidth: 0, padding: 12, minHeight: 44, borderRadius: 8, border: "1px solid #1e1b4b", background: "#0a0a14", color: "white", fontSize: 16, boxSizing: "border-box" }} />
+              <button onClick={enviar} disabled={enviando || (!texto.trim() && archivos.length === 0)} style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", padding: "10px 18px", minHeight: 44, borderRadius: 8, color: "white", fontWeight: "bold", cursor: "pointer", opacity: enviando || (!texto.trim() && archivos.length === 0) ? 0.7 : 1, flexShrink: 0 }}>{enviando ? "..." : "Enviar"}</button>
             </div>
           </div>
         ) : (
-          <div style={{ background: "#1e293b", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: 15 }}>{!isMobile && "Selecciona una conversación para ver los mensajes"}</div>
+          !isMobile && <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: 15, padding: 20, textAlign: "center" }}>Selecciona una conversación para ver los mensajes</div>
         )}
       </div>
 
       {mostrarNuevo && (
         <div
           onClick={() => setMostrarNuevo(false)}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 20 }}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", zIndex: 999, padding: isMobile ? 0 : 20 }}
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: "#1e293b", borderRadius: 14, width: "100%", maxWidth: 420, maxHeight: "70vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
+            style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", borderRadius: isMobile ? "18px 18px 0 0" : 14, width: "100%", maxWidth: isMobile ? "100%" : 420, maxHeight: isMobile ? "80vh" : "70vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
           >
-            <div style={{ padding: 16, borderBottom: "1px solid #334155", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: 16, borderBottom: "1px solid #1e1b4b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontWeight: "bold", color: "white", fontSize: 15 }}>Iniciar conversación</span>
-              <button onClick={() => setMostrarNuevo(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 18 }}>✕</button>
+              <button onClick={() => setMostrarNuevo(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 18, minWidth: 44, minHeight: 44 }}>✕</button>
             </div>
-            <div style={{ padding: 16, borderBottom: "1px solid #334155" }}>
+            <div style={{ padding: 16, borderBottom: "1px solid #1e1b4b" }}>
               <input
                 autoFocus
                 value={busquedaNuevo}
                 onChange={e => setBusquedaNuevo(e.target.value)}
                 placeholder="Buscar por nombre..."
-                style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #334155", background: "#0f172a", color: "white", fontSize: 14, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "12px 12px", minHeight: 44, borderRadius: 8, border: "1px solid #1e1b4b", background: "#0a0a14", color: "white", fontSize: 16, boxSizing: "border-box" }}
               />
             </div>
             <div style={{ overflowY: "auto", flex: 1 }}>
@@ -352,12 +378,12 @@ function AdminMensajes() {
                     <div
                       key={c.id}
                       onClick={() => iniciarConversacion(c)}
-                      style={{ padding: 14, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", borderBottom: "1px solid #334155" }}
+                      style={{ padding: 14, minHeight: 44, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", borderBottom: "1px solid #1e1b4b" }}
                     >
-                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#334155", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, overflow: "hidden" }}>
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#1e1b4b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, overflow: "hidden" }}>
                         {c.fotografia ? <img src={c.fotografia} alt="foto" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👤"}
                       </div>
-                      <p style={{ color: "white", fontSize: 13, margin: 0 }}>{nombre}</p>
+                      <p style={{ color: "white", fontSize: 13, margin: 0, wordBreak: "break-word" }}>{nombre}</p>
                     </div>
                   );
                 })
