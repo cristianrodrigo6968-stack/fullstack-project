@@ -14,6 +14,7 @@ import { generarReciboPDF } from "./pdfGenerator";
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
+const SECRET = process.env.JWT_SECRET || "secret123";
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 6, // máximo 6 intentos por IP en esa ventana
