@@ -40,7 +40,7 @@ function Spinner() {
 function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void; }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "0 20px" }}>
-      <div style={{ background: "#1e293b", padding: 32, borderRadius: 16, width: "100%", maxWidth: 360, color: "white", textAlign: "center", border: "1px solid #334155" }}>
+      <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", padding: 32, borderRadius: 16, width: "100%", maxWidth: 360, color: "white", textAlign: "center", border: "1px solid #1e1b4b" }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>🗑️</div>
         <h3 style={{ marginBottom: 10 }}>¿Eliminar?</h3>
         <p style={{ color: "#94a3b8", marginBottom: 28, fontSize: 14 }}>{message}</p>
@@ -188,8 +188,8 @@ function Books() {
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
           {booksMes.map(b => (
             <div key={b.id} style={{
-              background: "#1e293b", borderRadius: 12, padding: 18,
-              borderLeft: "4px solid #22c55e", position: "relative",
+              background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", borderRadius: 12, padding: 18,
+              borderLeft: "4px solid #34d399", position: "relative",
             }}>
               <h3 style={{ marginBottom: 6, fontSize: isMobile ? 15 : 17, color: "white" }}>
                 📘 {b.title}
@@ -200,7 +200,7 @@ function Books() {
 
               {b.cliente && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <span style={{ background: "#312e81", color: "#a78bfa", padding: "2px 10px", borderRadius: 99, fontSize: 12 }}>
+                  <span style={{ background: "rgba(99,102,241,.12)", color: "#a5b4fc", padding: "2px 10px", borderRadius: 99, fontSize: 12 }}>
                     👤 {b.cliente.nombreCompleto}
                   </span>
                   <span style={{ color: "#64748b", fontSize: 12 }}>
@@ -213,8 +213,8 @@ function Books() {
                     }}
                     title="Copiar JSON SENAPI"
                     style={{
-                      background: "#312e81", border: "none", padding: "4px 8px",
-                      borderRadius: 6, color: "#a78bfa", cursor: "pointer", fontSize: 13,
+                      background: "rgba(99,102,241,.15)", border: "none", padding: "4px 8px",
+                      borderRadius: 6, color: "#a5b4fc", cursor: "pointer", fontSize: 13,
                     }}
                   >
                     📋
@@ -223,25 +223,25 @@ function Books() {
               )}
 
               {b.notas && (
-                <p style={{ color: "#f59e0b", fontSize: 12, marginBottom: 12, background: "#422006", padding: "4px 10px", borderRadius: 6 }}>
+                <p style={{ color: "#f59e0b", fontSize: 12, marginBottom: 12, background: "rgba(245,158,11,.12)", padding: "4px 10px", borderRadius: 6 }}>
                   📝 {b.notas.length > 50 ? b.notas.substring(0, 50) + "..." : b.notas}
                 </p>
               )}
 
               {/* Archivo */}
-              <div style={{ marginTop: 12, padding: 12, background: "#0f172a", borderRadius: 8 }}>
+              <div style={{ marginTop: 12, padding: 12, background: "#0a0a14", border: "1px solid #1e1b4b", borderRadius: 8 }}>
                 {b.archivoUrl ? (
                   <div>
-                    <p style={{ color: "#22c55e", fontSize: 12, marginBottom: 8 }}>✅ Archivo subido</p>
+                    <p style={{ color: "#34d399", fontSize: 12, marginBottom: 8 }}>✅ Archivo subido</p>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <a 
                         href={b.archivoUrl?.replace("/upload/", "/upload/fl_attachment/")} 
                         target="_blank" rel="noreferrer"
-                        style={{ background: "#22c55e", border: "none", padding: "6px 12px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 12, textDecoration: "none" }}
+                        style={{ background: "linear-gradient(135deg,#10b981,#059669)", border: "none", padding: "6px 12px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 12, textDecoration: "none" }}
                       >
                         📥 Descargar
                       </a>
-                      <label style={{ background: "#334155", border: "none", padding: "6px 12px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 12 }}>
+                      <label style={{ background: "#0d0d1a", border: "1px solid #1e1b4b", padding: "6px 12px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 12 }}>
                         🔄 Reemplazar
                         <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivo(b.id, f); }} />
                       </label>
@@ -250,7 +250,7 @@ function Books() {
                 ) : (
                   <div>
                     <p style={{ color: "#64748b", fontSize: 12, marginBottom: 8 }}>📎 Sin archivo final</p>
-                    <label style={{ background: "#3b82f6", border: "none", padding: "6px 12px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <label style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", padding: "6px 12px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}>
                       {subiendoId === b.id ? <><Spinner /> Subiendo...</> : "📤 Subir archivo"}
                       <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivo(b.id, f); }} />
                     </label>
@@ -272,7 +272,7 @@ function Books() {
       {/* Modal crear/editar */}
       {open && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 999, padding: "20px" }}>
-          <div style={{ background: "#1e293b", padding: isMobile ? 20 : 28, borderRadius: 14, width: "100%", maxWidth: 500, color: "white", maxHeight: "85vh", overflowY: "auto" }}>
+          <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: isMobile ? 20 : 28, borderRadius: 14, width: "100%", maxWidth: 500, color: "white", maxHeight: "85vh", overflowY: "auto", boxSizing: "border-box" }}>
             <h3 style={{ marginBottom: 16 }}>{editId ? "Editar libro" : "Crear libro"}</h3>
 
             <label style={labelStyle}>Título</label>
@@ -309,7 +309,7 @@ function Books() {
             )}
 
             {clienteId && (
-              <div style={{ background: "#0f172a", padding: "10px 12px", borderRadius: 8, marginBottom: 10 }}>
+              <div style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: "10px 12px", borderRadius: 8, marginBottom: 10 }}>
                 <span style={{ color: "#94a3b8", fontSize: 13 }}>
                   Autor vinculado: <strong style={{ color: "white" }}>{authorName}</strong>
                 </span>
@@ -333,10 +333,10 @@ function Books() {
 }
 
 const labelStyle: React.CSSProperties = { display: "block", color: "#94a3b8", fontSize: 12, marginBottom: 6, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 0.5 };
-const inputStyle: React.CSSProperties = { width: "100%", padding: 10, marginBottom: 10, borderRadius: 8, border: "none", background: "#334155", color: "white", fontSize: 14, boxSizing: "border-box" };
-const btnBlue: React.CSSProperties = { background: "#3b82f6", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnRed: React.CSSProperties = { background: "#ef4444", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnYellow: React.CSSProperties = { background: "#f59e0b", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnGray: React.CSSProperties = { background: "#334155", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
+const inputStyle: React.CSSProperties = { width: "100%", padding: 11, marginBottom: 10, borderRadius: 8, border: "1px solid #1e1b4b", background: "#0a0a14", color: "white", fontSize: 16, boxSizing: "border-box" };
+const btnBlue: React.CSSProperties = { background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 14px rgba(99,102,241,.3)" };
+const btnRed: React.CSSProperties = { background: "linear-gradient(135deg,#ef4444,#dc2626)", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 14px rgba(239,68,68,.3)" };
+const btnYellow: React.CSSProperties = { background: "linear-gradient(135deg,#f59e0b,#d97706)", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 14px rgba(245,158,11,.3)" };
+const btnGray: React.CSSProperties = { background: "#0a0a14", border: "1px solid #1e1b4b", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
 
 export default Books;

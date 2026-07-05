@@ -56,7 +56,7 @@ function Spinner() {
 function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void; }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, padding: "0 20px" }}>
-      <div style={{ background: "#1e293b", padding: 32, borderRadius: 16, width: "100%", maxWidth: 360, color: "white", textAlign: "center", border: "1px solid #334155" }}>
+      <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", padding: 32, borderRadius: 16, width: "100%", maxWidth: 360, color: "white", textAlign: "center", border: "1px solid #1e1b4b" }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>🗑️</div>
         <h3 style={{ marginBottom: 10 }}>¿Eliminar?</h3>
         <p style={{ color: "#94a3b8", marginBottom: 28, fontSize: 14 }}>{message}</p>
@@ -218,9 +218,9 @@ const articuloDirector = articles.find(a => a.authors.some(au => au.id === selec
   return (
     <div style={{
       borderRadius: 12, marginBottom: 10,
-      border: open ? "1px solid #3b82f6" : "1px solid #1e293b",
+      border: open ? "1px solid #6366f1" : "1px solid #1e1b4b",
       overflow: "hidden", transition: "border-color 0.2s",
-      background: open ? "#0f172a" : "#0d1526",
+      background: open ? "#0a0a14" : "#0d0d1a",
     }}>
       {/* Cabecera clicable */}
       <button
@@ -234,8 +234,8 @@ const articuloDirector = articles.find(a => a.authors.some(au => au.id === selec
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {/* Número de edición */}
           <span style={{
-            background: open ? "#3b82f6" : "#1e3a5f",
-            color: open ? "white" : "#60a5fa",
+            background: open ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "rgba(99,102,241,.15)",
+            color: open ? "white" : "#a5b4fc",
             borderRadius: 6, padding: "3px 10px", fontSize: 11,
             fontWeight: "bold", textTransform: "uppercase", letterSpacing: 0.5,
             transition: "all 0.2s",
@@ -245,7 +245,7 @@ const articuloDirector = articles.find(a => a.authors.some(au => au.id === selec
 
           {/* Contador de artículos */}
           <span style={{
-            background: "#1e293b", color: "#94a3b8",
+            background: "#0d0d1a", color: "#94a3b8",
             borderRadius: 99, padding: "2px 10px", fontSize: 12,
           }}>
             {articles.length} artículo{articles.length !== 1 ? "s" : ""}
@@ -253,8 +253,8 @@ const articuloDirector = articles.find(a => a.authors.some(au => au.id === selec
 
           {/* Badge archivo */}
           {ed.archivoUrl
-            ? <span style={{ background: "#14532d", color: "#4ade80", borderRadius: 99, padding: "2px 8px", fontSize: 11 }}>✓ PDF</span>
-            : <span style={{ background: "#1e293b", color: "#64748b", borderRadius: 99, padding: "2px 8px", fontSize: 11 }}>Sin PDF</span>
+            ? <span style={{ background: "rgba(16,185,129,.15)", color: "#34d399", borderRadius: 99, padding: "2px 8px", fontSize: 11 }}>✓ PDF</span>
+            : <span style={{ background: "#0d0d1a", color: "#64748b", borderRadius: 99, padding: "2px 8px", fontSize: 11 }}>Sin PDF</span>
           }
         </div>
 
@@ -263,7 +263,7 @@ const articuloDirector = articles.find(a => a.authors.some(au => au.id === selec
           <button
             onClick={e => { e.stopPropagation(); generarDocumentoParticipantesEdicion(selected, ed, numeroTexto); }}
             title="Descargar lista de participantes (Word)"
-            style={{ background: "#1e3a5f", border: "none", padding: "4px 10px", borderRadius: 6, color: "#60a5fa", cursor: "pointer", fontWeight: "bold", fontSize: 13 }}
+            style={{ background: "rgba(99,102,241,.15)", border: "none", padding: "4px 10px", borderRadius: 6, color: "#a5b4fc", cursor: "pointer", fontWeight: "bold", fontSize: 13 }}
           >
             📄
           </button>
@@ -276,26 +276,26 @@ const articuloDirector = articles.find(a => a.authors.some(au => au.id === selec
                 target="_blank" rel="noreferrer"
                 onClick={e => e.stopPropagation()}
                 title="Descargar PDF"
-                style={{ background: "#166534", padding: "4px 10px", borderRadius: 6, color: "#4ade80", fontWeight: "bold", fontSize: 13, textDecoration: "none" }}
+                style={{ background: "rgba(16,185,129,.15)", padding: "4px 10px", borderRadius: 6, color: "#34d399", fontWeight: "bold", fontSize: 13, textDecoration: "none" }}
               >
                 📥
               </a>
               <label onClick={e => e.stopPropagation()} title="Reemplazar archivo"
-                style={{ background: "#334155", padding: "4px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 13 }}>
+                style={{ background: "#0d0d1a", border: "1px solid #1e1b4b", padding: "4px 10px", borderRadius: 6, color: "white", cursor: "pointer", fontWeight: "bold", fontSize: 13 }}>
                 🔄
                 <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) subirArchivo(f); }} />
               </label>
             </>
           ) : (
             <label onClick={e => e.stopPropagation()} title="Subir archivo"
-              style={{ background: "#1e3a5f", padding: "4px 10px", borderRadius: 6, color: "#60a5fa", cursor: "pointer", fontWeight: "bold", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4 }}>
+              style={{ background: "rgba(99,102,241,.15)", padding: "4px 10px", borderRadius: 6, color: "#a5b4fc", cursor: "pointer", fontWeight: "bold", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4 }}>
               {subiendoId === ed.id ? <Spinner /> : "📤"}
               <input type="file" accept=".pdf,.pub,.docx" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) subirArchivo(f); }} />
             </label>
           )}
 
           <span style={{
-            fontSize: 18, color: open ? "#60a5fa" : "#475569",
+            fontSize: 18, color: open ? "#a5b4fc" : "#475569",
             transform: open ? "rotate(180deg)" : "rotate(0deg)",
             transition: "transform 0.2s", display: "inline-block", lineHeight: 1,
           }}>▾</span>
@@ -304,11 +304,11 @@ const articuloDirector = articles.find(a => a.authors.some(au => au.id === selec
 
       {/* Contenido desplegable */}
       {open && (
-        <div style={{ padding: "0 16px 16px", borderTop: "1px solid #1e293b" }}>
+        <div style={{ padding: "0 16px 16px", borderTop: "1px solid #1e1b4b" }}>
 
           {/* Director */}
           <div style={{
-            background: "#1e293b", padding: "10px 14px", borderRadius: 8,
+            background: "#0d0d1a", border: "1px solid #1e1b4b", padding: "10px 14px", borderRadius: 8,
             marginTop: 12, marginBottom: 12,
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -327,7 +327,7 @@ const articuloDirector = articles.find(a => a.authors.some(au => au.id === selec
                 <button
                   onClick={() => { navigator.clipboard.writeText(JSON.stringify(buildSenapiJSON(selected.cliente!), null, 2)); alert("📋 Datos del director copiados"); }}
                   title="Copiar JSON SENAPI del director"
-                  style={{ background: "#312e81", border: "none", padding: "5px 10px", borderRadius: 6, color: "#a78bfa", cursor: "pointer", fontSize: 13 }}
+                  style={{ background: "rgba(99,102,241,.15)", border: "none", padding: "5px 10px", borderRadius: 6, color: "#a5b4fc", cursor: "pointer", fontSize: 13 }}
                 >📋</button>
               )}
             </div>
@@ -358,7 +358,7 @@ const articuloDirector = articles.find(a => a.authors.some(au => au.id === selec
 
           {/* Lista autores */}
           {articlesSinDirector.length === 0 ? (
-            <p style={{ color: "#475569", fontSize: 13, margin: "12px 0", textAlign: "center", padding: "16px 0", borderTop: "1px solid #1e293b" }}>
+            <p style={{ color: "#475569", fontSize: 13, margin: "12px 0", textAlign: "center", padding: "16px 0", borderTop: "1px solid #1e1b4b" }}>
               Sin autores asignados
             </p>
           ) : (
@@ -367,7 +367,7 @@ const articuloDirector = articles.find(a => a.authors.some(au => au.id === selec
                 <div key={article.id} style={{
                   display: "flex", justifyContent: "space-between", alignItems: "center",
                   padding: "10px 0",
-                  borderBottom: idx < articlesSinDirector.length - 1 ? "1px solid #1e293b" : "none",
+                  borderBottom: idx < articlesSinDirector.length - 1 ? "1px solid #1e1b4b" : "none",
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ color: "#e2e8f0", fontSize: 14, fontWeight: 500, marginBottom: 2 }}>
@@ -378,7 +378,7 @@ const articuloDirector = articles.find(a => a.authors.some(au => au.id === selec
                         ✍️ {article.authors.map(a => a.name).join(", ")}
                       </span>
                       {article.cliente?.ci && (
-                        <span style={{ background: "#1e3a5f", color: "#60a5fa", fontSize: 11, padding: "1px 7px", borderRadius: 99 }}>
+                        <span style={{ background: "rgba(99,102,241,.15)", color: "#a5b4fc", fontSize: 11, padding: "1px 7px", borderRadius: 99 }}>
                           CI {article.cliente.ci}
                         </span>
                       )}
@@ -389,13 +389,13 @@ const articuloDirector = articles.find(a => a.authors.some(au => au.id === selec
                       <button
                         onClick={() => { navigator.clipboard.writeText(JSON.stringify(buildSenapiJSON(article.cliente!), null, 2)); alert("📋 Datos del autor copiados"); }}
                         title="Copiar JSON SENAPI"
-                        style={{ background: "#312e81", border: "none", padding: "4px 8px", borderRadius: 6, color: "#a78bfa", cursor: "pointer", fontSize: 12 }}
+                        style={{ background: "rgba(99,102,241,.15)", border: "none", padding: "4px 8px", borderRadius: 6, color: "#a5b4fc", cursor: "pointer", fontSize: 12 }}
                       >📋</button>
                     )}
                     <button
                       onClick={() => eliminarAutor(article.id)}
                       disabled={deletingArticleId === article.id}
-                      style={{ background: "#450a0a", border: "none", padding: "4px 8px", borderRadius: 6, color: "#f87171", cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
+                      style={{ background: "rgba(239,68,68,.15)", border: "none", padding: "4px 8px", borderRadius: 6, color: "#f87171", cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
                     >
                       {deletingArticleId === article.id ? <Spinner /> : "🗑"}
                     </button>
@@ -407,9 +407,8 @@ const articuloDirector = articles.find(a => a.authors.some(au => au.id === selec
 
           {/* Formulario agregar autor */}
           <div style={{
-            marginTop: 14, background: "#1e293b", borderRadius: 8,
+            marginTop: 14, background: "#0d0d1a", border: "1px solid #1e1b4b", borderRadius: 8,
             padding: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center",
-            borderTop: "1px solid #1e293b",
           }}>
             <select
               value={nuevoClienteId} onChange={e => setNuevoClienteId(e.target.value)}
@@ -552,9 +551,9 @@ function Magazines() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         .mag-card {
-          background: #1e293b;
+          background: linear-gradient(160deg, #0d0d1a, #0a0a14);
           border-radius: 14px;
-          border: 1px solid #1e293b;
+          border: 1px solid #1e1b4b;
           cursor: pointer;
           transition: border-color 0.18s, transform 0.15s, box-shadow 0.18s;
           overflow: hidden;
@@ -562,9 +561,9 @@ function Magazines() {
           flex-direction: column;
         }
         .mag-card:hover {
-          border-color: #3b82f6;
+          border-color: #6366f1;
           transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(59,130,246,0.15);
+          box-shadow: 0 8px 24px rgba(99,102,241,0.15);
         }
         .mag-card:active { transform: translateY(0); }
       `}</style>
@@ -581,7 +580,7 @@ function Magazines() {
         <div>
           <button onClick={() => setSelected(null)} style={{ ...btnGray, marginBottom: 20 }}>← Volver</button>
 
-          <div style={{ background: "#1e293b", padding: isMobile ? 16 : 28, borderRadius: 16, border: "1px solid #334155" }}>
+          <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", padding: isMobile ? 16 : 28, borderRadius: 16, border: "1px solid #1e1b4b" }}>
             {/* Encabezado revista */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
               <div>
@@ -589,14 +588,14 @@ function Magazines() {
                 <p style={{ color: "#64748b", margin: 0, fontSize: 14 }}>Director: <span style={{ color: "#94a3b8" }}>{selected.director?.name}</span></p>
               </div>
               {selected.cliente && (
-                <span style={{ background: "#312e81", color: "#a78bfa", padding: "4px 14px", borderRadius: 99, fontSize: 12, fontWeight: "bold", whiteSpace: "nowrap" }}>
+                <span style={{ background: "rgba(99,102,241,.15)", color: "#a5b4fc", padding: "4px 14px", borderRadius: 99, fontSize: 12, fontWeight: "bold", whiteSpace: "nowrap" }}>
                   👤 {selected.cliente.nombreCompleto}
                 </span>
               )}
             </div>
 
             {selected.notas && (
-              <div style={{ background: "#0f172a", padding: "12px 16px", borderRadius: 10, marginBottom: 20, borderLeft: "3px solid #f59e0b" }}>
+              <div style={{ background: "#0a0a14", padding: "12px 16px", borderRadius: 10, marginBottom: 20, borderLeft: "3px solid #f59e0b" }}>
                 <p style={{ color: "#64748b", fontSize: 10, marginBottom: 3, textTransform: "uppercase", letterSpacing: 1 }}>Notas</p>
                 <p style={{ color: "#fcd34d", fontSize: 14, margin: 0 }}>{selected.notas}</p>
               </div>
@@ -640,7 +639,7 @@ function Magazines() {
               {magazinesMes.map(m => (
                 <div key={m.id} className="mag-card" onClick={() => selectMagazine(m)}>
                   {/* Franja superior de color */}
-                  <div style={{ height: 4, background: "linear-gradient(90deg, #3b82f6, #6366f1)" }} />
+                  <div style={{ height: 4, background: "linear-gradient(90deg, #6366f1, #8b5cf6)" }} />
 
                   <div style={{ padding: 20, flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
                     {/* Título */}
@@ -651,14 +650,14 @@ function Magazines() {
 
                     {/* Cliente/director vinculado */}
                     {m.cliente && (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#1e1b4b", color: "#a78bfa", padding: "3px 10px", borderRadius: 99, fontSize: 12, width: "fit-content" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(99,102,241,.15)", color: "#a5b4fc", padding: "3px 10px", borderRadius: 99, fontSize: 12, width: "fit-content" }}>
                         👤 {m.cliente.nombreCompleto}
                       </span>
                     )}
 
                     {/* Notas */}
                     {m.notas && (
-                      <p style={{ color: "#f59e0b", fontSize: 12, background: "#1c1008", padding: "6px 10px", borderRadius: 6, margin: 0 }}>
+                      <p style={{ color: "#f59e0b", fontSize: 12, background: "rgba(245,158,11,.12)", padding: "6px 10px", borderRadius: 6, margin: 0 }}>
                         📝 {m.notas.length > 60 ? m.notas.substring(0, 60) + "…" : m.notas}
                       </p>
                     )}
@@ -671,14 +670,14 @@ function Magazines() {
                           const nTexto = NOMBRES[ed.numero - 1] || `N° ${ed.numero}`;
                           const count = ed.articles?.length ?? 0;
                           return (
-                            <div key={ed.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0f172a", borderRadius: 6, padding: "5px 10px" }}>
-                              <span style={{ color: "#60a5fa", fontSize: 12, fontWeight: 500 }}>{nTexto} edición</span>
+                            <div key={ed.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0a0a14", borderRadius: 6, padding: "5px 10px" }}>
+                              <span style={{ color: "#a5b4fc", fontSize: 12, fontWeight: 500 }}>{nTexto} edición</span>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                 {ed.archivoUrl
-                                  ? <span style={{ color: "#4ade80", fontSize: 11 }}>✓ PDF</span>
+                                  ? <span style={{ color: "#34d399", fontSize: 11 }}>✓ PDF</span>
                                   : <span style={{ color: "#475569", fontSize: 11 }}>Sin PDF</span>
                                 }
-                                <span style={{ background: "#1e3a5f", color: "#93c5fd", borderRadius: 99, padding: "1px 8px", fontSize: 11 }}>
+                                <span style={{ background: "rgba(99,102,241,.15)", color: "#a5b4fc", borderRadius: 99, padding: "1px 8px", fontSize: 11 }}>
                                   {count} art.
                                 </span>
                               </div>
@@ -696,7 +695,7 @@ function Magazines() {
 
                   {/* Footer acciones */}
                   <div
-                    style={{ padding: "10px 20px", borderTop: "1px solid #0f172a", display: "flex", justifyContent: "flex-end", gap: 8 }}
+                    style={{ padding: "10px 20px", borderTop: "1px solid #1e1b4b", display: "flex", justifyContent: "flex-end", gap: 8 }}
                     onClick={e => e.stopPropagation()}
                   >
                     <button onClick={() => openEdit(m)} style={{ ...btnYellow, fontSize: 12, padding: "5px 12px" }}>✏️ Editar</button>
@@ -718,7 +717,7 @@ function Magazines() {
       {/* ── Modal crear/editar ── */}
       {open && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 999, padding: "20px" }}>
-          <div style={{ background: "#1e293b", padding: isMobile ? 20 : 28, borderRadius: 16, width: "100%", maxWidth: 500, color: "white", maxHeight: "85vh", overflowY: "auto", border: "1px solid #334155" }}>
+          <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", padding: isMobile ? 20 : 28, borderRadius: 16, width: "100%", maxWidth: 500, color: "white", maxHeight: "85vh", overflowY: "auto", border: "1px solid #1e1b4b", boxSizing: "border-box" }}>
             <h3 style={{ marginBottom: 20 }}>{editId ? "✏️ Editar revista" : "➕ Nueva revista"}</h3>
 
             <label style={labelStyle}>Título</label>
@@ -749,7 +748,7 @@ function Magazines() {
             )}
 
             {clienteId && (
-              <div style={{ background: "#0f172a", padding: "10px 12px", borderRadius: 8, marginBottom: 12 }}>
+              <div style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: "10px 12px", borderRadius: 8, marginBottom: 12 }}>
                 <span style={{ color: "#94a3b8", fontSize: 13 }}>Director: <strong style={{ color: "white" }}>{directorName}</strong></span>
               </div>
             )}
@@ -772,10 +771,10 @@ function Magazines() {
 }
 
 const labelStyle: React.CSSProperties = { display: "block", color: "#94a3b8", fontSize: 12, marginBottom: 6, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 0.5 };
-const inputStyle: React.CSSProperties = { width: "100%", padding: 10, marginBottom: 10, borderRadius: 8, border: "none", background: "#334155", color: "white", fontSize: 14, boxSizing: "border-box" };
-const btnBlue: React.CSSProperties = { background: "#3b82f6", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnRed: React.CSSProperties = { background: "#ef4444", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnYellow: React.CSSProperties = { background: "#f59e0b", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
-const btnGray: React.CSSProperties = { background: "#334155", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
+const inputStyle: React.CSSProperties = { width: "100%", padding: 11, marginBottom: 10, borderRadius: 8, border: "1px solid #1e1b4b", background: "#0a0a14", color: "white", fontSize: 16, boxSizing: "border-box" };
+const btnBlue: React.CSSProperties = { background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 14px rgba(99,102,241,.3)" };
+const btnRed: React.CSSProperties = { background: "linear-gradient(135deg,#ef4444,#dc2626)", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 14px rgba(239,68,68,.3)" };
+const btnYellow: React.CSSProperties = { background: "linear-gradient(135deg,#f59e0b,#d97706)", border: "none", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold", boxShadow: "0 4px 14px rgba(245,158,11,.3)" };
+const btnGray: React.CSSProperties = { background: "#0a0a14", border: "1px solid #1e1b4b", padding: "8px 16px", borderRadius: 8, color: "white", cursor: "pointer", fontWeight: "bold" };
 
 export default Magazines;
