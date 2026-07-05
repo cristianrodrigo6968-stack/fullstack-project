@@ -899,7 +899,7 @@ app.post(
 );
 
 app.put("/clients/form/:token", publicFormLimiter, async (req, res) => {
-  const client = await prisma.client.findUnique({ where: { token: req.params.token } });
+  const client = await prisma.client.findUnique({ where: { token: req.params.token as string } });
   if (!client) return res.status(404).json({ error: "Link no válido" });
   if (new Date() > client.expiresAt) return res.status(410).json({ error: "Este link ha expirado" });
   if (client.clientUsername && client.status === "formulario llenado") {
@@ -911,7 +911,7 @@ app.put("/clients/form/:token", publicFormLimiter, async (req, res) => {
     pideLibros, cantLibros, pideArticulos, cantArticulos, pideDirector, pideFundador, notasServicio,
   } = req.body;
   const updated = await prisma.client.update({
-    where: { token: req.params.token },
+    where: { token: req.params.token as string },
     data: {
       ci, nombres, apellidoPaterno, apellidoMaterno, sexo, ciudad, nombreCompleto,
       direccion, fechaNacimiento, extension, profesion, celular, email,
