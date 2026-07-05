@@ -22,7 +22,13 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-
+const publicFormLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutos
+  max: 10, // máximo 10 peticiones por IP en esa ventana
+  message: { error: "Demasiadas solicitudes. Por favor, intenta de nuevo en unos minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 const allowedOrigins = [
   "https://fullstack-project-blond.vercel.app",
   "https://fullstack-project-git-main-cristian-projects-6968.vercel.app",
@@ -539,7 +545,7 @@ app.delete("/productos/:id", auth, async (req, res) => {
 });
 
 // ===================== PAGOS =====================
-app.post("/pagos", upload.single("comprobante"), async (req: any, res) => {
+app.post("/pagos", publicFormLimiter, upload.single("comprobante"), async (req: any, res) => {
   try {
     const { nombreDeclarado, monto, tipo, descripcion, productos, celular, ci } = req.body;
     if (!nombreDeclarado || !monto) {
@@ -842,6 +848,7 @@ app.post("/clients", auth, async (req, res) => {
 
 app.post(
   "/clients/form/:token/fotos",
+  publicFormLimiter,
   upload.fields([
     { name: "fotografia", maxCount: 1 },
     { name: "fotoCarnet", maxCount: 1 },
@@ -891,7 +898,7 @@ app.post(
   }
 );
 
-app.put("/clients/form/:token", async (req, res) => {
+app.put("/clients/form/:token", publicFormLimiter, async (req, res) => {
   const client = await prisma.client.findUnique({ where: { token: req.params.token } });
   if (!client) return res.status(404).json({ error: "Link no válido" });
   if (new Date() > client.expiresAt) return res.status(410).json({ error: "Este link ha expirado" });
