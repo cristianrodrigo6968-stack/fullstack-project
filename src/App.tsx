@@ -97,6 +97,7 @@ function App() {
     <div>
       <Navbar />
       <InactivityWatcher />
+      <Global401Handler />
       <Routes>
         {/* Públicas */}
         <Route path="/" element={<Home />} />
