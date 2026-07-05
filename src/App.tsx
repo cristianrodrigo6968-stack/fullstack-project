@@ -39,7 +39,7 @@ import ClientePassword from "./pages/cliente/ClientePassword";
 
 import ClienteContenido from "./pages/cliente/ClienteContenido";
 
-const TIEMPO_INACTIVIDAD_MS = 10 * 1000 // 20 minutos
+const TIEMPO_INACTIVIDAD_MS = 20 * 60 * 1000; // 20 minutos
 
 function InactivityWatcher() {
   const { isAuthenticated, logout } = useAuth();
