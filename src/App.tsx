@@ -1,7 +1,9 @@
-import { Routes, Route } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ClientProtectedRoute from "./components/ClientProtectedRoute";
+import { useAuth } from "./context/AuthContext";
 
 // Páginas públicas
 import Home from "./pages/public/Home";
@@ -37,10 +39,46 @@ import ClientePassword from "./pages/cliente/ClientePassword";
 
 import ClienteContenido from "./pages/cliente/ClienteContenido";
 
+const TIEMPO_INACTIVIDAD_MS = 10 * 1000 // 20 minutos
+
+function InactivityWatcher() {
+  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      return;
+    }
+
+    const reiniciarTemporizador = () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        logout();
+        navigate("/login");
+        alert("Tu sesión se cerró por inactividad. Por favor, inicia sesión nuevamente.");
+      }, TIEMPO_INACTIVIDAD_MS);
+    };
+
+    const eventos = ["mousemove", "keydown", "click", "scroll", "touchstart"];
+    eventos.forEach(ev => window.addEventListener(ev, reiniciarTemporizador));
+    reiniciarTemporizador();
+
+    return () => {
+      eventos.forEach(ev => window.removeEventListener(ev, reiniciarTemporizador));
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [isAuthenticated, logout, navigate]);
+
+  return null;
+}
+
 function App() {
   return (
     <div>
       <Navbar />
+      <InactivityWatcher />
       <Routes>
         {/* Públicas */}
         <Route path="/" element={<Home />} />
@@ -58,7 +96,6 @@ function App() {
         <Route path="/admin/mensajes" element={<ProtectedRoute><AdminMensajes /></ProtectedRoute>} />
         <Route path="/admin/clientes" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
         <Route path="/admin/entregas" element={<ProtectedRoute><Entregas /></ProtectedRoute>} />
-   <Route path="/formulario/:token" element={<ClientForm />} />
         <Route path="/admin/revistas" element={<ProtectedRoute><Magazines /></ProtectedRoute>} />
         <Route path="/admin/libros" element={<ProtectedRoute><Books /></ProtectedRoute>} />
         <Route path="/admin/articulos" element={<ProtectedRoute><Articles /></ProtectedRoute>} />
@@ -67,14 +104,11 @@ function App() {
 
         {/* Cliente */}
         <Route path="/cliente" element={<ClientProtectedRoute><ClientePanel /></ClientProtectedRoute>} />
-      
-     
         <Route path="/cliente/hacer-pedido" element={<ClientProtectedRoute><ClienteHacerPedido /></ClientProtectedRoute>} />
         <Route path="/cliente/inicio" element={<ClientProtectedRoute><ClienteInicio /></ClientProtectedRoute>} />
         <Route path="/cliente/mensajes" element={<ClientProtectedRoute><ClienteMensajes /></ClientProtectedRoute>} />
         <Route path="/cliente/pedidos" element={<ClientProtectedRoute><ClienteMisPedidos /></ClientProtectedRoute>} />
         <Route path="/cliente/password" element={<ClientProtectedRoute><ClientePassword /></ClientProtectedRoute>} />
-         
         <Route path="/cliente/contenido" element={<ClientProtectedRoute><ClienteContenido /></ClientProtectedRoute>} />
       </Routes>
     </div>
