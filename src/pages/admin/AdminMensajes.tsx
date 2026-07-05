@@ -210,7 +210,7 @@ function AdminMensajes() {
             } else {
               const fileName = url.split("/").pop() || "Documento";
               return (
-                <a key={i} href={url} target="_blank" rel="noreferrer" style={{ display: "inline-block", background: "#1e293b", padding: "6px 12px", borderRadius: 8, color: "#60a5fa", textDecoration: "none", marginRight: 8, marginTop: 4 }}>
+                <a key={i} href={url} target="_blank" rel="noreferrer" style={{ display: "inline-block", background: "#0a0a14", border: "1px solid #1e1b4b", padding: "6px 12px", borderRadius: 8, color: "#a5b4fc", textDecoration: "none", marginRight: 8, marginTop: 4 }}>
                   📄 {fileName}
                 </a>
               );
@@ -324,7 +324,7 @@ function AdminMensajes() {
                     {file.type.startsWith("image/") ? (
                       <img src={URL.createObjectURL(file)} alt="preview" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6 }} />
                     ) : (
-                      <div style={{ width: 40, height: 40, background: "#1e293b", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>📄</div>
+                      <div style={{ width: 40, height: 40, background: "#0a0a14", border: "1px solid #1e1b4b", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>📄</div>
                     )}
                     <button onClick={() => removerArchivo(i)} style={{ position: "absolute", top: -8, right: -8, background: "#ef4444", border: "none", borderRadius: "50%", width: 18, height: 18, color: "white", fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                   </div>
