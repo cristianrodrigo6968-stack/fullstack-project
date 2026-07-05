@@ -40,7 +40,25 @@ import ClientePassword from "./pages/cliente/ClientePassword";
 import ClienteContenido from "./pages/cliente/ClienteContenido";
 
 const TIEMPO_INACTIVIDAD_MS = 20 * 60 * 1000; // 20 minutos
+function Global401Handler() {
+  const { logout, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      if (response.status === 401 && isAuthenticated) {
+        logout();
+        navigate("/login");
+      }
+      return response;
+    };
+    return () => { window.fetch = originalFetch; };
+  }, [logout, isAuthenticated, navigate]);
+
+  return null;
+}
 function InactivityWatcher() {
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
