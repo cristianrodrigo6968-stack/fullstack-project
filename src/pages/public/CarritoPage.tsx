@@ -37,9 +37,19 @@ function CarritoPage() {
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState("");
 
+  // --- Validación de disponibilidad ---
+  const [validando, setValidando] = useState(false);
+  const [productosEliminados, setProductosEliminados] = useState<string[]>([]);
+  const [errorValidacion, setErrorValidacion] = useState("");
+
   useEffect(() => {
     const saved = localStorage.getItem("carrito");
-    setCarrito(saved ? JSON.parse(saved) : []);
+    const inicial = saved ? JSON.parse(saved) : [];
+    setCarrito(inicial);
+    if (inicial.length > 0) {
+      validarCarritoContraActivos(inicial);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const eliminarPaquete = (grupoCompraId: string) => {
@@ -47,6 +57,46 @@ function CarritoPage() {
     setCarrito(nuevoCarrito);
     localStorage.setItem("carrito", JSON.stringify(nuevoCarrito));
     if (nuevoCarrito.length === 0) setStep("carrito");
+  };
+
+  // Compara el carrito guardado en localStorage contra el catálogo activo real.
+  // Devuelve el carrito "limpio" (solo productos que siguen activos) o null si falló la verificación.
+  const validarCarritoContraActivos = async (carritoActual: any[]): Promise<any[] | null> => {
+    setValidando(true);
+    setErrorValidacion("");
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/productos`);
+      if (!res.ok) throw new Error("No se pudo verificar el catálogo");
+      const activos: any[] = await res.json();
+      const idsActivos = new Set(activos.map(p => String(p.id)));
+
+      const eliminados: string[] = [];
+      const carritoValido = carritoActual.filter(item => {
+        // Para items que vienen de un paquete/oferta combinada, el producto real
+        // es el "padre" (productoPadreId); para items normales, es item.id
+        const idRelevante = item.productoPadreId ?? item.id;
+        const sigueActivo = idsActivos.has(String(idRelevante));
+        if (!sigueActivo) eliminados.push(item.nombrePadre || item.nombre);
+        return sigueActivo;
+      });
+
+      if (eliminados.length > 0) {
+        const nombresUnicos = [...new Set(eliminados)];
+        setProductosEliminados(nombresUnicos);
+        setCarrito(carritoValido);
+        localStorage.setItem("carrito", JSON.stringify(carritoValido));
+        if (carritoValido.length === 0) setStep("carrito");
+      } else {
+        setProductosEliminados([]);
+      }
+
+      setValidando(false);
+      return carritoValido;
+    } catch {
+      setValidando(false);
+      setErrorValidacion("No pudimos verificar la disponibilidad de tus productos. Revisá tu conexión e intentá de nuevo.");
+      return null;
+    }
   };
 
   const agruparCarrito = () => {
@@ -83,29 +133,67 @@ function CarritoPage() {
   const adelantoBruto = total * 0.3;
   const adelanto = redondearAdelanto(adelantoBruto);
 
-  const handleContinuarDatos = () => {
+  const handleContinuarDatos = async () => {
     if (!celular.trim() || celular.trim().length < 7) { alert("Ingresá un número de celular válido"); return; }
     if (!ci.trim() || ci.trim().length < 5) { alert("Ingresá tu número de CI"); return; }
+
+    // Revalidamos antes de pasar a la pantalla de pago
+    const carritoValidado = await validarCarritoContraActivos(carrito);
+    if (carritoValidado === null) {
+      alert("No pudimos verificar la disponibilidad de tus productos. Intentá de nuevo.");
+      return;
+    }
+    if (carritoValidado.length === 0) {
+      alert("Los productos de tu carrito ya no están disponibles. Volvé al catálogo para elegir otros.");
+      setStep("carrito");
+      return;
+    }
+    if (carritoValidado.length < carrito.length) {
+      alert("Algunos productos de tu carrito ya no están disponibles y fueron quitados. Revisá el total antes de continuar.");
+      return;
+    }
     setStep("pago");
   };
 
-   const getProductosPayload = () => {
-  console.log("🛒 Carrito al enviar:", JSON.stringify(carrito, null, 2));
-  return carrito.map(p => ({
-    id: p.id,
-    nombre: p.nombre,
-    tipo: p.tipo || "producto",
-    precioUnitario: p.descuento > 0 ? p.precio - (p.precio * p.descuento / 100) : p.precio,
-    conIsbn: p.conIsbn || false,
-    conSenapi: p.conSenapi || false,
-  }));
-};
+  const getProductosPayload = (carritoBase: any[] = carrito) => {
+    return carritoBase.map(p => ({
+      id: p.id,
+      nombre: p.nombre,
+      tipo: p.tipo || "producto",
+      precioUnitario: p.descuento > 0 ? p.precio - (p.precio * p.descuento / 100) : p.precio,
+      conIsbn: p.conIsbn || false,
+      conSenapi: p.conSenapi || false,
+    }));
+  };
+
   const handleSubirComprobante = async () => {
     if (!comprobante || !nombreDeclarado || !monto || !celular || !ci) {
       alert("Completá todos los campos antes de enviar.");
       return;
     }
     setEnviando(true);
+
+    // Última verificación justo antes de enviar el pago, por si el producto
+    // se desactivó mientras el usuario completaba el formulario.
+    const carritoValidado = await validarCarritoContraActivos(carrito);
+    if (carritoValidado === null) {
+      alert("No pudimos verificar la disponibilidad de tus productos. Intentá de nuevo.");
+      setEnviando(false);
+      return;
+    }
+    if (carritoValidado.length === 0) {
+      alert("Los productos de tu carrito ya no están disponibles y fueron eliminados. Volvé al catálogo.");
+      setEnviando(false);
+      setStep("carrito");
+      return;
+    }
+    if (carritoValidado.length < carrito.length) {
+      alert("Uno o más productos de tu carrito ya no están disponibles y fueron quitados. Revisá el total antes de continuar.");
+      setEnviando(false);
+      setStep("carrito");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("comprobante", comprobante);
     formData.append("tipo", "imagen");
@@ -113,7 +201,7 @@ function CarritoPage() {
     formData.append("monto", monto);
     formData.append("celular", celular);
     formData.append("ci", ci);
-    formData.append("productos", JSON.stringify(getProductosPayload()));
+    formData.append("productos", JSON.stringify(getProductosPayload(carritoValidado)));
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/pagos`, { method: "POST", body: formData });
       const data = await res.json();
@@ -137,6 +225,26 @@ function CarritoPage() {
       return;
     }
     setEnviando(true);
+
+    const carritoValidado = await validarCarritoContraActivos(carrito);
+    if (carritoValidado === null) {
+      alert("No pudimos verificar la disponibilidad de tus productos. Intentá de nuevo.");
+      setEnviando(false);
+      return;
+    }
+    if (carritoValidado.length === 0) {
+      alert("Los productos de tu carrito ya no están disponibles y fueron eliminados. Volvé al catálogo.");
+      setEnviando(false);
+      setStep("carrito");
+      return;
+    }
+    if (carritoValidado.length < carrito.length) {
+      alert("Uno o más productos de tu carrito ya no están disponibles y fueron quitados. Revisá el total antes de continuar.");
+      setEnviando(false);
+      setStep("carrito");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("nombreDeclarado", nombreDeclarado);
     formData.append("monto", monto);
@@ -144,7 +252,7 @@ function CarritoPage() {
     formData.append("celular", celular);
     formData.append("ci", ci);
     if (descripcion) formData.append("descripcion", descripcion);
-    formData.append("productos", JSON.stringify(getProductosPayload()));
+    formData.append("productos", JSON.stringify(getProductosPayload(carritoValidado)));
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/pagos`, { method: "POST", body: formData });
       const data = await res.json();
@@ -186,6 +294,8 @@ function CarritoPage() {
         .modo-card:hover { border-color:#6366f1 !important; background:rgba(99,102,241,.07) !important; transform:translateY(-3px); box-shadow:0 12px 28px rgba(99,102,241,.12); }
         .btn-volver-paso { padding:12px 18px; min-height:44px; background:#0d0d1a; border:1px solid #1e1b4b; border-radius:12px; color:#64748b; font-weight:600; font-size:14px; cursor:pointer; font-family:inherit; transition:border-color .2s, color .2s; }
         .btn-volver-paso:hover { border-color:#312e81; color:#94a3b8; }
+        .alerta-eliminados { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; color: #fca5a5; font-size: 13px; line-height: 1.6; animation: fadeIn .3s ease; }
+        .alerta-validando { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 12px 16px; margin-bottom: 18px; color: #a5b4fc; font-size: 13px; display: flex; align-items: center; gap: 10px; }
       `}</style>
 
       <div style={{ maxWidth: 680, margin: "0 auto" }}>
@@ -193,6 +303,26 @@ function CarritoPage() {
           <h1 style={{ fontSize: isMobile ? 22 : 30, fontWeight: 800, margin: "0 0 8px", color: "white" }}>🛒 Mi Carrito</h1>
           <button onClick={() => navigate("/")} style={{ background: "none", border: "none", color: "#818cf8", fontSize: 13, cursor: "pointer", padding: "10px 0", minHeight: 44, fontFamily: "inherit" }}>← Seguir comprando</button>
         </div>
+
+        {/* Aviso: verificando disponibilidad */}
+        {validando && step !== "confirmacion" && (
+          <div className="alerta-validando">
+            <div style={{ width: 16, height: 16, border: "2px solid #312e81", borderTop: "2px solid #818cf8", borderRadius: "50%", animation: "spin .7s linear infinite", flexShrink: 0 }} />
+            Verificando disponibilidad de tus productos...
+          </div>
+        )}
+
+        {/* Aviso: error al verificar */}
+        {errorValidacion && step !== "confirmacion" && (
+          <div className="alerta-eliminados">⚠️ {errorValidacion}</div>
+        )}
+
+        {/* Aviso: productos que ya no están disponibles */}
+        {productosEliminados.length > 0 && step !== "confirmacion" && (
+          <div className="alerta-eliminados">
+            ⚠️ Estos productos ya no están disponibles y fueron quitados de tu carrito: {productosEliminados.join(", ")}
+          </div>
+        )}
 
         {carrito.length > 0 && step !== "confirmacion" && (
           <div style={{ display: "flex", alignItems: "center", marginBottom: 36 }}>
@@ -304,7 +434,14 @@ function CarritoPage() {
             </div>
 
             {step === "carrito" && (
-              <button className="step-btn" onClick={() => setStep("datos")} style={{ width: "100%", minHeight: 44, padding: 16, background: "linear-gradient(135deg,#10b981,#059669)", border: "none", borderRadius: 14, color: "white", fontWeight: 700, fontSize: isMobile ? 15 : 17, cursor: "pointer", boxShadow: "0 4px 20px rgba(16,185,129,.3)" }}>💳 Proceder al pago</button>
+              <button
+                className="step-btn"
+                onClick={() => validarCarritoContraActivos(carrito).then(v => { if (v && v.length > 0) setStep("datos"); })}
+                disabled={validando}
+                style={{ width: "100%", minHeight: 44, padding: 16, background: validando ? "#0d0d1a" : "linear-gradient(135deg,#10b981,#059669)", border: validando ? "1px solid #1e1b4b" : "none", borderRadius: 14, color: validando ? "#334155" : "white", fontWeight: 700, fontSize: isMobile ? 15 : 17, cursor: validando ? "not-allowed" : "pointer", boxShadow: validando ? "none" : "0 4px 20px rgba(16,185,129,.3)" }}
+              >
+                {validando ? "Verificando..." : "💳 Proceder al pago"}
+              </button>
             )}
 
             {step === "datos" && (
@@ -316,7 +453,9 @@ function CarritoPage() {
                 <label style={labelStyle}>Cédula de identidad (CI)</label>
                 <input className="cart-input" type="tel" inputMode="numeric" pattern="[0-9]*" placeholder="Ej: 1234567" value={ci} onChange={e => setCi(e.target.value.replace(/\D/g, ""))} style={{ marginBottom: 24 }} />
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button className="step-btn" onClick={handleContinuarDatos} style={{ flex: 1, minHeight: 44, padding: 13, background: "linear-gradient(135deg,#10b981,#059669)", border: "none", borderRadius: 12, color: "white", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 2px 12px rgba(16,185,129,.25)" }}>Continuar →</button>
+                  <button className="step-btn" onClick={handleContinuarDatos} disabled={validando} style={{ flex: 1, minHeight: 44, padding: 13, background: validando ? "#0d0d1a" : "linear-gradient(135deg,#10b981,#059669)", border: validando ? "1px solid #1e1b4b" : "none", borderRadius: 12, color: validando ? "#334155" : "white", fontWeight: 700, fontSize: 14, cursor: validando ? "not-allowed" : "pointer", boxShadow: validando ? "none" : "0 2px 12px rgba(16,185,129,.25)" }}>
+                    {validando ? "Verificando..." : "Continuar →"}
+                  </button>
                   <button className="btn-volver-paso" onClick={() => setStep("carrito")} style={{ minHeight: 44 }}>← Volver</button>
                 </div>
               </div>
@@ -363,7 +502,7 @@ function CarritoPage() {
                       <><label style={labelStyle}>Descripción (opcional)</label><input className="cart-input" placeholder="Cualquier detalle adicional" value={descripcion} onChange={e => setDescripcion(e.target.value)} /></>
                     )}
                     <button className="step-btn" onClick={modo === "subir" ? handleSubirComprobante : handleDeclararPago} disabled={enviando} style={{ padding: 14, minHeight: 44, marginTop: 4, background: enviando ? "#0d0d1a" : "linear-gradient(135deg,#10b981,#059669)", border: enviando ? "1px solid #1e1b4b" : "none", borderRadius: 12, color: enviando ? "#334155" : "white", fontWeight: 700, fontSize: 15, cursor: enviando ? "not-allowed" : "pointer", boxShadow: enviando ? "none" : "0 4px 16px rgba(16,185,129,.25)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
-                      {enviando ? (<> <div style={{ width: 18, height: 18, border: "2px solid #334155", borderTop: "2px solid #6366f1", borderRadius: "50%", animation: "spin .7s linear infinite" }} /> Enviando...</>) : (modo === "subir" ? "Enviar comprobante" : "Declarar pago")}
+                      {enviando ? (<> <div style={{ width: 18, height: 18, border: "2px solid #334155", borderTop: "2px solid #6366f1", borderRadius: "50%", animation: "spin .7s linear infinite" }} /> {validando ? "Verificando disponibilidad..." : "Enviando..."}</>) : (modo === "subir" ? "Enviar comprobante" : "Declarar pago")}
                     </button>
                     <button className="btn-volver-paso" onClick={() => setModo(null)} style={{ minHeight: 44 }}>← Cambiar método</button>
                   </div>
