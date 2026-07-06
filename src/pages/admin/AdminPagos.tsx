@@ -32,20 +32,24 @@ interface ProductoCarrito {
   precioUnitario: number;
 }
 
-interface PedidoResumen {
-  id: number;
-  montoTotal: number;
-  montoPagado: number;
-  estado: string;
-  cliente: {
-    id: number;
-    nombreCompleto: string | null;
-    nombres: string | null;
-    apellidoPaterno: string | null;
-    apellidoMaterno: string | null;
-    ci: string | null;
-    celular: string | null;
-  };
+type TipoItemManual = "libro" | "revista" | "otro";
+type CategoriaLibroManual = "A" | "B" | "C";
+type SubtipoRevistaManual = "director" | "fundador" | "articulo_rp" | "articulo_sp";
+
+const SUBTIPO_LABELS_MANUAL: Record<SubtipoRevistaManual, string> = {
+  director: "Director de revista",
+  fundador: "Fundador",
+  articulo_rp: "Artículo (redacción y publicación)",
+  articulo_sp: "Artículo (solo publicación)",
+};
+
+function tituloSugeridoPago(opts: { tipo: TipoItemManual; categoria?: CategoriaLibroManual; subtipo?: SubtipoRevistaManual; meses?: 1 | 3 }): string {
+  if (opts.tipo === "libro" && opts.categoria) return `📖 Libro Categoría ${opts.categoria}`;
+  if (opts.tipo === "revista" && opts.subtipo) {
+    const dur = opts.subtipo === "director" && opts.meses ? ` (${opts.meses} mes${opts.meses > 1 ? "es" : ""})` : "";
+    return `📰 ${SUBTIPO_LABELS_MANUAL[opts.subtipo]}${dur}`;
+  }
+  return "";
 }
 
 const getEstadoColor = (estado: string) => {
@@ -90,6 +94,136 @@ function EstadoBadge({ estado }: { estado: string }) {
   );
 }
 
+function NuevoItemPagoForm({ onAdd }: {
+  onAdd: (item: { tipo: TipoItemManual; titulo: string; precioUnitario: number; conIsbn: boolean; conSenapi: boolean }) => void;
+}) {
+  const [tipo, setTipo] = useState<TipoItemManual>("otro");
+  const [categoria, setCategoria] = useState<CategoriaLibroManual | undefined>(undefined);
+  const [conIsbn, setConIsbn] = useState(false);
+  const [conSenapi, setConSenapi] = useState(false);
+  const [subtipo, setSubtipo] = useState<SubtipoRevistaManual | undefined>(undefined);
+  const [meses, setMeses] = useState<1 | 3 | undefined>(undefined);
+  const [titulo, setTitulo] = useState("");
+  const [precio, setPrecio] = useState("");
+  const [tituloEditadoManualmente, setTituloEditadoManualmente] = useState(false);
+
+  useEffect(() => {
+    if (tituloEditadoManualmente) return;
+    setTitulo(tituloSugeridoPago({ tipo, categoria, subtipo, meses }));
+  }, [tipo, categoria, subtipo, meses, tituloEditadoManualmente]);
+
+  const reset = () => {
+    setTipo("otro"); setCategoria(undefined); setConIsbn(false); setConSenapi(false);
+    setSubtipo(undefined); setMeses(undefined); setTitulo(""); setPrecio(""); setTituloEditadoManualmente(false);
+  };
+
+  const puedeAgregar = titulo.trim().length > 0 && Number(precio) > 0;
+
+  const agregar = () => {
+    if (!puedeAgregar) return;
+    onAdd({
+      tipo, titulo: titulo.trim(), precioUnitario: Number(precio),
+      conIsbn: tipo === "libro" ? conIsbn : false,
+      conSenapi: tipo === "libro" ? conSenapi : false,
+    });
+    reset();
+  };
+
+  return (
+    <div style={{ background: "#0f172a", border: "1px dashed #334155", borderRadius: 10, padding: 14, marginTop: 4 }}>
+      <p style={{ color: "#94a3b8", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>➕ Nuevo producto/servicio</p>
+
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        {(["libro", "revista", "otro"] as TipoItemManual[]).map(t => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => { setTipo(t); setCategoria(undefined); setSubtipo(undefined); setMeses(undefined); }}
+            className={`tipo-btn-pago${tipo === t ? " selected" : ""}`}
+          >
+            {t === "libro" ? "📖 Libro" : t === "revista" ? "📰 Revista" : "📦 Otro"}
+          </button>
+        ))}
+      </div>
+
+      {tipo === "libro" && (
+        <>
+          <label style={miniLabel}>Categoría</label>
+          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+            {(["A", "B", "C"] as CategoriaLibroManual[]).map(c => (
+              <button key={c} type="button" onClick={() => setCategoria(c)} className={`tipo-btn-pago${categoria === c ? " selected" : ""}`}>Cat. {c}</button>
+            ))}
+          </div>
+          <label style={miniLabel}>Extras</label>
+          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+            <button type="button" onClick={() => setConIsbn(v => !v)} className={`tipo-btn-pago${conIsbn ? " selected" : ""}`}>{conIsbn ? "✓ " : ""}ISBN</button>
+            <button type="button" onClick={() => setConSenapi(v => !v)} className={`tipo-btn-pago${conSenapi ? " selected" : ""}`}>{conSenapi ? "✓ " : ""}SENAPI</button>
+          </div>
+        </>
+      )}
+
+      {tipo === "revista" && (
+        <>
+          <label style={miniLabel}>Tipo de servicio</label>
+          <div style={{ marginBottom: 10 }}>
+            {(Object.entries(SUBTIPO_LABELS_MANUAL) as [SubtipoRevistaManual, string][]).map(([key, label]) => (
+              <div
+                key={key}
+                onClick={() => { setSubtipo(key); setMeses(key === "director" ? (meses ?? 1) : undefined); }}
+                className={`sub-option-pago${subtipo === key ? " selected" : ""}`}
+              >
+                <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${subtipo === key ? "#3b82f6" : "#334155"}`, background: subtipo === key ? "#3b82f6" : "transparent", flexShrink: 0 }} />
+                {label}
+              </div>
+            ))}
+          </div>
+          {subtipo === "director" && (
+            <>
+              <label style={miniLabel}>Duración</label>
+              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                {([1, 3] as (1 | 3)[]).map(m => (
+                  <button key={m} type="button" onClick={() => setMeses(m)} className={`tipo-btn-pago${meses === m ? " selected" : ""}`}>{m} {m === 1 ? "mes" : "meses"}</button>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      <label style={miniLabel}>Nombre del servicio</label>
+      <input
+        placeholder="Ej: Libro Categoría A, Director de revista..."
+        value={titulo}
+        onChange={e => { setTitulo(e.target.value); setTituloEditadoManualmente(true); }}
+        style={{ ...inputStyleFull, marginBottom: 10 }}
+      />
+
+      <label style={miniLabel}>Precio (Bs)</label>
+      <input
+        type="number"
+        placeholder="0.00"
+        value={precio}
+        onChange={e => setPrecio(e.target.value)}
+        style={{ ...inputStyleFull, marginBottom: 12 }}
+      />
+
+      <button
+        type="button"
+        onClick={agregar}
+        disabled={!puedeAgregar}
+        style={{
+          width: "100%", padding: "10px", borderRadius: 8, border: "none",
+          background: puedeAgregar ? "#3b82f6" : "#334155",
+          color: puedeAgregar ? "white" : "#64748b", fontWeight: "bold", fontSize: 13,
+          cursor: puedeAgregar ? "pointer" : "not-allowed",
+        }}
+      >
+        ＋ Agregar a la lista
+      </button>
+    </div>
+  );
+}
+
 function AdminPagos() {
   const { token } = useAuth();
   const { isMobile } = useWindowSize();
@@ -109,10 +243,7 @@ function AdminPagos() {
   const [manualCi, setManualCi] = useState("");
   const [agregandoManual, setAgregandoManual] = useState(false);
 
-  const [pedidos, setPedidos] = useState<PedidoResumen[]>([]);
-  const [loadingPedidos, setLoadingPedidos] = useState(false);
-  const [pedidoBusqueda, setPedidoBusqueda] = useState("");
-  const [pedidoSeleccionado, setPedidoSeleccionado] = useState<PedidoResumen | null>(null);
+  const [itemsManual, setItemsManual] = useState<{ tempId: string; tipo: TipoItemManual; titulo: string; precioUnitario: number; conIsbn: boolean; conSenapi: boolean }[]>([]);
 
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [editNombre, setEditNombre] = useState("");
@@ -179,37 +310,13 @@ function AdminPagos() {
     }
   };
 
-  const loadPedidos = async () => {
-    setLoadingPedidos(true);
-    try {
-      const res = await fetch(`${API_URL}/pedidos`, { headers });
-      if (res.ok) setPedidos(await res.json());
-    } finally {
-      setLoadingPedidos(false);
-    }
+  const agregarItemManual = (item: { tipo: TipoItemManual; titulo: string; precioUnitario: number; conIsbn: boolean; conSenapi: boolean }) => {
+    setItemsManual(prev => [...prev, { ...item, tempId: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}` }]);
   };
 
-  const nombreClientePedido = (p: PedidoResumen) =>
-    p.cliente.nombreCompleto ||
-    [p.cliente.nombres, p.cliente.apellidoPaterno, p.cliente.apellidoMaterno].filter(Boolean).join(" ") ||
-    "Sin nombre";
+  const quitarItemManual = (tempId: string) => setItemsManual(prev => prev.filter(i => i.tempId !== tempId));
 
-  const seleccionarPedido = (p: PedidoResumen) => {
-    setPedidoSeleccionado(p);
-    setPedidoBusqueda("");
-    if (!manualNombre) setManualNombre(nombreClientePedido(p));
-    if (!manualCi && p.cliente.ci) setManualCi(p.cliente.ci);
-    if (!manualCelular && p.cliente.celular) setManualCelular(p.cliente.celular);
-  };
-
-  const pedidosFiltrados = pedidoBusqueda.trim().length === 0 ? [] : pedidos.filter(p => {
-    const q = pedidoBusqueda.trim().toLowerCase();
-    return (
-      nombreClientePedido(p).toLowerCase().includes(q) ||
-      (p.cliente.ci || "").toLowerCase().includes(q) ||
-      String(p.id).includes(q)
-    );
-  }).slice(0, 8);
+  const totalItemsManual = itemsManual.reduce((sum, i) => sum + i.precioUnitario, 0);
 
   const agregarPagoManual = async () => {
     if (!manualNombre || !manualMonto) return;
@@ -219,11 +326,17 @@ function AdminPagos() {
       monto: Number(manualMonto),
       celular: manualCelular || null,
       ci: manualCi || null,
-      pedidoId: pedidoSeleccionado ? pedidoSeleccionado.id : null,
+      productos: itemsManual.map(i => ({
+        nombre: i.titulo,
+        tipo: i.tipo,
+        precioUnitario: i.precioUnitario,
+        conIsbn: i.conIsbn,
+        conSenapi: i.conSenapi,
+      })),
     };
     await fetch(`${API_URL}/pagos/manual`, { method: "POST", headers, body: JSON.stringify(body) });
     setManualNombre(""); setManualMonto(""); setManualCelular(""); setManualCi("");
-    setPedidoSeleccionado(null); setPedidoBusqueda("");
+    setItemsManual([]);
     setAgregandoManual(false);
     setPanelManual(false);
     await load();
@@ -263,6 +376,12 @@ function AdminPagos() {
       0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
       50%       { box-shadow: 0 0 0 4px rgba(245,158,11,0.15); }
     }
+    .tipo-btn-pago { flex:1; padding:9px 8px; border-radius:8px; border:2px solid #334155; background:#0f172a; color:#64748b; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.15s; text-align:center; }
+    .tipo-btn-pago.selected { border-color:#3b82f6; background:rgba(59,130,246,0.12); color:#93c5fd; }
+    .tipo-btn-pago:hover:not(.selected) { border-color:#475569; color:#94a3b8; }
+    .sub-option-pago { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:8px; border:2px solid #334155; background:#0f172a; color:#64748b; font-size:13px; cursor:pointer; transition:all 0.15s; margin-bottom:6px; }
+    .sub-option-pago.selected { border-color:#3b82f6; background:rgba(59,130,246,0.1); color:#93c5fd; }
+    .sub-option-pago:hover:not(.selected) { border-color:#475569; color:#94a3b8; }
   `;
 
   if (linkWhatsapp) {
@@ -465,7 +584,7 @@ function AdminPagos() {
           <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28 }}>💰 Pagos</h1>
           <p style={{ color: "#64748b", fontSize: 13, margin: "4px 0 0" }}>Gestión de pagos de clientes</p>
         </div>
-        <button onClick={() => { const abrir = !panelManual; setPanelManual(abrir); if (abrir) loadPedidos(); }} style={{
+        <button onClick={() => setPanelManual(!panelManual)} style={{
           ...btnGreen,
           background: panelManual ? "#334155" : "#22c55e",
           display: "flex", alignItems: "center", gap: 6,
@@ -497,52 +616,34 @@ function AdminPagos() {
               <input placeholder="Ej: 1234567" value={manualCi} onChange={e => setManualCi(e.target.value)} style={inputStyleFull} />
             </div>
           </div>
-          <div style={{ marginTop: 10 }}>
-            <label style={miniLabel}>Pedido asociado (opcional)</label>
-            {pedidoSeleccionado ? (
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0f172a", border: "1px solid #3b82f6", borderRadius: 8, padding: "10px 14px" }}>
-                <div>
-                  <p style={{ margin: 0, color: "white", fontWeight: "bold", fontSize: 13 }}>
-                    Pedido #{pedidoSeleccionado.id} — {nombreClientePedido(pedidoSeleccionado)}
-                  </p>
-                  <p style={{ margin: "2px 0 0", color: "#64748b", fontSize: 11 }}>
-                    Saldo pendiente: Bs {(pedidoSeleccionado.montoTotal - pedidoSeleccionado.montoPagado).toFixed(2)}
-                  </p>
-                </div>
-                <button onClick={() => setPedidoSeleccionado(null)} style={{ background: "transparent", border: "1px solid #334155", color: "#94a3b8", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12 }}>Quitar</button>
-              </div>
-            ) : (
-              <>
-                <input
-                  placeholder="Buscar pedido por cliente, C.I. o # de pedido..."
-                  value={pedidoBusqueda}
-                  onChange={e => setPedidoBusqueda(e.target.value)}
-                  style={inputStyleFull}
-                />
-                {loadingPedidos ? (
-                  <p style={{ color: "#475569", fontSize: 12, marginTop: 6 }}>Cargando pedidos...</p>
-                ) : pedidoBusqueda.trim().length > 0 && (
-                  <div style={{ marginTop: 6, border: "1px solid #334155", borderRadius: 8, overflow: "hidden" }}>
-                    {pedidosFiltrados.length === 0 ? (
-                      <p style={{ color: "#475569", fontSize: 12, padding: 10, margin: 0 }}>Sin resultados.</p>
-                    ) : pedidosFiltrados.map(p => (
-                      <div
-                        key={p.id}
-                        onClick={() => seleccionarPedido(p)}
-                        style={{ padding: "9px 14px", cursor: "pointer", borderBottom: "1px solid #334155" }}
-                      >
-                        <p style={{ margin: 0, color: "white", fontSize: 13, fontWeight: 600 }}>
-                          Pedido #{p.id} — {nombreClientePedido(p)}
-                        </p>
-                        <p style={{ margin: "2px 0 0", color: "#64748b", fontSize: 11 }}>
-                          Saldo pendiente: Bs {(p.montoTotal - p.montoPagado).toFixed(2)} · {p.estado}
-                        </p>
+          <div style={{ marginTop: 14 }}>
+            <label style={miniLabel}>Productos / servicios de este pago</label>
+
+            {itemsManual.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+                {itemsManual.map(i => (
+                  <div key={i.tempId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0f172a", border: "1px solid #334155", borderRadius: 8, padding: "10px 14px" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: 0, color: "white", fontSize: 13, fontWeight: 600, wordBreak: "break-word" }}>{i.titulo}</p>
+                      <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                        {i.conIsbn && <span style={{ fontSize: 10, background: "rgba(59,130,246,.15)", color: "#93c5fd", padding: "1px 8px", borderRadius: 99 }}>ISBN</span>}
+                        {i.conSenapi && <span style={{ fontSize: 10, background: "rgba(139,92,246,.15)", color: "#c4b5fd", padding: "1px 8px", borderRadius: 99 }}>SENAPI</span>}
                       </div>
-                    ))}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                      <span style={{ color: "#22c55e", fontWeight: "bold", fontSize: 14 }}>Bs {i.precioUnitario.toFixed(2)}</span>
+                      <button onClick={() => quitarItemManual(i.tempId)} style={{ background: "rgba(239,68,68,0.12)", border: "none", color: "#ef4444", borderRadius: 6, padding: "3px 9px", cursor: "pointer", fontSize: 12 }}>✕</button>
+                    </div>
                   </div>
-                )}
-              </>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0f172a", border: "1px solid #334155", borderRadius: 8, padding: "10px 14px" }}>
+                  <span style={{ color: "#64748b", fontSize: 13 }}>Total productos</span>
+                  <span style={{ color: "#22c55e", fontWeight: "bold", fontSize: 16 }}>Bs {totalItemsManual.toFixed(2)}</span>
+                </div>
+              </div>
             )}
+
+            <NuevoItemPagoForm onAdd={agregarItemManual} />
           </div>
           <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
             <button onClick={agregarPagoManual} disabled={agregandoManual || !manualNombre || !manualMonto} style={{

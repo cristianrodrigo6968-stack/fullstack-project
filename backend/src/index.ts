@@ -626,31 +626,132 @@ app.post("/pagos", publicFormLimiter, upload.single("comprobante"), async (req: 
 });
 
 app.post("/pagos/manual", auth, async (req, res) => {
-  const { nombreDeclarado, monto, pedidoId, celular, ci } = req.body;
-  const pago = await prisma.pago.create({
-    data: {
-      nombreDeclarado,
-      monto: Number(monto),
-      tipo: "manual",
-      estado: "verificado",
-      celular: celular || null,
-      ci: ci || null,
-    },
-  });
-  if (pedidoId) {
-    const pedido = await prisma.pedido.findUnique({ where: { id: Number(pedidoId) } });
-    if (pedido) {
-      await prisma.pedido.update({
-        where: { id: Number(pedidoId) },
-        data: { montoPagado: pedido.montoPagado + Number(monto) },
-      });
-      await prisma.pago.update({
-        where: { id: pago.id },
-        data: { pedidoId: pedido.id },
-      });
+  try {
+    const { nombreDeclarado, monto, pedidoId, celular, ci, productos } = req.body;
+    if (!nombreDeclarado || !monto) {
+      return res.status(400).json({ error: "Faltan datos obligatorios: nombre y monto" });
     }
+
+    const items = Array.isArray(productos) ? productos : [];
+
+    // ── Caso nuevo: se armaron productos manualmente -> se crea un Pedido con ellos ──
+    if (items.length > 0) {
+      const itemsValidos = items.filter((it: any) => it.nombre && Number(it.precioUnitario) > 0);
+      if (itemsValidos.length === 0) {
+        return res.status(400).json({ error: "Agrega al menos un producto con nombre y precio válido" });
+      }
+
+      const montoTotal = itemsValidos.reduce((sum: number, it: any) => sum + Number(it.precioUnitario), 0);
+
+      // Buscar cliente existente por CI o celular, si no existe se crea uno nuevo
+      let cliente = null;
+      if (ci) cliente = await prisma.client.findFirst({ where: { ci } });
+      if (!cliente && celular) cliente = await prisma.client.findFirst({ where: { celular } });
+
+      let esClienteNuevo = false;
+
+      if (!cliente) {
+        esClienteNuevo = true;
+        const tokenFormulario = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 4);
+        cliente = await prisma.client.create({
+          data: {
+            token: tokenFormulario,
+            expiresAt,
+            nombreCompleto: nombreDeclarado,
+            ci: ci || null,
+            celular: celular || null,
+          },
+        });
+
+        let username = ci ? String(ci) : tokenFormulario.substring(0, 8);
+        let counter = 1;
+        while (await prisma.client.findFirst({ where: { clientUsername: username } })) {
+          username = `${ci || tokenFormulario.substring(0, 8)}${counter}`;
+          counter++;
+        }
+        const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        let password = "";
+        for (let i = 0; i < 8; i++) password += chars.charAt(Math.floor(Math.random() * chars.length));
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await prisma.client.update({
+          where: { id: cliente.id },
+          data: { clientUsername: username, clientPassword: hashedPassword, credencialesGeneradaAt: new Date() },
+        });
+      } else {
+        await prisma.client.update({
+          where: { id: cliente.id },
+          data: {
+            celular: celular || cliente.celular,
+            nombreCompleto: nombreDeclarado || cliente.nombreCompleto,
+          },
+        });
+      }
+
+      const pedido = await prisma.pedido.create({
+        data: {
+          clienteId: cliente.id,
+          montoTotal,
+          montoPagado: Number(monto),
+          items: {
+            create: itemsValidos.map((it: any) => ({
+              tipo: it.tipo || "otro",
+              titulo: it.nombre,
+              precioUnitario: Number(it.precioUnitario),
+              conIsbn: it.conIsbn || false,
+              conSenapi: it.conSenapi || false,
+            })),
+          },
+        },
+      });
+
+      const pago = await prisma.pago.create({
+        data: {
+          nombreDeclarado,
+          monto: Number(monto),
+          tipo: "manual",
+          estado: "verificado",
+          celular: celular || null,
+          ci: ci || null,
+          productos: JSON.stringify(itemsValidos),
+          clienteId: cliente.id,
+          pedidoId: pedido.id,
+        },
+      });
+
+      return res.json({ ...pago, clienteId: cliente.id, pedido, esClienteNuevo });
+    }
+
+    // ── Caso anterior (compatibilidad): sin productos ──
+    const pago = await prisma.pago.create({
+      data: {
+        nombreDeclarado,
+        monto: Number(monto),
+        tipo: "manual",
+        estado: "verificado",
+        celular: celular || null,
+        ci: ci || null,
+      },
+    });
+    if (pedidoId) {
+      const pedido = await prisma.pedido.findUnique({ where: { id: Number(pedidoId) } });
+      if (pedido) {
+        await prisma.pedido.update({
+          where: { id: Number(pedidoId) },
+          data: { montoPagado: pedido.montoPagado + Number(monto) },
+        });
+        await prisma.pago.update({
+          where: { id: pago.id },
+          data: { pedidoId: pedido.id },
+        });
+      }
+    }
+    res.json(pago);
+  } catch (error) {
+    console.error("💥 Error en POST /pagos/manual:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
   }
-  res.json(pago);
 });
 
 app.get("/pagos", auth, async (req, res) => {
