@@ -13,6 +13,7 @@ import AdminPagos from "./AdminPagos";
 import AdminProductos from "./AdminProductos";
 import ErrorBoundary from "../../components/ErrorBoundary";
 import AdminPassword from "./AdminPassword";
+import AdminSesiones from "./AdminSesiones";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -64,6 +65,7 @@ function Admin() {
     { key: "pagos", label: "💰 Pagos", badge: pendingPayments },
     { key: "productos", label: "🛒 Productos" },
     { key: "password", label: "🔑 Cambiar Contraseña" },
+    { key: "sesiones", label: "🔐 Sesiones activas" },
   ];
 
   const handleSection = (key: string) => { setSection(key); setSidebarOpen(false); };
@@ -343,6 +345,7 @@ function Admin() {
         {section === "pagos" && <AdminPagos />}
         {section === "productos" && <AdminProductos />}
         {section === "password" && <AdminPassword onNavigate={handleSection} />}
+        {section === "sesiones" && <AdminSesiones />}
       </div>
     </div>
   );
