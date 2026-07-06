@@ -137,7 +137,12 @@ app.post("/login", loginLimiter, async (req, res) => {
       const token = jwt.sign({ id: user.id, username: user.username, role: "admin" }, SECRET, {
         expiresIn: "8h",
       });
-      return res.json({ token, username: user.username, role: "admin" });
+      return res.json({
+        token,
+        username: user.username,
+        role: "admin",
+        debeCambiarPassword: user.debeCambiarPassword,
+      });
     }
   }
 
@@ -1453,7 +1458,22 @@ app.post("/cliente/mensajes", authCliente, upload.array("archivos", 5), async (r
 
   res.json(mensaje);
 });
+app.put("/admin/password", auth, async (req: any, res) => {
+  const { passwordActual, passwordNueva } = req.body;
+  if (!passwordNueva) return res.status(400).json({ error: "La nueva contraseña es requerida" });
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
+  if (!user.debeCambiarPassword) {
+    if (!passwordActual) return res.status(400).json({ error: "La contraseña actual es requerida" });
+    const valida = await bcrypt.compare(passwordActual, user.password);
+    if (!valida) return res.status(401).json({ error: "Contraseña actual incorrecta" });
+  }
+
+  const hashedPassword = await bcrypt.hash(passwordNueva, 10);
+  await prisma.user.update({ where: { id: user.id }, data: { password: hashedPassword, debeCambiarPassword: false } });
+  res.json({ ok: true, mensaje: "Contraseña actualizada correctamente" });
+});
 app.put("/cliente/password", authCliente, async (req: any, res) => {
   const { passwordActual, passwordNueva } = req.body;
   if (!passwordNueva) return res.status(400).json({ error: "La nueva contraseña es requerida" });

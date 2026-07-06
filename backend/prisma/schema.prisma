@@ -8,12 +8,13 @@ datasource db {
 }
 
 model User {
-  id       Int       @id @default(autoincrement())
-  username String    @unique
-  password String
-  role     String    @default("admin")
-  notes    Note[]
-  dayNotes DayNote[]
+  id                  Int       @id @default(autoincrement())
+  username            String    @unique
+  password            String
+  role                String    @default("admin")
+  debeCambiarPassword Boolean   @default(false)
+  notes               Note[]
+  dayNotes            DayNote[]
 }
 
 model Note {
