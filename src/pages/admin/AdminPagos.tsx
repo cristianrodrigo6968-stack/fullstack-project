@@ -32,6 +32,22 @@ interface ProductoCarrito {
   precioUnitario: number;
 }
 
+interface PedidoResumen {
+  id: number;
+  montoTotal: number;
+  montoPagado: number;
+  estado: string;
+  cliente: {
+    id: number;
+    nombreCompleto: string | null;
+    nombres: string | null;
+    apellidoPaterno: string | null;
+    apellidoMaterno: string | null;
+    ci: string | null;
+    celular: string | null;
+  };
+}
+
 const getEstadoColor = (estado: string) => {
   if (estado === "verificado") return { bg: "#14532d", color: "#22c55e", glow: "rgba(34,197,94,0.15)" };
   if (estado === "rechazado")  return { bg: "#7f1d1d", color: "#ef4444", glow: "rgba(239,68,68,0.15)" };
@@ -91,8 +107,12 @@ function AdminPagos() {
   const [manualMonto, setManualMonto] = useState("");
   const [manualCelular, setManualCelular] = useState("");
   const [manualCi, setManualCi] = useState("");
-  const [manualPedidoId, setManualPedidoId] = useState("");
   const [agregandoManual, setAgregandoManual] = useState(false);
+
+  const [pedidos, setPedidos] = useState<PedidoResumen[]>([]);
+  const [loadingPedidos, setLoadingPedidos] = useState(false);
+  const [pedidoBusqueda, setPedidoBusqueda] = useState("");
+  const [pedidoSeleccionado, setPedidoSeleccionado] = useState<PedidoResumen | null>(null);
 
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [editNombre, setEditNombre] = useState("");
@@ -159,6 +179,38 @@ function AdminPagos() {
     }
   };
 
+  const loadPedidos = async () => {
+    setLoadingPedidos(true);
+    try {
+      const res = await fetch(`${API_URL}/pedidos`, { headers });
+      if (res.ok) setPedidos(await res.json());
+    } finally {
+      setLoadingPedidos(false);
+    }
+  };
+
+  const nombreClientePedido = (p: PedidoResumen) =>
+    p.cliente.nombreCompleto ||
+    [p.cliente.nombres, p.cliente.apellidoPaterno, p.cliente.apellidoMaterno].filter(Boolean).join(" ") ||
+    "Sin nombre";
+
+  const seleccionarPedido = (p: PedidoResumen) => {
+    setPedidoSeleccionado(p);
+    setPedidoBusqueda("");
+    if (!manualNombre) setManualNombre(nombreClientePedido(p));
+    if (!manualCi && p.cliente.ci) setManualCi(p.cliente.ci);
+    if (!manualCelular && p.cliente.celular) setManualCelular(p.cliente.celular);
+  };
+
+  const pedidosFiltrados = pedidoBusqueda.trim().length === 0 ? [] : pedidos.filter(p => {
+    const q = pedidoBusqueda.trim().toLowerCase();
+    return (
+      nombreClientePedido(p).toLowerCase().includes(q) ||
+      (p.cliente.ci || "").toLowerCase().includes(q) ||
+      String(p.id).includes(q)
+    );
+  }).slice(0, 8);
+
   const agregarPagoManual = async () => {
     if (!manualNombre || !manualMonto) return;
     setAgregandoManual(true);
@@ -167,10 +219,11 @@ function AdminPagos() {
       monto: Number(manualMonto),
       celular: manualCelular || null,
       ci: manualCi || null,
-      pedidoId: manualPedidoId ? Number(manualPedidoId) : null,
+      pedidoId: pedidoSeleccionado ? pedidoSeleccionado.id : null,
     };
     await fetch(`${API_URL}/pagos/manual`, { method: "POST", headers, body: JSON.stringify(body) });
-    setManualNombre(""); setManualMonto(""); setManualCelular(""); setManualCi(""); setManualPedidoId("");
+    setManualNombre(""); setManualMonto(""); setManualCelular(""); setManualCi("");
+    setPedidoSeleccionado(null); setPedidoBusqueda("");
     setAgregandoManual(false);
     setPanelManual(false);
     await load();
@@ -211,7 +264,7 @@ function AdminPagos() {
       50%       { box-shadow: 0 0 0 4px rgba(245,158,11,0.15); }
     }
   `;
-    
+
   if (linkWhatsapp) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh", padding: 20 }}>
@@ -412,7 +465,7 @@ function AdminPagos() {
           <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28 }}>💰 Pagos</h1>
           <p style={{ color: "#64748b", fontSize: 13, margin: "4px 0 0" }}>Gestión de pagos de clientes</p>
         </div>
-        <button onClick={() => setPanelManual(v => !v)} style={{
+        <button onClick={() => { const abrir = !panelManual; setPanelManual(abrir); if (abrir) loadPedidos(); }} style={{
           ...btnGreen,
           background: panelManual ? "#334155" : "#22c55e",
           display: "flex", alignItems: "center", gap: 6,
@@ -445,10 +498,51 @@ function AdminPagos() {
             </div>
           </div>
           <div style={{ marginTop: 10 }}>
-            <label style={miniLabel}>Pedido asociado</label>
-            <select value={manualPedidoId} onChange={e => setManualPedidoId(e.target.value)} style={{ ...inputStyleFull, cursor: "pointer" }}>
-              <option value="">Sin pedido asociado</option>
-            </select>
+            <label style={miniLabel}>Pedido asociado (opcional)</label>
+            {pedidoSeleccionado ? (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0f172a", border: "1px solid #3b82f6", borderRadius: 8, padding: "10px 14px" }}>
+                <div>
+                  <p style={{ margin: 0, color: "white", fontWeight: "bold", fontSize: 13 }}>
+                    Pedido #{pedidoSeleccionado.id} — {nombreClientePedido(pedidoSeleccionado)}
+                  </p>
+                  <p style={{ margin: "2px 0 0", color: "#64748b", fontSize: 11 }}>
+                    Saldo pendiente: Bs {(pedidoSeleccionado.montoTotal - pedidoSeleccionado.montoPagado).toFixed(2)}
+                  </p>
+                </div>
+                <button onClick={() => setPedidoSeleccionado(null)} style={{ background: "transparent", border: "1px solid #334155", color: "#94a3b8", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12 }}>Quitar</button>
+              </div>
+            ) : (
+              <>
+                <input
+                  placeholder="Buscar pedido por cliente, C.I. o # de pedido..."
+                  value={pedidoBusqueda}
+                  onChange={e => setPedidoBusqueda(e.target.value)}
+                  style={inputStyleFull}
+                />
+                {loadingPedidos ? (
+                  <p style={{ color: "#475569", fontSize: 12, marginTop: 6 }}>Cargando pedidos...</p>
+                ) : pedidoBusqueda.trim().length > 0 && (
+                  <div style={{ marginTop: 6, border: "1px solid #334155", borderRadius: 8, overflow: "hidden" }}>
+                    {pedidosFiltrados.length === 0 ? (
+                      <p style={{ color: "#475569", fontSize: 12, padding: 10, margin: 0 }}>Sin resultados.</p>
+                    ) : pedidosFiltrados.map(p => (
+                      <div
+                        key={p.id}
+                        onClick={() => seleccionarPedido(p)}
+                        style={{ padding: "9px 14px", cursor: "pointer", borderBottom: "1px solid #334155" }}
+                      >
+                        <p style={{ margin: 0, color: "white", fontSize: 13, fontWeight: 600 }}>
+                          Pedido #{p.id} — {nombreClientePedido(p)}
+                        </p>
+                        <p style={{ margin: "2px 0 0", color: "#64748b", fontSize: 11 }}>
+                          Saldo pendiente: Bs {(p.montoTotal - p.montoPagado).toFixed(2)} · {p.estado}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
           <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
             <button onClick={agregarPagoManual} disabled={agregandoManual || !manualNombre || !manualMonto} style={{
@@ -458,7 +552,7 @@ function AdminPagos() {
             }}>
               {agregandoManual ? "Guardando..." : "💾 Guardar pago"}
             </button>
-            <button onClick={() => setPanelManual(false)} style={btnGray}>Cancelar</button>
+            <button onClick={() => { setPanelManual(false); setPedidoSeleccionado(null); setPedidoBusqueda(""); }} style={btnGray}>Cancelar</button>
           </div>
         </div>
       )}
