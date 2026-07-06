@@ -15,6 +15,24 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.JWT_SECRET || "secret123";
+app.set("trust proxy", 1);
+
+function parseDispositivo(ua: string): string {
+  let os = "Dispositivo desconocido";
+  if (/windows/i.test(ua)) os = "Windows";
+  else if (/android/i.test(ua)) os = "Android";
+  else if (/iphone|ipad|ios/i.test(ua)) os = "iOS";
+  else if (/mac os/i.test(ua)) os = "Mac";
+  else if (/linux/i.test(ua)) os = "Linux";
+
+  let browser = "Navegador desconocido";
+  if (/edg/i.test(ua)) browser = "Edge";
+  else if (/chrome/i.test(ua)) browser = "Chrome";
+  else if (/firefox/i.test(ua)) browser = "Firefox";
+  else if (/safari/i.test(ua)) browser = "Safari";
+
+  return `${browser} en ${os}`;
+}
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 6, // máximo 6 intentos por IP en esa ventana
@@ -93,13 +111,22 @@ const subirImagen = async (
   }
 };
 
-const auth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+const auth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ error: "No token" });
   try {
     const decoded = jwt.verify(token, SECRET) as any;
     if (decoded.role !== "admin") {
       return res.status(403).json({ error: "Acceso solo para administradores" });
+    }
+    if (decoded.sessionId) {
+      const sesion = await prisma.sesionAdmin.findUnique({ where: { id: decoded.sessionId } });
+      if (!sesion || !sesion.activa) {
+        return res.status(401).json({ error: "Tu sesión fue cerrada. Inicia sesión nuevamente." });
+      }
+      prisma.sesionAdmin
+        .update({ where: { id: decoded.sessionId }, data: { ultimaActividad: new Date() } })
+        .catch(() => {});
     }
     req.user = decoded;
     next();
@@ -134,9 +161,22 @@ app.post("/login", loginLimiter, async (req, res) => {
       ? await bcrypt.compare(password, user.password)
       : user.password === password;
     if (passwordValidaAdmin) {
-      const token = jwt.sign({ id: user.id, username: user.username, role: "admin" }, SECRET, {
-        expiresIn: "8h",
+      const userAgent = req.headers["user-agent"] || "";
+      const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || null;
+
+      const sesion = await prisma.sesionAdmin.create({
+        data: {
+          userId: user.id,
+          dispositivo: parseDispositivo(userAgent),
+          ip,
+        },
       });
+
+      const token = jwt.sign(
+        { id: user.id, username: user.username, role: "admin", sessionId: sesion.id },
+        SECRET,
+        { expiresIn: "8h" }
+      );
       return res.json({
         token,
         username: user.username,
@@ -1457,6 +1497,41 @@ app.post("/cliente/mensajes", authCliente, upload.array("archivos", 5), async (r
   }
 
   res.json(mensaje);
+});
+app.get("/admin/sesiones", auth, async (req: any, res) => {
+  const sesiones = await prisma.sesionAdmin.findMany({
+    where: { userId: req.user.id, activa: true },
+    orderBy: { ultimaActividad: "desc" },
+  });
+  res.json(
+    sesiones.map((s) => ({
+      id: s.id,
+      dispositivo: s.dispositivo,
+      ip: s.ip,
+      creadoEn: s.creadoEn,
+      ultimaActividad: s.ultimaActividad,
+      esActual: s.id === req.user.sessionId,
+    }))
+  );
+});
+
+app.delete("/admin/sesiones/:id", auth, async (req: any, res) => {
+  const { id } = req.params;
+  const sesion = await prisma.sesionAdmin.findUnique({ where: { id } });
+  if (!sesion || sesion.userId !== req.user.id) {
+    return res.status(404).json({ error: "Sesión no encontrada" });
+  }
+  await prisma.sesionAdmin.update({ where: { id }, data: { activa: false } });
+  res.json({ ok: true, eraActual: sesion.id === req.user.sessionId });
+});
+
+app.post("/admin/logout", auth, async (req: any, res) => {
+  if (req.user.sessionId) {
+    await prisma.sesionAdmin
+      .update({ where: { id: req.user.sessionId }, data: { activa: false } })
+      .catch(() => {});
+  }
+  res.json({ ok: true });
 });
 app.put("/admin/password", auth, async (req: any, res) => {
   const { passwordActual, passwordNueva } = req.body;

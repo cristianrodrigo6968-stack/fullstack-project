@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 interface AuthContextType {
   token: string | null;
   username: string | null;
@@ -49,6 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    const currentToken = token;
+    const currentRole = role;
+    if (currentToken && currentRole === "admin") {
+      fetch(`${API_URL}/admin/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${currentToken}` },
+      }).catch(() => {});
+    }
+
     localStorage.removeItem("token");
     localStorage.removeItem("username");
     localStorage.removeItem("role");

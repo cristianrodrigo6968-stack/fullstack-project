@@ -8,13 +8,14 @@ datasource db {
 }
 
 model User {
-  id                  Int       @id @default(autoincrement())
-  username            String    @unique
+  id                  Int           @id @default(autoincrement())
+  username            String        @unique
   password            String
-  role                String    @default("admin")
-  debeCambiarPassword Boolean   @default(false)
+  role                String        @default("admin")
+  debeCambiarPassword Boolean       @default(false)
   notes               Note[]
   dayNotes            DayNote[]
+  sesiones            SesionAdmin[]
 }
 
 model Note {
@@ -315,4 +316,14 @@ model ComentarioTarea {
   archivos  String[]  @default([])
   creadoEn  DateTime  @default(now())
   tarea     TareaItem @relation(fields: [tareaId], references: [id])
+}
+model SesionAdmin {
+  id           String   @id @default(cuid())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
+  dispositivo  String
+  ip           String?
+  creadoEn     DateTime @default(now())
+  ultimaActividad DateTime @default(now())
+  activa       Boolean  @default(true)
 }
