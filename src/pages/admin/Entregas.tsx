@@ -49,7 +49,39 @@ interface DesgloseTitulo {
   lineaPrincipal: string;
   lineaSecundaria: string | null;
 }
+// ── Entrega manual ──────────────────────────────────────
+interface ClienteBusqueda {
+  id: number;
+  nombreCompleto: string | null;
+  nombres: string | null;
+  apellidoPaterno: string | null;
+  apellidoMaterno: string | null;
+  ci: string | null;
+  celular: string | null;
+}
 
+type TipoItemManual = "libro" | "revista" | "otro";
+type CategoriaLibroManual = "A" | "B" | "C";
+type SubtipoRevistaManual = "director" | "fundador" | "articulo_rp" | "articulo_sp";
+
+const SUBTIPO_LABELS_MANUAL: Record<SubtipoRevistaManual, string> = {
+  director: "Director de revista",
+  fundador: "Fundador",
+  articulo_rp: "Artículo (redacción y publicación)",
+  articulo_sp: "Artículo (solo publicación)",
+};
+
+function tituloSugerido(opts: { tipo: TipoItemManual; categoria?: CategoriaLibroManual; subtipo?: SubtipoRevistaManual; meses?: 1 | 3 }): string {
+  if (opts.tipo === "libro" && opts.categoria) return `📖 Libro Categoría ${opts.categoria}`;
+  if (opts.tipo === "revista" && opts.subtipo) {
+    const dur = opts.subtipo === "director" && opts.meses ? ` (${opts.meses} mes${opts.meses > 1 ? "es" : ""})` : "";
+    return `📰 ${SUBTIPO_LABELS_MANUAL[opts.subtipo]}${dur}`;
+  }
+  return "";
+}
+
+const miniLabelManual: React.CSSProperties = { display: "block", color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 };
+const inputManualStyle: React.CSSProperties = { width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid #1e1b4b", background: "#0a0a14", color: "white", fontSize: 16, fontFamily: "inherit", boxSizing: "border-box", outline: "none" };
 function parsearTitulo(titulo: string | null, tipo: string, tipoAutor: string | null, periodicidad: string | null): DesgloseTitulo {
   const t = (titulo || "").toLowerCase();
   const tip = (tipo || "").toLowerCase();
@@ -122,6 +154,308 @@ function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onCon
         <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
           <button onClick={onCancel} style={{ background: "#0a0a14", border: "1px solid #1e1b4b", padding: "10px 22px", borderRadius: 10, color: "#94a3b8", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>Cancelar</button>
           <button onClick={onConfirm} style={{ background: "linear-gradient(135deg,#10b981,#059669)", border: "none", padding: "10px 22px", borderRadius: 10, color: "white", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>Confirmar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Formulario para armar un item dentro de la entrega manual ──
+function NuevoItemForm({ onAdd }: {
+  onAdd: (item: { tipo: TipoItemManual; titulo: string; precioUnitario: number; conIsbn: boolean; conSenapi: boolean }) => void;
+}) {
+  const [tipo, setTipo] = useState<TipoItemManual>("otro");
+  const [categoria, setCategoria] = useState<CategoriaLibroManual | undefined>(undefined);
+  const [conIsbn, setConIsbn] = useState(false);
+  const [conSenapi, setConSenapi] = useState(false);
+  const [subtipo, setSubtipo] = useState<SubtipoRevistaManual | undefined>(undefined);
+  const [meses, setMeses] = useState<1 | 3 | undefined>(undefined);
+  const [titulo, setTitulo] = useState("");
+  const [precio, setPrecio] = useState("");
+  const [tituloEditadoManualmente, setTituloEditadoManualmente] = useState(false);
+
+  useEffect(() => {
+    if (tituloEditadoManualmente) return;
+    setTitulo(tituloSugerido({ tipo, categoria, subtipo, meses }));
+  }, [tipo, categoria, subtipo, meses, tituloEditadoManualmente]);
+
+  const reset = () => {
+    setTipo("otro"); setCategoria(undefined); setConIsbn(false); setConSenapi(false);
+    setSubtipo(undefined); setMeses(undefined); setTitulo(""); setPrecio(""); setTituloEditadoManualmente(false);
+  };
+
+  const puedeAgregar = titulo.trim().length > 0 && Number(precio) > 0;
+
+  const agregar = () => {
+    if (!puedeAgregar) return;
+    onAdd({
+      tipo, titulo: titulo.trim(), precioUnitario: Number(precio),
+      conIsbn: tipo === "libro" ? conIsbn : false,
+      conSenapi: tipo === "libro" ? conSenapi : false,
+    });
+    reset();
+  };
+
+  return (
+    <div style={{ background: "#0a0a14", border: "1px dashed #1e1b4b", borderRadius: 12, padding: 14, marginBottom: 14 }}>
+      <p style={{ color: "#94a3b8", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>➕ Nuevo item</p>
+
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        {(["libro", "revista", "otro"] as TipoItemManual[]).map(t => (
+          <button
+            key={t}
+            onClick={() => { setTipo(t); setCategoria(undefined); setSubtipo(undefined); setMeses(undefined); }}
+            className={`tipo-btn${tipo === t ? " selected" : ""}`}
+          >
+            {t === "libro" ? "📖 Libro" : t === "revista" ? "📰 Revista" : "📦 Otro"}
+          </button>
+        ))}
+      </div>
+
+      {tipo === "libro" && (
+        <>
+          <label style={miniLabelManual}>Categoría</label>
+          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+            {(["A", "B", "C"] as CategoriaLibroManual[]).map(c => (
+              <button key={c} onClick={() => setCategoria(c)} className={`tipo-btn${categoria === c ? " selected" : ""}`}>Cat. {c}</button>
+            ))}
+          </div>
+          <label style={miniLabelManual}>Extras</label>
+          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+            <button onClick={() => setConIsbn(v => !v)} className={`tipo-btn${conIsbn ? " selected" : ""}`}>{conIsbn ? "✓ " : ""}ISBN</button>
+            <button onClick={() => setConSenapi(v => !v)} className={`tipo-btn${conSenapi ? " selected" : ""}`}>{conSenapi ? "✓ " : ""}SENAPI</button>
+          </div>
+        </>
+      )}
+
+      {tipo === "revista" && (
+        <>
+          <label style={miniLabelManual}>Tipo de servicio</label>
+          <div style={{ marginBottom: 10 }}>
+            {(Object.entries(SUBTIPO_LABELS_MANUAL) as [SubtipoRevistaManual, string][]).map(([key, label]) => (
+              <div
+                key={key}
+                onClick={() => { setSubtipo(key); setMeses(key === "director" ? (meses ?? 1) : undefined); }}
+                className={`sub-option${subtipo === key ? " selected" : ""}`}
+              >
+                <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${subtipo === key ? "#6366f1" : "#334155"}`, background: subtipo === key ? "#6366f1" : "transparent", flexShrink: 0 }} />
+                {label}
+              </div>
+            ))}
+          </div>
+          {subtipo === "director" && (
+            <>
+              <label style={miniLabelManual}>Duración</label>
+              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                {([1, 3] as (1 | 3)[]).map(m => (
+                  <button key={m} onClick={() => setMeses(m)} className={`tipo-btn${meses === m ? " selected" : ""}`}>{m} {m === 1 ? "mes" : "meses"}</button>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      <label style={miniLabelManual}>Nombre del servicio</label>
+      <input
+        placeholder="Ej: Libro Categoría A, Director de revista..."
+        value={titulo}
+        onChange={e => { setTitulo(e.target.value); setTituloEditadoManualmente(true); }}
+        style={{ ...inputManualStyle, marginBottom: 10 }}
+      />
+
+      <label style={miniLabelManual}>Precio (Bs)</label>
+      <input
+        type="number"
+        placeholder="0.00"
+        value={precio}
+        onChange={e => setPrecio(e.target.value)}
+        style={{ ...inputManualStyle, marginBottom: 12 }}
+      />
+
+      <button
+        onClick={agregar}
+        disabled={!puedeAgregar}
+        style={{
+          width: "100%", padding: "10px", borderRadius: 10, border: "none",
+          background: puedeAgregar ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "#1e1b4b",
+          color: puedeAgregar ? "white" : "#475569", fontWeight: 700, fontSize: 13,
+          cursor: puedeAgregar ? "pointer" : "not-allowed", fontFamily: "inherit",
+        }}
+      >
+        ＋ Agregar a la lista
+      </button>
+    </div>
+  );
+}
+
+// ── Modal principal: crear entrega manual ──
+function ModalAgregarEntrega({ token, onClose, onCreated }: { token: string | null; onClose: () => void; onCreated: () => void }) {
+  const [clientes, setClientes] = useState<ClienteBusqueda[]>([]);
+  const [loadingClientes, setLoadingClientes] = useState(true);
+  const [busqueda, setBusqueda] = useState("");
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteBusqueda | null>(null);
+  const [items, setItems] = useState<{ tempId: string; tipo: TipoItemManual; titulo: string; precioUnitario: number; conIsbn: boolean; conSenapi: boolean }[]>([]);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const cargar = async () => {
+      setLoadingClientes(true);
+      try {
+        const res = await fetch(`${API_URL}/clients`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) setClientes(await res.json());
+      } finally {
+        setLoadingClientes(false);
+      }
+    };
+    cargar();
+  }, [token]);
+
+  const nombreCliente = (c: ClienteBusqueda) => c.nombreCompleto || [c.nombres, c.apellidoPaterno, c.apellidoMaterno].filter(Boolean).join(" ") || "Sin nombre";
+
+  const clientesFiltrados = busqueda.trim().length === 0 ? [] : clientes.filter(c => {
+    const q = busqueda.trim().toLowerCase();
+    return nombreCliente(c).toLowerCase().includes(q) || (c.ci || "").toLowerCase().includes(q);
+  }).slice(0, 8);
+
+  const agregarItem = (item: { tipo: TipoItemManual; titulo: string; precioUnitario: number; conIsbn: boolean; conSenapi: boolean }) => {
+    setItems(prev => [...prev, { ...item, tempId: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}` }]);
+  };
+
+  const quitarItem = (tempId: string) => setItems(prev => prev.filter(i => i.tempId !== tempId));
+
+  const total = items.reduce((sum, i) => sum + i.precioUnitario, 0);
+
+  const guardar = async () => {
+    if (!clienteSeleccionado) { setError("Selecciona un cliente."); return; }
+    if (items.length === 0) { setError("Agrega al menos un item."); return; }
+    setError("");
+    setGuardando(true);
+    try {
+      const res = await fetch(`${API_URL}/pedidos/manual`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          clienteId: clienteSeleccionado.id,
+          items: items.map(i => ({ tipo: i.tipo, titulo: i.titulo, precioUnitario: i.precioUnitario, conIsbn: i.conIsbn, conSenapi: i.conSenapi })),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "No se pudo crear la entrega.");
+        setGuardando(false);
+        return;
+      }
+      onCreated();
+      onClose();
+    } catch {
+      setError("Error de conexión.");
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9998, padding: 20 }}>
+      <div style={{ background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: "26px 24px", borderRadius: 18, width: "100%", maxWidth: 560, color: "white", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>➕ Agregar entrega manual</h3>
+            <p style={{ margin: "2px 0 0", color: "#475569", fontSize: 12 }}>Crea un pedido/entrega sin pasar por el flujo de compra y pago</p>
+          </div>
+          <button onClick={onClose} style={{ background: "#0d0d1a", border: "1px solid #1e1b4b", color: "#64748b", width: 32, height: 32, borderRadius: 8, cursor: "pointer", fontSize: 16 }}>✕</button>
+        </div>
+
+        <label style={miniLabelManual}>Cliente</label>
+        {clienteSeleccionado ? (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0a0a14", border: "1px solid #6366f1", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+            <div>
+              <p style={{ margin: 0, color: "white", fontWeight: 700, fontSize: 14 }}>{nombreCliente(clienteSeleccionado)}</p>
+              <p style={{ margin: "2px 0 0", color: "#64748b", fontSize: 12 }}>{clienteSeleccionado.ci ? `CI: ${clienteSeleccionado.ci}` : "Sin CI"} {clienteSeleccionado.celular ? `· 📱 ${clienteSeleccionado.celular}` : ""}</p>
+            </div>
+            <button onClick={() => setClienteSeleccionado(null)} style={{ background: "transparent", border: "1px solid #1e1b4b", color: "#94a3b8", borderRadius: 8, padding: "5px 10px", cursor: "pointer", fontSize: 12 }}>Cambiar</button>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 14 }}>
+            <input
+              placeholder="Buscar por nombre o C.I..."
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              style={inputManualStyle}
+            />
+            {loadingClientes ? (
+              <p style={{ color: "#475569", fontSize: 12, marginTop: 8 }}>Cargando clientes...</p>
+            ) : busqueda.trim().length > 0 && (
+              <div style={{ marginTop: 8, border: "1px solid #1e1b4b", borderRadius: 10, overflow: "hidden" }}>
+                {clientesFiltrados.length === 0 ? (
+                  <p style={{ color: "#475569", fontSize: 12, padding: 12, margin: 0 }}>Sin resultados.</p>
+                ) : clientesFiltrados.map(c => (
+                  <div
+                    key={c.id}
+                    onClick={() => { setClienteSeleccionado(c); setBusqueda(""); }}
+                    style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #1e1b4b" }}
+                  >
+                    <p style={{ margin: 0, color: "white", fontSize: 13, fontWeight: 600 }}>{nombreCliente(c)}</p>
+                    <p style={{ margin: "2px 0 0", color: "#64748b", fontSize: 11 }}>{c.ci ? `CI: ${c.ci}` : "Sin CI"}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <label style={{ ...miniLabelManual, marginTop: 4 }}>Productos / servicios de la entrega</label>
+
+        {items.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+            {items.map(i => (
+              <div key={i.tempId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0a0a14", border: "1px solid #1e1b4b", borderRadius: 10, padding: "10px 14px" }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, color: "white", fontSize: 13, fontWeight: 600, wordBreak: "break-word" }}>{i.titulo}</p>
+                  <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                    {i.conIsbn && <span style={{ fontSize: 10, background: "rgba(99,102,241,.12)", color: "#a5b4fc", padding: "1px 8px", borderRadius: 99 }}>ISBN</span>}
+                    {i.conSenapi && <span style={{ fontSize: 10, background: "rgba(139,92,246,.12)", color: "#c4b5fd", padding: "1px 8px", borderRadius: 99 }}>SENAPI</span>}
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                  <span style={{ color: "#34d399", fontWeight: 700, fontSize: 14 }}>Bs {i.precioUnitario.toFixed(2)}</span>
+                  <button onClick={() => quitarItem(i.tempId)} style={{ background: "rgba(239,68,68,0.12)", border: "none", color: "#ef4444", borderRadius: 6, padding: "3px 9px", cursor: "pointer", fontSize: 12 }}>✕</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <NuevoItemForm onAdd={agregarItem} />
+
+        {items.length > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0a0a14", border: "1px solid #1e1b4b", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
+            <span style={{ color: "#64748b", fontSize: 13 }}>Total</span>
+            <span style={{ color: "#34d399", fontWeight: 800, fontSize: 20 }}>Bs {total.toFixed(2)}</span>
+          </div>
+        )}
+
+        {error && (
+          <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, padding: "10px 14px", marginBottom: 14, color: "#fca5a5", fontSize: 13 }}>
+            ⚠️ {error}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={guardar}
+            disabled={guardando || !clienteSeleccionado || items.length === 0}
+            style={{
+              flex: 1, padding: 12, borderRadius: 10, border: "none",
+              background: (guardando || !clienteSeleccionado || items.length === 0) ? "#1e1b4b" : "linear-gradient(135deg,#10b981,#059669)",
+              color: (guardando || !clienteSeleccionado || items.length === 0) ? "#475569" : "white",
+              fontWeight: 700, fontSize: 14, cursor: (guardando || !clienteSeleccionado || items.length === 0) ? "not-allowed" : "pointer", fontFamily: "inherit",
+            }}
+          >
+            {guardando ? "Guardando..." : "💾 Crear entrega"}
+          </button>
+          <button onClick={onClose} style={{ background: "#0d0d1a", border: "1px solid #1e1b4b", padding: "12px 20px", borderRadius: 10, color: "#94a3b8", fontWeight: 700, cursor: "pointer", fontSize: 14, fontFamily: "inherit" }}>Cancelar</button>
         </div>
       </div>
     </div>
@@ -405,6 +739,7 @@ function Entregas() {
   const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
   const [actualizando, setActualizando] = useState<number | null>(null);
   const [eliminandoId, setEliminandoId] = useState<number | null>(null);
+  const [modalAgregarOpen, setModalAgregarOpen] = useState(false);
 
   const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 
@@ -524,6 +859,12 @@ function Entregas() {
         .btn-eliminar { background:transparent; border:1px solid #ef4444; border-radius:8px; color:#ef4444; font-size:11px; font-weight:600; padding:5px 12px; cursor:pointer; font-family:inherit; transition:background 0.15s; }
         .btn-eliminar:hover:not(:disabled) { background:rgba(239,68,68,0.1); }
         .btn-eliminar:disabled { opacity:0.4; cursor:not-allowed; }
+        .tipo-btn { flex:1; padding:9px 8px; border-radius:10px; border:2px solid #1e1b4b; background:#0a0a14; color:#64748b; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.15s; text-align:center; }
+        .tipo-btn.selected { border-color:#6366f1; background:rgba(99,102,241,0.12); color:#a5b4fc; }
+        .tipo-btn:hover:not(.selected) { border-color:#1e1b4b; color:#94a3b8; }
+        .sub-option { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:10px; border:2px solid #1e1b4b; background:#0a0a14; color:#64748b; font-size:13px; cursor:pointer; transition:all 0.15s; margin-bottom:6px; }
+        .sub-option.selected { border-color:#6366f1; background:rgba(99,102,241,0.1); color:#a5b4fc; }
+        .sub-option:hover:not(.selected) { border-color:#1e1b4b; color:#94a3b8; }
       `}</style>
 
       {confirmOpen && (
@@ -534,14 +875,35 @@ function Entregas() {
         />
       )}
 
+      {modalAgregarOpen && (
+        <ModalAgregarEntrega
+          token={token}
+          onClose={() => setModalAgregarOpen(false)}
+          onCreated={loadItems}
+        />
+      )}
+
       {/* HEADER */}
       <div style={{ marginBottom: 28 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, boxShadow: "0 4px 14px rgba(99,102,241,.3)" }}>📦</div>
-          <div>
-            <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 24, fontWeight: 700, color: "#f1f5f9" }}>Producción & Entregas</h1>
-            <p style={{ margin: 0, color: "#475569", fontSize: 12 }}>Gestiona la producción de libros, artículos y ediciones</p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, boxShadow: "0 4px 14px rgba(99,102,241,.3)" }}>📦</div>
+            <div>
+              <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 24, fontWeight: 700, color: "#f1f5f9" }}>Producción & Entregas</h1>
+              <p style={{ margin: 0, color: "#475569", fontSize: 12 }}>Gestiona la producción de libros, artículos y ediciones</p>
+            </div>
           </div>
+          <button
+            onClick={() => setModalAgregarOpen(true)}
+            style={{
+              background: "linear-gradient(135deg,#6366f1,#8b5cf6)", border: "none", padding: "11px 20px",
+              borderRadius: 10, color: "white", fontWeight: 600, cursor: "pointer", fontSize: 13,
+              fontFamily: "inherit", display: "flex", alignItems: "center", gap: 7,
+              boxShadow: "0 4px 14px rgba(99,102,241,0.35)",
+            }}
+          >
+            <span style={{ fontSize: 16 }}>＋</span> Agregar entrega
+          </button>
         </div>
       </div>
 

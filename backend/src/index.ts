@@ -1203,6 +1203,45 @@ app.put("/pedidos/:id/ajustar-precio", auth, async (req, res) => {
   const { montoTotal } = req.body;
   res.json(await prisma.pedido.update({ where: { id }, data: { montoTotal: Number(montoTotal) } }));
 });
+// Crear un pedido/entrega manual (sin pasar por el flujo de compra y pago)
+app.post("/pedidos/manual", auth, async (req, res) => {
+  const { clienteId, items } = req.body;
+
+  if (!clienteId) return res.status(400).json({ error: "clienteId es requerido" });
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: "Debes incluir al menos un item" });
+  }
+
+  const cliente = await prisma.client.findUnique({ where: { id: Number(clienteId) } });
+  if (!cliente) return res.status(404).json({ error: "Cliente no encontrado" });
+
+  const itemsValidos = items.filter((it: any) => it.titulo && Number(it.precioUnitario) > 0);
+  if (itemsValidos.length === 0) {
+    return res.status(400).json({ error: "Los items deben tener título y un precio válido" });
+  }
+
+  const montoTotal = itemsValidos.reduce((sum: number, it: any) => sum + Number(it.precioUnitario), 0);
+
+  const pedido = await prisma.pedido.create({
+    data: {
+      clienteId: Number(clienteId),
+      montoTotal,
+      montoPagado: 0,
+      items: {
+        create: itemsValidos.map((it: any) => ({
+          tipo: it.tipo || "otro",
+          titulo: it.titulo,
+          precioUnitario: Number(it.precioUnitario),
+          conIsbn: it.conIsbn || false,
+          conSenapi: it.conSenapi || false,
+        })),
+      },
+    },
+    include: { items: true, cliente: true },
+  });
+
+  res.json(pedido);
+});
 app.delete("/items-pedido/:id", auth, async (req, res) => {
   const id = Number(req.params.id);
 
