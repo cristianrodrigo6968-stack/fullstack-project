@@ -12,6 +12,7 @@ import AdminMensajes from "./AdminMensajes";
 import AdminPagos from "./AdminPagos";
 import AdminProductos from "./AdminProductos";
 import ErrorBoundary from "../../components/ErrorBoundary";
+import AdminPassword from "./AdminPassword";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -33,10 +34,10 @@ function Spinner() {
 }
 
 function Admin() {
-  const { username, logout, token } = useAuth();
+  const { username, logout, token, debeCambiarPassword } = useAuth();
   const navigate = useNavigate();
   const { isMobile } = useWindowSize();
-  const [section, setSection] = useState("panel");
+  const [section, setSection] = useState(debeCambiarPassword ? "password" : "panel");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -62,6 +63,7 @@ function Admin() {
     { key: "mensajes", label: "💬 Mensajes", badge: unreadMessages },
     { key: "pagos", label: "💰 Pagos", badge: pendingPayments },
     { key: "productos", label: "🛒 Productos" },
+    { key: "password", label: "🔑 Cambiar Contraseña" },
   ];
 
   const handleSection = (key: string) => { setSection(key); setSidebarOpen(false); };
@@ -147,14 +149,20 @@ function Admin() {
         </div>
 
         {menuItems.map((item) => (
-          <button key={item.key} onClick={() => handleSection(item.key)} style={{
-            padding: "12px 16px", minHeight: 44, border: section === item.key ? "1px solid #6366f1" : "1px solid transparent", borderRadius: 8,
-            cursor: "pointer", textAlign: "left",
-            fontWeight: section === item.key ? "bold" : "normal",
-            background: section === item.key ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "#0d0d1a",
-            color: "white", fontSize: 14,
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-          }}>
+          <button
+            key={item.key}
+            onClick={() => { if (!debeCambiarPassword || item.key === "password") handleSection(item.key); }}
+            disabled={debeCambiarPassword && item.key !== "password"}
+            style={{
+              padding: "12px 16px", minHeight: 44, border: section === item.key ? "1px solid #6366f1" : "1px solid transparent", borderRadius: 8,
+              cursor: (debeCambiarPassword && item.key !== "password") ? "not-allowed" : "pointer",
+              textAlign: "left",
+              fontWeight: section === item.key ? "bold" : "normal",
+              background: section === item.key ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "#0d0d1a",
+              color: "white", fontSize: 14,
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              opacity: (debeCambiarPassword && item.key !== "password") ? 0.4 : 1,
+            }}>
             <span>{item.label}</span>
             {item.badge && item.badge > 0 && (
               <span style={{
@@ -179,6 +187,11 @@ function Admin() {
       </div>
 
       <div style={{ flex: 1, padding: isMobile ? 16 : 40, color: "white", overflowY: "auto", overflowX: "hidden", minWidth: 0 }}>
+        {debeCambiarPassword && (
+          <div style={{ background: "#422006", border: "1px solid #f59e0b", color: "#fbbf24", padding: "12px 16px", borderRadius: 10, marginBottom: 20, fontSize: 14 }}>
+            🔒 Por seguridad, debes cambiar tu contraseña temporal antes de continuar.
+          </div>
+        )}
         {isMobile && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, background: "linear-gradient(160deg, #0d0d1a, #0a0a14)", border: "1px solid #1e1b4b", padding: "12px 16px", borderRadius: 10 }}>
             <span style={{ fontWeight: "bold", fontSize: 15, wordBreak: "break-word" }}>
@@ -329,6 +342,7 @@ function Admin() {
         )}
         {section === "pagos" && <AdminPagos />}
         {section === "productos" && <AdminProductos />}
+        {section === "password" && <AdminPassword onNavigate={handleSection} />}
       </div>
     </div>
   );
