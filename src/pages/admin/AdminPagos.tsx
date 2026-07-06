@@ -653,7 +653,7 @@ function AdminPagos() {
             }}>
               {agregandoManual ? "Guardando..." : "💾 Guardar pago"}
             </button>
-            <button onClick={() => { setPanelManual(false); setPedidoSeleccionado(null); setPedidoBusqueda(""); }} style={btnGray}>Cancelar</button>
+            <button onClick={() => { setPanelManual(false); setItemsManual([]); }} style={btnGray}>Cancelar</button>
           </div>
         </div>
       )}
