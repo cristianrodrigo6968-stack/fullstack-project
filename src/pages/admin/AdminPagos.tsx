@@ -5,6 +5,14 @@ import { useMesActual } from "../../hooks/useMesActual";
 import NavegadorMes from "../../components/NavegadorMes";
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+const soloLetrasMayusculas = (value: string): string => {
+  return value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "").toUpperCase();
+};
+
+const soloNumeros = (value: string): string => {
+  return value.replace(/\D/g, "");
+};
 interface Pago {
   id: number;
   nombreDeclarado: string;
@@ -601,19 +609,19 @@ function AdminPagos() {
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
             <div>
               <label style={miniLabel}>Nombre *</label>
-              <input placeholder="Nombre del cliente" value={manualNombre} onChange={e => setManualNombre(e.target.value)} style={inputStyleFull} />
+              <input placeholder="Nombre del cliente" value={manualNombre} onChange={e => setManualNombre(soloLetrasMayusculas(e.target.value))} style={inputStyleFull} />
             </div>
             <div>
               <label style={miniLabel}>Monto (Bs) *</label>
-              <input placeholder="0.00" type="number" value={manualMonto} onChange={e => setManualMonto(e.target.value)} style={inputStyleFull} />
+              <input placeholder="0" type="text" inputMode="numeric" pattern="[0-9]*" value={manualMonto} onChange={e => setManualMonto(soloNumeros(e.target.value))} style={inputStyleFull} />
             </div>
             <div>
               <label style={miniLabel}>Celular</label>
-              <input placeholder="Ej: 70012345" value={manualCelular} onChange={e => setManualCelular(e.target.value)} style={inputStyleFull} />
+              <input placeholder="Ej: 70012345" type="text" inputMode="numeric" pattern="[0-9]*" value={manualCelular} onChange={e => setManualCelular(soloNumeros(e.target.value))} style={inputStyleFull} />
             </div>
             <div>
               <label style={miniLabel}>C.I.</label>
-              <input placeholder="Ej: 1234567" value={manualCi} onChange={e => setManualCi(e.target.value)} style={inputStyleFull} />
+              <input placeholder="Ej: 1234567" type="text" inputMode="numeric" pattern="[0-9]*" value={manualCi} onChange={e => setManualCi(soloNumeros(e.target.value))} style={inputStyleFull} />
             </div>
           </div>
           <div style={{ marginTop: 14 }}>
