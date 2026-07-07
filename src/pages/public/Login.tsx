@@ -21,14 +21,12 @@ function Spinner() {
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
-    // Ojo abierto
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
   ) : (
-    // Ojo cerrado
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8
@@ -50,6 +48,10 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [paso, setPaso] = useState<"credenciales" | "2fa">("credenciales");
+  const [tempToken, setTempToken] = useState("");
+  const [codigo2fa, setCodigo2fa] = useState("");
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -74,6 +76,12 @@ function Login() {
         return;
       }
 
+      if (data.needsTwoFactor) {
+        setTempToken(data.tempToken);
+        setPaso("2fa");
+        return;
+      }
+
       login(data.token, data.username, data.role, data.clienteId, data.debeCambiarPassword);
       if (data.role === "admin") {
         navigate("/admin");
@@ -85,6 +93,40 @@ function Login() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleVerificar2fa = async () => {
+    if (!codigo2fa || codigo2fa.length < 6) {
+      setError("Ingresa el código de 6 dígitos");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_URL}/login/2fa`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tempToken, codigo: codigo2fa }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Código incorrecto");
+        return;
+      }
+      login(data.token, data.username, data.role, undefined, data.debeCambiarPassword);
+      navigate("/admin");
+    } catch {
+      setError("Error al conectar con el servidor");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const volverACredenciales = () => {
+    setPaso("credenciales");
+    setCodigo2fa("");
+    setTempToken("");
+    setError("");
   };
 
   return (
@@ -99,16 +141,16 @@ function Login() {
         }
         .login-input:focus {
           outline: none;
-          border-color: #6366f1 !important;
-          background: #0a0a14 !important;
+          border-color: #3b82f6 !important;
+          background: #1e3a5f !important;
         }
         .login-input::placeholder {
           color: #475569;
         }
         .login-btn:not(:disabled):hover {
-          filter: brightness(1.08);
+          background: #2563eb !important;
           transform: translateY(-1px);
-          box-shadow: 0 6px 20px rgba(99,102,241,0.4);
+          box-shadow: 0 6px 20px rgba(59,130,246,0.4);
         }
         .login-btn:not(:disabled):active {
           transform: translateY(0);
@@ -123,163 +165,210 @@ function Login() {
         justifyContent: "center",
         alignItems: "center",
         minHeight: "100vh",
-        background: "#000",
-        overflowX: "hidden",
-        padding: isMobile ? "16px" : "20px",
+        background: "linear-gradient(135deg, #0a0f1e 0%, #0f172a 60%, #0c1a35 100%)",
+        padding: "20px",
       }}>
         <div className="login-card" style={{
-          background: "linear-gradient(160deg, #0d0d1a, #0a0a14)",
-          padding: isMobile ? "24px 20px" : "44px 40px",
+          background: "#111827",
+          padding: isMobile ? "28px 24px" : "44px 40px",
           borderRadius: 20,
           color: "white",
           width: "100%",
           maxWidth: 400,
-          border: "1px solid #1e1b4b",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(99,102,241,0.1)",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(59,130,246,0.1)",
         }}>
 
           {/* LOGO */}
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <div style={{
-              width: isMobile ? 52 : 60, height: isMobile ? 52 : 60,
-              background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+              width: 60, height: 60,
+              background: "linear-gradient(135deg, #2563eb, #3b82f6)",
               borderRadius: 16,
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
               fontWeight: "900",
-              fontSize: isMobile ? 22 : 26,
+              fontSize: 26,
               fontStyle: "italic",
               margin: "0 auto 16px",
-              boxShadow: "0 8px 24px rgba(99,102,241,0.35)",
+              boxShadow: "0 8px 24px rgba(59,130,246,0.35)",
               letterSpacing: -1,
             }}>
               V
             </div>
             <h2 style={{
-              fontSize: isMobile ? 15 : 18,
+              fontSize: isMobile ? 17 : 18,
               fontWeight: 700,
               letterSpacing: 1.5,
               textTransform: "uppercase",
               marginBottom: 6,
-              color: "white",
-              wordBreak: "break-word",
+              color: "#f1f5f9",
             }}>
               Escritores Vanguardistas 3.0
             </h2>
             <p style={{ color: "#475569", fontSize: 13, lineHeight: 1.4 }}>
-              Panel de acceso editorial
+              {paso === "credenciales" ? "Panel de acceso editorial" : "Verificación en dos pasos"}
             </p>
           </div>
 
           {/* ERROR */}
           {error && (
             <div style={{
-              background: "rgba(239,68,68,0.12)",
-              border: "1px solid rgba(239,68,68,0.35)",
+              background: "rgba(127,29,29,0.5)",
+              border: "1px solid rgba(239,68,68,0.3)",
               padding: "11px 14px",
               borderRadius: 10,
               marginBottom: 20,
               fontSize: 13,
-              color: "#ef4444",
+              color: "#fca5a5",
               display: "flex",
               alignItems: "center",
               gap: 8,
-              wordBreak: "break-word",
             }}>
               <span>⚠️</span> {error}
             </div>
           )}
 
-          {/* USUARIO */}
-          <label style={labelStyle}>Usuario</label>
-          <input
-            className="login-input"
-            placeholder="Tu usuario"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-            autoComplete="off"
-            style={{ ...inputStyle, fontSize: 16 }}
-          />
+          {paso === "credenciales" ? (
+            <>
+              {/* USUARIO */}
+              <label style={labelStyle}>Usuario</label>
+              <input
+                className="login-input"
+                placeholder="Tu usuario"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                autoComplete="off"
+                style={inputStyle}
+              />
 
-          {/* CONTRASEÑA */}
-          <label style={labelStyle}>Contraseña</label>
-          <div style={{ position: "relative", marginBottom: 28 }}>
-            <input
-              className="login-input"
-              placeholder="Tu contraseña"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-              autoComplete="current-password"
-              style={{ ...inputStyle, marginBottom: 0, paddingRight: 44, fontSize: 16 }}
-            />
-            <button
-              className="toggle-eye"
-              onClick={() => setShowPassword(!showPassword)}
-              tabIndex={-1}
-              style={{
-                position: "absolute",
-                right: 4,
-                top: "50%",
-                transform: "translateY(-50%)",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "#64748b",
-                padding: 10,
-                width: 44,
-                height: 44,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "color 0.15s",
-              }}
-              aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-            >
-              <EyeIcon open={showPassword} />
-            </button>
-          </div>
+              {/* CONTRASEÑA */}
+              <label style={labelStyle}>Contraseña</label>
+              <div style={{ position: "relative", marginBottom: 28 }}>
+                <input
+                  className="login-input"
+                  placeholder="Tu contraseña"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                  autoComplete="current-password"
+                  style={{ ...inputStyle, marginBottom: 0, paddingRight: 44 }}
+                />
+                <button
+                  className="toggle-eye"
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "#64748b",
+                    padding: 4,
+                    display: "flex",
+                    alignItems: "center",
+                    transition: "color 0.15s",
+                  }}
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  <EyeIcon open={showPassword} />
+                </button>
+              </div>
 
-          {/* BOTÓN */}
-          <button
-            className="login-btn"
-            onClick={handleLogin}
-            disabled={loading}
-            style={{
-              width: "100%",
-              minHeight: 44,
-              padding: "14px 0",
-              background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-              border: "none",
-              borderRadius: 10,
-              color: "white",
-              cursor: loading ? "not-allowed" : "pointer",
-              fontWeight: 700,
-              fontSize: 15,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              transition: "background 0.2s, transform 0.15s, box-shadow 0.2s",
-              opacity: loading ? 0.7 : 1,
-              letterSpacing: 0.3,
-            }}
-          >
-            {loading ? <><Spinner /> Entrando...</> : "Iniciar sesión"}
-          </button>
+              <button
+                className="login-btn"
+                onClick={handleLogin}
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "14px 0",
+                  background: "#3b82f6",
+                  border: "none",
+                  borderRadius: 10,
+                  color: "white",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  fontWeight: 700,
+                  fontSize: 15,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  transition: "background 0.2s, transform 0.15s, box-shadow 0.2s",
+                  opacity: loading ? 0.7 : 1,
+                  letterSpacing: 0.3,
+                }}
+              >
+                {loading ? <><Spinner /> Entrando...</> : "Iniciar sesión"}
+              </button>
 
-          <p style={{
-            textAlign: "center",
-            color: "#334155",
-            fontSize: 12,
-            marginTop: 24,
-            letterSpacing: 0.2,
-          }}>
-            Solo el equipo editorial puede acceder
-          </p>
+              <p style={{
+                textAlign: "center",
+                color: "#334155",
+                fontSize: 12,
+                marginTop: 24,
+                letterSpacing: 0.2,
+              }}>
+                Solo el equipo editorial puede acceder
+              </p>
+            </>
+          ) : (
+            <>
+              <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 16, textAlign: "center", lineHeight: 1.6 }}>
+                Abre Google Authenticator en tu celular e ingresa el código de 6 dígitos.
+              </p>
+              <label style={labelStyle}>Código de verificación</label>
+              <input
+                className="login-input"
+                placeholder="000000"
+                value={codigo2fa}
+                onChange={(e) => setCodigo2fa(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                onKeyDown={(e) => e.key === "Enter" && handleVerificar2fa()}
+                inputMode="numeric"
+                autoFocus
+                style={{ ...inputStyle, marginBottom: 24, textAlign: "center", fontSize: 22, letterSpacing: 6 }}
+              />
+
+              <button
+                className="login-btn"
+                onClick={handleVerificar2fa}
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "14px 0",
+                  background: "#3b82f6",
+                  border: "none",
+                  borderRadius: 10,
+                  color: "white",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  fontWeight: 700,
+                  fontSize: 15,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  opacity: loading ? 0.7 : 1,
+                  marginBottom: 12,
+                }}
+              >
+                {loading ? <><Spinner /> Verificando...</> : "Verificar y entrar"}
+              </button>
+
+              <button
+                onClick={volverACredenciales}
+                style={{
+                  width: "100%", background: "none", border: "none",
+                  color: "#64748b", fontSize: 13, cursor: "pointer", padding: 8,
+                }}
+              >
+                ← Volver
+              </button>
+            </>
+          )}
         </div>
       </div>
     </>
@@ -300,12 +389,11 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "12px 14px",
   marginBottom: 16,
-  minHeight: 44,
   borderRadius: 10,
-  border: "1px solid #1e1b4b",
-  background: "#0a0a14",
+  border: "1px solid #1e293b",
+  background: "#0f172a",
   color: "white",
-  fontSize: 16,
+  fontSize: 14,
   boxSizing: "border-box",
   transition: "border-color 0.2s, background 0.2s",
 };
