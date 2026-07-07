@@ -9,7 +9,7 @@ import bcrypt from "bcrypt";
 import rateLimit from "express-rate-limit";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
-import { enviarCorreo } from "./mailer";
+
 import { enviarWhatsAppCliente } from "./whatsapp";
 import { generarReciboPDF } from "./pdfGenerator";
 
