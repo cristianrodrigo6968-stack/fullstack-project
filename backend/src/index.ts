@@ -7,6 +7,8 @@ import multer from "multer";
 import cloudinary from "./cloudinary";
 import bcrypt from "bcrypt";
 import rateLimit from "express-rate-limit";
+import { authenticator } from "otplib";
+import QRCode from "qrcode";
 import { enviarCorreo } from "./mailer";
 import { enviarWhatsAppCliente } from "./whatsapp";
 import { generarReciboPDF } from "./pdfGenerator";
@@ -161,6 +163,11 @@ app.post("/login", loginLimiter, async (req, res) => {
       ? await bcrypt.compare(password, user.password)
       : user.password === password;
     if (passwordValidaAdmin) {
+      if (user.twoFactorEnabled) {
+        const tempToken = jwt.sign({ id: user.id, pending2FA: true }, SECRET, { expiresIn: "5m" });
+        return res.json({ needsTwoFactor: true, tempToken });
+      }
+
       const userAgent = req.headers["user-agent"] || "";
       const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || null;
 
@@ -206,6 +213,46 @@ app.post("/login", loginLimiter, async (req, res) => {
   }
 
   return res.status(401).json({ error: "Credenciales incorrectas" });
+});
+
+app.post("/login/2fa", loginLimiter, async (req, res) => {
+  const { tempToken, codigo } = req.body;
+  if (!tempToken || !codigo) return res.status(400).json({ error: "Faltan datos" });
+
+  let decoded: any;
+  try {
+    decoded = jwt.verify(tempToken, SECRET);
+  } catch {
+    return res.status(401).json({ error: "La verificación expiró. Inicia sesión de nuevo." });
+  }
+  if (!decoded.pending2FA) return res.status(400).json({ error: "Token inválido" });
+
+  const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+  if (!user || !user.twoFactorSecret || !user.twoFactorEnabled) {
+    return res.status(400).json({ error: "2FA no configurado para este usuario" });
+  }
+
+  const valido = authenticator.verify({ token: codigo, secret: user.twoFactorSecret });
+  if (!valido) return res.status(401).json({ error: "Código incorrecto" });
+
+  const userAgent = req.headers["user-agent"] || "";
+  const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || null;
+
+  const sesion = await prisma.sesionAdmin.create({
+    data: { userId: user.id, dispositivo: parseDispositivo(userAgent), ip },
+  });
+
+  const token = jwt.sign(
+    { id: user.id, username: user.username, role: "admin", sessionId: sesion.id },
+    SECRET,
+    { expiresIn: "8h" }
+  );
+  res.json({
+    token,
+    username: user.username,
+    role: "admin",
+    debeCambiarPassword: user.debeCambiarPassword,
+  });
 });
 
 // ===================== NOTES =====================
@@ -1637,6 +1684,58 @@ app.post("/cliente/mensajes", authCliente, upload.array("archivos", 5), async (r
   }
 
   res.json(mensaje);
+});
+app.get("/admin/2fa/estado", auth, async (req: any, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { twoFactorEnabled: true } });
+  res.json({ enabled: user?.twoFactorEnabled || false });
+});
+
+app.post("/admin/2fa/setup", auth, async (req: any, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+  const secret = authenticator.generateSecret();
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { twoFactorSecret: secret, twoFactorEnabled: false },
+  });
+
+  const otpauth = authenticator.keyuri(user.username, "Vanguardistas Admin", secret);
+  const qr = await QRCode.toDataURL(otpauth);
+  res.json({ qr, secret });
+});
+
+app.post("/admin/2fa/activar", auth, async (req: any, res) => {
+  const { codigo } = req.body;
+  if (!codigo) return res.status(400).json({ error: "Ingresa el código de 6 dígitos" });
+
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user || !user.twoFactorSecret) {
+    return res.status(400).json({ error: "Primero configura el 2FA generando el código QR" });
+  }
+
+  const valido = authenticator.verify({ token: codigo, secret: user.twoFactorSecret });
+  if (!valido) return res.status(401).json({ error: "Código incorrecto. Verifica la hora de tu celular e intenta de nuevo." });
+
+  await prisma.user.update({ where: { id: user.id }, data: { twoFactorEnabled: true } });
+  res.json({ ok: true });
+});
+
+app.post("/admin/2fa/desactivar", auth, async (req: any, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: "Ingresa tu contraseña para confirmar" });
+
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+  const valida = await bcrypt.compare(password, user.password);
+  if (!valida) return res.status(401).json({ error: "Contraseña incorrecta" });
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { twoFactorEnabled: false, twoFactorSecret: null },
+  });
+  res.json({ ok: true });
 });
 app.get("/admin/sesiones", auth, async (req: any, res) => {
   const sesiones = await prisma.sesionAdmin.findMany({

@@ -13,6 +13,8 @@ model User {
   password            String
   role                String        @default("admin")
   debeCambiarPassword Boolean       @default(false)
+  twoFactorSecret     String?
+  twoFactorEnabled    Boolean       @default(false)
   notes               Note[]
   dayNotes            DayNote[]
   sesiones            SesionAdmin[]
