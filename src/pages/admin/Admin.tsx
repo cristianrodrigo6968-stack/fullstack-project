@@ -14,6 +14,7 @@ import AdminProductos from "./AdminProductos";
 import ErrorBoundary from "../../components/ErrorBoundary";
 import AdminPassword from "./AdminPassword";
 import AdminSesiones from "./AdminSesiones";
+import Admin2FA from "./Admin2FA";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -66,6 +67,7 @@ function Admin() {
     { key: "productos", label: "🛒 Productos" },
     { key: "password", label: "🔑 Cambiar Contraseña" },
     { key: "sesiones", label: "🔐 Sesiones activas" },
+    { key: "2fa", label: "🔒 Verificación en dos pasos" },
   ];
 
   const handleSection = (key: string) => { setSection(key); setSidebarOpen(false); };
@@ -346,6 +348,7 @@ function Admin() {
         {section === "productos" && <AdminProductos />}
         {section === "password" && <AdminPassword onNavigate={handleSection} />}
         {section === "sesiones" && <AdminSesiones />}
+        {section === "2fa" && <Admin2FA />}
       </div>
     </div>
   );
