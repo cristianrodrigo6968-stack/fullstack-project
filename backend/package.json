@@ -26,7 +26,9 @@
     "multer-storage-cloudinary": "^4.0.0",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.7",
+    "otplib": "^13.4.1",
     "prisma": "^6.19.3",
+    "qrcode": "^1.5.4",
     "twilio": "^6.0.2"
   },
   "devDependencies": {
@@ -39,6 +41,7 @@
     "@types/node": "^25.6.0",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^8.0.0",
+    "@types/qrcode": "^1.5.6",
     "@types/twilio": "^3.19.2",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
