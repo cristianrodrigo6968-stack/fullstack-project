@@ -7,10 +7,8 @@ import multer from "multer";
 import cloudinary from "./cloudinary";
 import bcrypt from "bcrypt";
 import rateLimit from "express-rate-limit";
-import * as otplib from "otplib";
+import { authenticator } from "otplib";
 import QRCode from "qrcode";
-
-const authenticator = otplib.authenticator;
 import { enviarCorreo } from "./mailer";
 import { enviarWhatsAppCliente } from "./whatsapp";
 import { generarReciboPDF } from "./pdfGenerator";
