@@ -17,7 +17,7 @@
   "build": "vite build",
   
     
-  "lint": "eslint .",
+  "lint": "eslint src",
   
     
   "preview": "vite preview"
