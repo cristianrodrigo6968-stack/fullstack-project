@@ -98,3 +98,7 @@ El proyecto utiliza PostgreSQL como sistema de base de datos. El esquema, las mi
 - Prisma
 - ESLint
 - Cloudinary
+
+## Flujo de trabajo con Git
+
+Los cambios del proyecto se desarrollan en ramas independientes y se revisan mediante Pull Requests antes de integrarse a la rama principal.
