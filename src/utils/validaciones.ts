@@ -10,5 +10,7 @@ export type Pedido = {
 }
 
 export function contarPedidosPendientes(pedidos: Pedido[]): number {
-  return pedidos.filter((pedido) => pedido.estado === "pendiente").length
+  return pedidos.filter(
+    (pedido) => pedido.estado.trim().toLowerCase() === "pendiente"
+  ).length
 }
