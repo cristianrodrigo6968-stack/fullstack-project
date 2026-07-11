@@ -93,6 +93,7 @@ function InactivityWatcher() {
 }
 
 function App() {
+  const incidentePipeline = "simulacro;
   return (
     <div>
       <Navbar />
