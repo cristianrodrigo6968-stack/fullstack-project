@@ -2,7 +2,7 @@
 
 Aplicación web full stack desarrollada con React, TypeScript, Node.js y PostgreSQL. Permite gestionar usuarios, clientes, productos, contenidos editoriales, pagos, entregas y procesos administrativos desde una plataforma centralizada.
 
-<!-- BADGE_CI -->
+[![CI](https://github.com/cristianrodrigo6968-stack/fullstack-project/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cristianrodrigo6968-stack/fullstack-project/actions/workflows/ci.yml)
 
 ## Instalación local 🚀
 
