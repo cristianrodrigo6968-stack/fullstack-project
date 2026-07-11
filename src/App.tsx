@@ -93,6 +93,7 @@ function InactivityWatcher() {
 }
 
 function App() {
+ 
   return (
     <div>
       <Navbar />
