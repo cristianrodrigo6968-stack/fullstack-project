@@ -54,4 +54,20 @@ describe("contarPedidosPendientes", () => {
     // Assert
     expect(resultado).toBe(0)
   })
+
+  it("cuenta pendientes aunque estén escritos con mayúsculas", () => {
+    // Arrange
+    const pedidos = [
+      { estado: "pendiente" },
+      { estado: "Pendiente" },
+      { estado: "PENDIENTE" },
+      { estado: "entregado" },
+    ]
+
+    // Act
+    const resultado = contarPedidosPendientes(pedidos)
+
+    // Assert
+    expect(resultado).toBe(3)
+  })
 })
