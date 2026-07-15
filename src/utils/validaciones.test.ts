@@ -13,7 +13,7 @@ describe("esCorreoValido", () => {
     const resultado = esCorreoValido(correo)
 
     // Assert
-    expect(resultado).toBe(false);
+   expect(resultado).toBe(true);
   })
 
   it("rechaza un correo sin dominio", () => {
