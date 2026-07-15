@@ -36,3 +36,19 @@ backend/dist/
 # Project files ignored
 public/portadas/*.jpg
 public/qr-pago.jpeg
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+# Vitest coverage
+/coverage/

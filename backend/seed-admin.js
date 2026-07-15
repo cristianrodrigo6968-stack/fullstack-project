@@ -1,28 +1,39 @@
-const { PrismaClient } = require('@prisma/client');
+require('dotenv').config();
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: "postgresql://taskmanager_db_c9f7_user:Jl4sOg7MzLWQ29dLofsAMfJ6hakHQldu@dpg-d873brh9rddc73836lmg-a.oregon-postgres.render.com/taskmanager_db_c9f7"
-    }
-  }
-});
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcrypt');
+
+const prisma = new PrismaClient();
 
 async function main() {
+  const username = process.env.ADMIN_USERNAME || 'admin';
+  const password = process.env.ADMIN_PASSWORD || '1234';
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
   const admin = await prisma.user.upsert({
-    where: { username: 'admin' },
-    update: {},
+    where: {
+      username,
+    },
+    update: {
+      password: passwordHash,
+      role: 'admin',
+    },
     create: {
-      username: 'admin',
-      password: '1234',
-      role: 'admin'
-    }
+      username,
+      password: passwordHash,
+      role: 'admin',
+    },
   });
-  console.log('✅ Usuario admin creado:', admin.username);
-  await prisma.$disconnect();
+
+  console.log('✅ Usuario administrador creado:', admin.username);
 }
 
-main().catch(e => {
-  console.error('❌ Error:', e);
-  process.exit(1);
-});
+main()
+  .catch((error) => {
+    console.error('❌ Error:', error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
