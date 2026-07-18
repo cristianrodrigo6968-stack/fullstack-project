@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   frontend:
-    name: Frontend - Lint y Build
+  name: Frontend - Lint & Build
     runs-on: ubuntu-latest
 
     env:
@@ -40,7 +40,7 @@ jobs:
         run: npm run build
 
   backend:
-    name: Backend - Build seguro
+  name: Backend - Build
     runs-on: ubuntu-latest
 
     env:
