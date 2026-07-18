@@ -83,7 +83,21 @@ cd backend
 npm run build
 npm start
 ```
+## Ejecución con Docker 🐳
 
+La aplicación completa puede ejecutarse mediante Docker Compose, sin instalar manualmente PostgreSQL ni las dependencias de Node.js en el equipo anfitrión.
+
+### Requisitos
+
+- Docker Desktop instalado y funcionando.
+- Docker Compose disponible.
+- Puertos `3000` y `5173` libres.
+
+Verifica la instalación con:
+
+```bash
+docker --version
+docker compose version
 ## Base de datos 🗄️
 
 El proyecto utiliza PostgreSQL como sistema de base de datos. El esquema, las migraciones y los procesos de inicialización de datos se gestionan mediante Prisma.
