@@ -113,7 +113,7 @@ jobs:
           retention-days: 15
 
   migraciones:
-    name: Migraciones con PostgreSQL temporal
+    name: Migraciones y seed con PostgreSQL temporal
     runs-on: ubuntu-latest
 
     services:
@@ -152,8 +152,54 @@ jobs:
       - name: Instalar dependencias sin ejecutar scripts
         run: npm ci --ignore-scripts
 
+      - name: Generar Prisma Client
+        run: npx prisma generate
+
       - name: Aplicar migraciones de Prisma
         run: npx prisma migrate deploy
+
+      - name: Ejecutar seed por primera vez
+        run: npx prisma db seed
+
+      - name: Ejecutar seed por segunda vez
+        run: npx prisma db seed
+
+      - name: Verificar que el seed no duplicó datos
+        shell: bash
+        run: |
+          node <<'NODE'
+          const { PrismaClient } = require("@prisma/client");
+
+          const prisma = new PrismaClient();
+          const TASK_TITLE = "Tarea de ejemplo para pruebas";
+
+          async function verify() {
+            const count = await prisma.task.count({
+              where: {
+                title: TASK_TITLE,
+              },
+            });
+
+            console.log(`Cantidad de tareas semilla: ${count}`);
+
+            if (count !== 1) {
+              throw new Error(
+                `El seed duplicó datos. Se esperaba 1 registro y se encontraron ${count}.`
+              );
+            }
+
+            console.log("Seed reproducible verificado correctamente.");
+          }
+
+          verify()
+            .catch((error) => {
+              console.error(error);
+              process.exitCode = 1;
+            })
+            .finally(async () => {
+              await prisma.$disconnect();
+            });
+          NODE
 
   e2e:
     name: Pruebas E2E
@@ -254,7 +300,7 @@ jobs:
           echo "Esperando que el backend responda..."
 
           for i in {1..30}; do
-            if curl -s -o /dev/null http://localhost:3000; then
+            if curl -s -o /dev/null http://localhost:3000/ping; then
               echo "Backend listo en el puerto 3000"
               break
             fi
