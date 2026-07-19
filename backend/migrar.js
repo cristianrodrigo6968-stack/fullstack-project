@@ -1,9 +1,22 @@
-const { execSync } = require('child_process');
+const { execSync } = require("child_process");
 
-process.env.DATABASE_URL = "postgresql://taskmanager_db_4xrr_user:yYdDApoUdvKT0bWrQvdZvrN3kK4C9Lkh@dpg-d86eu0dckfvc73cluv90-a.ohio-postgres.render.com/taskmanager_db_4xrr";
+if (!process.env.DATABASE_URL) {
+  console.error("Error: DATABASE_URL no está configurada.");
+  process.exit(1);
+}
 
-console.log("Ejecutando prisma db push...");
-execSync('npx prisma db push', { stdio: 'inherit' });
-console.log("Ejecutando prisma generate...");
-execSync('npx prisma generate', { stdio: 'inherit' });
-console.log("Migración completada.");
+console.log("Ejecutando migraciones de Prisma...");
+
+execSync("npx prisma migrate deploy", {
+  stdio: "inherit",
+  env: process.env,
+});
+
+console.log("Generando Prisma Client...");
+
+execSync("npx prisma generate", {
+  stdio: "inherit",
+  env: process.env,
+});
+
+console.log("Migración completada correctamente.");
