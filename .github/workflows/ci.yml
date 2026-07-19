@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   frontend:
     name: Frontend - Lint & Build
@@ -41,7 +44,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/taskmanager_db?schema=public
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
     defaults:
       run:
@@ -58,7 +62,22 @@ jobs:
           cache: "npm"
           cache-dependency-path: backend/package-lock.json
 
-      - name: Instalar dependencias sin migraciones
+      - name: Verificar carga de secretos
+        shell: bash
+        run: |
+          test -n "$DATABASE_URL" || {
+            echo "DATABASE_URL no está configurado"
+            exit 1
+          }
+
+          test -n "$JWT_SECRET" || {
+            echo "JWT_SECRET no está configurado"
+            exit 1
+          }
+
+          echo "Variables seguras cargadas correctamente"
+
+      - name: Instalar dependencias sin ejecutar migraciones
         run: npm ci --ignore-scripts
 
       - name: Construir backend
@@ -93,6 +112,95 @@ jobs:
           path: coverage/
           retention-days: 15
 
+  migraciones:
+    name: Migraciones y seed con PostgreSQL temporal
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U testuser -d testdb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependencias sin ejecutar scripts
+        run: npm ci --ignore-scripts
+
+      - name: Generar Prisma Client
+        run: npx prisma generate
+
+      - name: Aplicar migraciones de Prisma
+        run: npx prisma migrate deploy
+
+      - name: Ejecutar seed por primera vez
+        run: npx prisma db seed
+
+      - name: Ejecutar seed por segunda vez
+        run: npx prisma db seed
+
+      - name: Verificar que el seed no duplicó datos
+        shell: bash
+        run: |
+          node <<'NODE'
+          const { PrismaClient } = require("@prisma/client");
+
+          const prisma = new PrismaClient();
+          const TASK_TITLE = "Tarea de ejemplo para pruebas";
+
+          async function verify() {
+            const count = await prisma.task.count({
+              where: {
+                title: TASK_TITLE,
+              },
+            });
+
+            console.log(`Cantidad de tareas semilla: ${count}`);
+
+            if (count !== 1) {
+              throw new Error(
+                `El seed duplicó datos. Se esperaba 1 registro y se encontraron ${count}.`
+              );
+            }
+
+            console.log("Seed reproducible verificado correctamente.");
+          }
+
+          verify()
+            .catch((error) => {
+              console.error(error);
+              process.exitCode = 1;
+            })
+            .finally(async () => {
+              await prisma.$disconnect();
+            });
+          NODE
+
   e2e:
     name: Pruebas E2E
     runs-on: ubuntu-latest
@@ -102,10 +210,11 @@ jobs:
       - frontend
       - backend
       - pruebas
+      - migraciones
 
     services:
       postgres:
-        image: postgres:18
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -116,16 +225,16 @@ jobs:
           --health-cmd "pg_isready -U postgres -d taskmanager_db"
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
 
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/taskmanager_db?schema=public
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
       PORT: "3000"
-      JWT_SECRET: clave-exclusiva-para-ci
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
       ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: "1234"
+      ADMIN_PASSWORD: ${{ secrets.CI_ADMIN_PASSWORD }}
       E2E_USER: admin
-      E2E_PASSWORD: "1234"
+      E2E_PASSWORD: ${{ secrets.CI_ADMIN_PASSWORD }}
       VITE_API_URL: http://localhost:3000
 
     steps:
@@ -140,6 +249,26 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             backend/package-lock.json
+
+      - name: Verificar variables seguras
+        shell: bash
+        run: |
+          test -n "$DATABASE_URL" || {
+            echo "DATABASE_URL no está configurado"
+            exit 1
+          }
+
+          test -n "$JWT_SECRET" || {
+            echo "JWT_SECRET no está configurado"
+            exit 1
+          }
+
+          test -n "$ADMIN_PASSWORD" || {
+            echo "CI_ADMIN_PASSWORD no está configurado"
+            exit 1
+          }
+
+          echo "Secretos del entorno E2E cargados correctamente"
 
       - name: Instalar dependencias del frontend
         run: npm ci
@@ -171,7 +300,7 @@ jobs:
           echo "Esperando que el backend responda..."
 
           for i in {1..30}; do
-            if curl -s -o /dev/null http://localhost:3000; then
+            if curl -s -o /dev/null http://localhost:3000/ping; then
               echo "Backend listo en el puerto 3000"
               break
             fi
