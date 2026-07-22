@@ -4,9 +4,17 @@ on:
   push:
     branches:
       - main
+
   pull_request:
     branches:
       - main
+
+  workflow_dispatch:
+    inputs:
+      confirmacion:
+        description: "Escribe DEPLOY para confirmar el despliegue a producción"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -350,3 +358,29 @@ jobs:
         run: railway up --ci --service fullstack-project --environment staging
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+  deploy-produccion:
+    name: Deploy a Producción (manual)
+    needs:
+      - frontend
+      - backend
+      - pruebas
+      - migraciones
+      - e2e
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.confirmacion == 'DEPLOY'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Railway CLI
+        run: npm install --global @railway/cli
+
+      - name: Desplegar a Railway production
+        run: railway up --ci --service fullstack-project --environment production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_PRODUCTION }}
