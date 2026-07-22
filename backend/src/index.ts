@@ -73,6 +73,9 @@ app.use(
 app.get("/ping", (req, res) => {
   res.json({ ok: true, message: "pong" });
 });
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
 
 app.use(express.json());
 app.use(express.static("public"));
