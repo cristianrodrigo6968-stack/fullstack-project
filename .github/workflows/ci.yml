@@ -327,3 +327,26 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 15
+
+  deploy-staging:
+    name: Deploy a Staging
+    needs:
+      - frontend
+      - backend
+      - pruebas
+      - migraciones
+      - e2e
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Railway CLI
+        run: npm install --global @railway/cli
+
+      - name: Desplegar a Railway staging
+        run: railway up --ci --service fullstack-project --environment staging
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
