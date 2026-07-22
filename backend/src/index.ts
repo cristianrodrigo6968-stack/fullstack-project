@@ -2244,9 +2244,7 @@ app.post("/cliente/tareas/:id/comentarios", authCliente, upload.array("archivos"
 // ===================== NOTIFICACIONES =====================
 
 // ===================== INICIO SERVIDOR =====================
-if (process.env.RAILWAY_ENVIRONMENT_NAME === "staging") {
-  throw new Error("Fallo simulado para el laboratorio de caos");
-}  
+
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
   console.log(`🌐 Acceso local: http://localhost:${PORT}`);
