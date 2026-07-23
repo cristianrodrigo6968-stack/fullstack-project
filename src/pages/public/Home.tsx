@@ -58,7 +58,7 @@ function Home() {
 
   const [typedText, setTypedText] = useState("");
   const [showSub, setShowSub] = useState(false);
-  const fullText = "Publica tu libro y revista";
+  const fullText = "Publica tu libro y revista — DevOps verificado";
 
   const trackRef = useRef<HTMLDivElement>(null);
   const offsetRef = useRef(0);
